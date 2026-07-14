@@ -74,6 +74,13 @@
     }
     .form-actions .btn{ min-width: 160px; }
     .time-input-ms{padding:.55rem 0.8rem .55rem 3.8rem;}
+    .settings-repeat-row{
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: .9rem;
+        background: var(--bg);
+        margin-bottom: .75rem;
+    }
 
     @media (max-width: 575.98px){
         .form-card .card-body{ padding: 1rem; }
@@ -86,6 +93,19 @@
     <form method="post" action="{{ route('admin.settings.update') }}">
         @csrf
         @method('put')
+        @php
+            $presetRows = old('prepayment_presets', $settings->prepaymentAmountPresets());
+            $presetRows = array_pad($presetRows, count($presetRows) + 3, ['amount' => '', 'label' => '', 'is_active' => true]);
+            $cardRows = old('payment_cards', $paymentCards->map(fn ($card) => [
+                'id' => $card->id,
+                'holder_name' => $card->holder_name,
+                'card_number' => $card->card_number,
+                'bank_name' => $card->bank_name,
+                'description' => $card->description,
+                'is_active' => $card->is_active,
+            ])->all());
+            $cardRows = array_pad($cardRows, count($cardRows) + 2, ['id' => '', 'holder_name' => '', 'card_number' => '', 'bank_name' => '', 'description' => '', 'is_active' => true]);
+        @endphp
 
         {{-- Institute info --}}
         <div class="card form-card">
@@ -152,6 +172,68 @@
             </div>
         </div>
 
+        <div class="card form-card">
+            <div class="card-header"><i class="ri-money-dollar-circle-line"></i> مبالغ پیش‌فرض پیش‌پرداخت</div>
+            <div class="card-body">
+                @foreach($presetRows as $index => $preset)
+                    <div class="settings-repeat-row">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-4">
+                                <label class="form-label">مبلغ پیش‌پرداخت</label>
+                                <input type="number" name="prepayment_presets[{{ $index }}][amount]" value="{{ $preset['amount'] ?? '' }}" class="form-control">
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label">برچسب</label>
+                                <input name="prepayment_presets[{{ $index }}][label]" value="{{ $preset['label'] ?? '' }}" class="form-control" placeholder="مثلاً ۵۰۰,۰۰۰ تومان">
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-check form-switch">
+                                    <input type="checkbox" name="prepayment_presets[{{ $index }}][is_active]" value="1" class="form-check-input" @checked($preset['is_active'] ?? true)>
+                                    <label class="form-check-label">فعال</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+                <div class="form-hint">ردیف‌های خالی ذخیره نمی‌شوند.</div>
+            </div>
+        </div>
+
+        <div class="card form-card">
+            <div class="card-header"><i class="ri-bank-card-line"></i> کارت‌های پرداخت</div>
+            <div class="card-body">
+                @foreach($cardRows as $index => $card)
+                    <div class="settings-repeat-row">
+                        <input type="hidden" name="payment_cards[{{ $index }}][id]" value="{{ $card['id'] ?? '' }}">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-3">
+                                <label class="form-label">صاحب کارت</label>
+                                <input name="payment_cards[{{ $index }}][holder_name]" value="{{ $card['holder_name'] ?? '' }}" class="form-control">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">شماره کارت</label>
+                                <input name="payment_cards[{{ $index }}][card_number]" value="{{ $card['card_number'] ?? '' }}" class="form-control ltr">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">بانک</label>
+                                <input name="payment_cards[{{ $index }}][bank_name]" value="{{ $card['bank_name'] ?? '' }}" class="form-control">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">توضیحات</label>
+                                <input name="payment_cards[{{ $index }}][description]" value="{{ $card['description'] ?? '' }}" class="form-control">
+                            </div>
+                            <div class="col-md-1">
+                                <div class="form-check form-switch">
+                                    <input type="checkbox" name="payment_cards[{{ $index }}][is_active]" value="1" class="form-check-input" @checked($card['is_active'] ?? true)>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+                <div class="form-hint">برای حذف عملی، کارت را غیرفعال کنید تا در رزروهای جدید نمایش داده نشود.</div>
+            </div>
+        </div>
+
         {{-- Receipt rules --}}
         <div class="card form-card">
             <div class="card-header"><i class="ri-file-shield-2-line"></i> قوانین فیش پرداخت</div>
@@ -162,6 +244,13 @@
                         <div class="unit-suffix">
                             <input type="number" name="max_receipt_image_size_kb" value="{{ old('max_receipt_image_size_kb', $settings->get('max_receipt_image_size_kb', 5120)) }}" class="form-control time-input-ms">
                             <span>کیلوبایت</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">حداکثر حجم کارنامه</label>
+                        <div class="unit-suffix">
+                            <input type="number" name="report_card_max_upload_size_mb" value="{{ old('report_card_max_upload_size_mb', $settings->get('report_card_max_upload_size_mb', 10)) }}" class="form-control time-input-ms">
+                            <span>مگابایت</span>
                         </div>
                     </div>
                     <div class="col-md-6">

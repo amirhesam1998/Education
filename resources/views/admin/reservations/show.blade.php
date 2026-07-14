@@ -8,6 +8,109 @@
     </a>
 @endsection
 
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const slotIntervals = @json($slotIntervals ?? []);
+        const slotSelect = document.getElementById('change_slot_id');
+        const intervalSelect = document.getElementById('change_reservation_interval');
+        const selectedInterval = intervalSelect?.dataset.selected || '';
+
+        if (!slotSelect || !intervalSelect) {
+            return;
+        }
+
+        const faNumber = (value) => String(value || '').replace(/\d/g, (digit) => '۰۱۲۳۴۵۶۷۸۹'[digit]);
+
+        function renderIntervals() {
+            const intervals = slotIntervals[slotSelect.value] || [];
+            const currentSelected = intervalSelect.value || selectedInterval;
+            intervalSelect.innerHTML = '';
+
+            if (!intervals.length) {
+                intervalSelect.add(new Option('ابتدا تایم را انتخاب کنید', ''));
+                return;
+            }
+
+            intervals.forEach((interval) => {
+                const label = `${faNumber(interval.value.replace('|', ' تا '))}${interval.available ? '' : ` - ${interval.status_label}`}`;
+                const option = new Option(label, interval.value);
+                option.disabled = !interval.available && interval.value !== selectedInterval;
+                option.selected = interval.value === currentSelected;
+                intervalSelect.add(option);
+            });
+
+            if (!intervalSelect.value) {
+                const firstAvailable = intervals.find((interval) => interval.available);
+
+                if (firstAvailable) {
+                    intervalSelect.value = firstAvailable.value;
+                }
+            }
+        }
+
+        slotSelect.addEventListener('change', renderIntervals);
+        renderIntervals();
+    });
+</script>
+@endpush
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const dateGroups = @json($slotDateGroups ?? []);
+        const slotSelect = document.getElementById('change_slot_id');
+        const intervalSelect = document.getElementById('change_reservation_interval');
+        const cards = Array.from(document.querySelectorAll('[data-change-date-card]'));
+        const selectedInterval = intervalSelect?.dataset.selected || '';
+
+        if (!dateGroups.length || !slotSelect || !intervalSelect || !cards.length) {
+            return;
+        }
+
+        const groupsByDate = Object.fromEntries(dateGroups.map((group) => [group.date, group]));
+        const selectedGroup = dateGroups.find((group) => group.intervals.some((interval) => String(interval.slot_id) === String(slotSelect.value)))
+            || dateGroups[0];
+
+        function renderDate(dateKey) {
+            const group = groupsByDate[dateKey];
+
+            if (!group) {
+                return;
+            }
+
+            cards.forEach((card) => card.classList.toggle('is-active', card.dataset.dateKey === dateKey));
+            intervalSelect.innerHTML = '';
+
+            group.intervals.forEach((interval) => {
+                const option = new Option(`${interval.label}${interval.available ? '' : ` - ${interval.status_label}`}`, interval.value);
+                option.dataset.slotId = interval.slot_id;
+                option.disabled = !interval.available && interval.value !== selectedInterval;
+                intervalSelect.add(option);
+            });
+
+            const current = group.intervals.find((interval) => String(interval.slot_id) === String(slotSelect.value) && interval.value === (intervalSelect.value || selectedInterval));
+            const initial = current || group.intervals.find((interval) => interval.available) || group.intervals[0];
+
+            if (initial) {
+                slotSelect.value = initial.slot_id;
+                intervalSelect.value = initial.value;
+            }
+        }
+
+        cards.forEach((card) => card.addEventListener('click', () => renderDate(card.dataset.dateKey)));
+        intervalSelect.addEventListener('change', () => {
+            const option = intervalSelect.selectedOptions[0];
+
+            if (option?.dataset.slotId) {
+                slotSelect.value = option.dataset.slotId;
+            }
+        });
+        renderDate(selectedGroup.date);
+    });
+</script>
+@endpush
+
 @push('styles')
 <style>
     /* ===========================================================
@@ -95,6 +198,52 @@
         color: var(--ink-500);
         font-size: .85rem;
     }
+
+    .change-time-dialog{
+        width: min(720px, calc(100vw - 2rem));
+        border: 0;
+        border-radius: var(--radius-lg);
+        padding: 0;
+        box-shadow: 0 24px 80px rgba(20, 30, 40, .24);
+    }
+    .change-time-dialog::backdrop{
+        background: rgba(18, 24, 32, .58);
+        backdrop-filter: blur(9px);
+    }
+    .change-time-dialog .dialog-head{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--border);
+        font-weight: 800;
+    }
+    .change-time-dialog .dialog-body{ padding: 1.25rem; }
+    .change-date-row{
+        display: flex;
+        gap: .6rem;
+        overflow-x: auto;
+        padding-bottom: .35rem;
+        margin-bottom: .9rem;
+    }
+    .change-date-card{
+        flex: 0 0 145px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: var(--surface);
+        padding: .75rem;
+        text-align: right;
+        color: var(--ink-700);
+    }
+    .change-date-card strong{ display: block; color: var(--ink-900); margin: .15rem 0; }
+    .change-date-card small{ display: block; color: var(--ink-500); }
+    .change-date-card.is-active{
+        border-color: var(--brand-500);
+        background: var(--brand-50);
+        box-shadow: 0 0 0 3px rgba(47, 143, 131, .1);
+    }
+    .change-date-card:disabled{ opacity: .55; cursor: not-allowed; background: var(--ink-100); }
 
     @media (max-width: 991.98px){
         .info-grid{ grid-template-columns: repeat(2, 1fr); }
@@ -186,6 +335,18 @@
                                 <div class="info-value">{{ \App\Support\PersianDate::money($reservation->prepayment_amount) }}</div>
                             </div>
                             <div class="info-item">
+                                <div class="info-label">شماره کارت پرداخت</div>
+                                <div class="info-value">
+                                    @if($reservation->paymentCard)
+                                        {{ $reservation->paymentCard->bank_name }} -
+                                        {{ $reservation->paymentCard->holder_name }} -
+                                        <span class="ltr">{{ $reservation->paymentCard->formattedNumber() }}</span>
+                                    @else
+                                        <span class="text-danger">کارت پرداخت انتخاب نشده است</span>
+                                    @endif
+                                </div>
+                            </div>
+                            <div class="info-item">
                                 <div class="info-label">وضعیت پرداخت</div>
                                 <div class="info-value">{{ $payment?->status?->label() ?: '-' }}</div>
                             </div>
@@ -256,6 +417,48 @@
                 </div>
             </div>
 
+            {{-- Report cards --}}
+            <div class="card card-section">
+                <div class="card-header"><i class="ri-file-upload-line"></i> کارنامه دانش‌آموز</div>
+                <div class="card-body">
+                    @forelse($reservation->reportCards as $document)
+                        <div class="info-grid mb-3">
+                            <div class="info-item">
+                                <div class="info-label">فایل کارنامه</div>
+                                <div class="info-value">{{ $document->original_name }}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">منبع ثبت</div>
+                                <div class="info-value">{{ $document->sourceLabel() }}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">زمان ثبت</div>
+                                <div class="info-value">{{ \App\Support\PersianDate::dateTime($document->created_at) }}</div>
+                            </div>
+                        </div>
+                        <a class="btn btn-outline-primary mb-3" href="{{ route('admin.reservations.documents.show', [$reservation, $document]) }}">
+                            <i class="ri-download-line align-middle"></i> مشاهده کارنامه
+                        </a>
+                    @empty
+                        <div class="empty-state">
+                            <i class="ri-file-line d-block mb-1" style="font-size:1.6rem;color:var(--ink-300)"></i>
+                            کارنامه‌ای برای این رزرو ثبت نشده است.
+                        </div>
+                    @endforelse
+
+                    @can('update_reservations')
+                        <form method="post" action="{{ route('admin.reservations.documents.report-card.store', $reservation) }}" enctype="multipart/form-data" class="mt-3">
+                            @csrf
+                            <label class="form-label">{{ $reservation->reportCards->isEmpty() ? 'آپلود کارنامه' : 'جایگزینی کارنامه' }}</label>
+                            <input type="file" name="report_card" class="form-control mb-2" accept=".jpg,.jpeg,.png,.webp,.pdf" required>
+                            <button class="btn btn-primary">
+                                <i class="ri-upload-cloud-2-line align-middle"></i> ثبت کارنامه
+                            </button>
+                        </form>
+                    @endcan
+                </div>
+            </div>
+
             {{-- Student --}}
             <div class="card card-section">
                 <div class="card-header"><i class="ri-graduation-cap-line"></i> دانش آموز</div>
@@ -275,7 +478,7 @@
                         </div>
                         <div class="info-item">
                             <div class="info-label">نوع کنکور</div>
-                            <div class="info-value">{{ $reservation->student?->exam_type ?: '-' }}</div>
+                            <div class="info-value">{{ $reservation->student?->examTypeLabel() ?: '-' }}</div>
                         </div>
                         <div class="info-item" style="grid-column: span 2;">
                             <div class="info-label">شمارهها</div>
@@ -333,22 +536,61 @@
                 <div class="card side-card card-section">
                     <div class="card-body">
                         <h2><i class="ri-calendar-2-line"></i> تغییر تایم</h2>
-                        <form method="post" action="{{ route('admin.reservations.change-slot', $reservation) }}">
-                            @csrf
-                            <select name="slot_id" class="form-select mb-2" required>
-                                <option value="">تایم جدید</option>
-                                @foreach($availableSlots as $slot)
-                                    <option value="{{ $slot->id }}">
-                                        {{ \App\Support\PersianDate::date($slot->date) }}
-                                        - {{ \App\Support\PersianDate::time($slot->start_time) }} تا {{ \App\Support\PersianDate::time($slot->end_time) }}
-                                        - {{ $slot->advisor?->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            <button class="btn btn-warning w-100">
-                                <i class="ri-exchange-line align-middle"></i> تغییر تایم
-                            </button>
-                        </form>
+                        <button class="btn btn-warning w-100" type="button" onclick="document.getElementById('change-time-dialog').showModal()">
+                            <i class="ri-exchange-line align-middle"></i> تغییر تایم
+                        </button>
+                        <dialog class="change-time-dialog" id="change-time-dialog">
+                            <div class="dialog-head">
+                                <span><i class="ri-calendar-check-line align-middle"></i> انتخاب نوبت</span>
+                                <button class="btn btn-sm btn-outline-secondary" type="button" onclick="this.closest('dialog').close()">
+                                    <i class="ri-close-line"></i>
+                                </button>
+                            </div>
+                            <form method="post" action="{{ route('admin.reservations.change-slot', $reservation) }}" class="dialog-body">
+                                @csrf
+                                <div class="alert alert-info mb-3">
+                                    زمان فعلی:
+                                    {{ $reservation->slot ? \App\Support\PersianDate::date($reservation->slot->date) : '-' }}
+                                    -
+                                    {{ \App\Support\PersianDate::time($reservation->assignedStartTime()) }}
+                                    تا
+                                    {{ \App\Support\PersianDate::time($reservation->assignedEndTime()) }}
+                                </div>
+                                <label class="form-label">تاریخ جدید</label>
+                                <div class="change-date-row">
+                                    @foreach($slotDateGroups ?? [] as $dateGroup)
+                                        <button
+                                            type="button"
+                                            class="change-date-card"
+                                            data-change-date-card
+                                            data-date-key="{{ $dateGroup['date'] }}"
+                                            @disabled(($dateGroup['available_count'] ?? 0) === 0 && ! collect($dateGroup['intervals'])->contains('slot_id', (int) $reservation->slot_id))
+                                        >
+                                            <span>{{ $dateGroup['weekday_label'] }}</span>
+                                            <strong>{{ $dateGroup['jalali_date'] }}</strong>
+                                            <small>{{ $dateGroup['advisor_label'] ?: '-' }}</small>
+                                            <small>{{ \App\Support\PersianDate::number($dateGroup['available_count']) }} نوبت آزاد</small>
+                                        </button>
+                                    @endforeach
+                                </div>
+                                <select name="slot_id" id="change_slot_id" class="form-select mb-3 d-none" required>
+                                    <option value="">انتخاب کنید</option>
+                                    @foreach($availableSlots as $slot)
+                                        @php($hasAvailableInterval = collect($slotIntervals[$slot->id] ?? [])->contains('available', true))
+                                        <option value="{{ $slot->id }}" @selected($reservation->slot_id == $slot->id) @disabled(! $hasAvailableInterval && $reservation->slot_id != $slot->id)>
+                                            {{ \App\Support\PersianDate::date($slot->date) }}
+                                            - {{ \App\Support\PersianDate::time($slot->start_time) }} تا {{ \App\Support\PersianDate::time($slot->end_time) }}
+                                            - {{ $slot->advisor?->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <label class="form-label">زمان رزرو</label>
+                                <select name="reservation_interval" id="change_reservation_interval" class="form-select mb-3" required data-selected="{{ substr((string) $reservation->assignedStartTime(), 0, 5).'|'.substr((string) $reservation->assignedEndTime(), 0, 5) }}"></select>
+                                <button class="btn btn-warning w-100">
+                                    <i class="ri-checkbox-circle-line align-middle"></i> ثبت تغییر زمان
+                                </button>
+                            </form>
+                        </dialog>
                     </div>
                 </div>
             @endcan

@@ -5,21 +5,27 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\ReservationStatus;
 use App\Enums\SlotStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\UploadReportCardRequest;
 use App\Http\Requests\Admin\CancelReservationRequest;
 use App\Http\Requests\Admin\ChangeReservationSlotRequest;
 use App\Http\Requests\Admin\StoreReservationRequest;
 use App\Http\Requests\Admin\UpdateReservationRequest;
 use App\Models\Advisor;
+use App\Models\PaymentCard;
 use App\Models\Reservation;
+use App\Models\ReservationDocument;
 use App\Models\ReservationSlot;
 use App\Services\PaymentApprovalService;
 use App\Services\PublicReservationLinkService;
 use App\Services\ReservationService;
+use App\Services\ReservationDocumentService;
 use App\Services\SettingsService;
 use App\Services\SlotAvailabilityService;
 use App\Support\PersianDate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class ReservationController extends Controller
@@ -31,7 +37,7 @@ class ReservationController extends Controller
             : null;
 
         $reservations = Reservation::query()
-            ->with(['student.phones', 'slot.advisor', 'payment'])
+            ->with(['student.phones', 'slot.advisor', 'payment', 'paymentCard'])
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
             ->when($request->filled('advisor_id'), fn ($query) => $query->where('advisor_id', $request->integer('advisor_id')))
             ->when($dateFilter, fn ($query) => $query->whereHas('slot', fn ($slot) => $slot->whereDate('date', $dateFilter)))
@@ -50,20 +56,18 @@ class ReservationController extends Controller
 
     public function create(SlotAvailabilityService $availability, SettingsService $settings): View
     {
-        $slots = ReservationSlot::query()
-            ->with('advisor')
-            ->where('status', SlotStatus::Active)
-            ->orderBy('date')
-            ->orderBy('start_time')
-            ->get();
+        $slots = $this->bookableSlots();
 
         return view('admin.reservations.create', [
             'reservation' => new Reservation(),
             'availableSlots' => $slots,
             'slotIntervals' => $this->slotIntervals($slots, $availability, $settings->reservationDurationMinutes()),
+            'slotDateGroups' => $availability->groupedIntervalsForSlots($slots, $settings->reservationDurationMinutes()),
             'examTypes' => $settings->get('exam_types', []),
             'majors' => $settings->get('majors', []),
             'defaultPrepaymentAmount' => $settings->get('default_prepayment_amount', null),
+            'prepaymentPresets' => $settings->activePrepaymentAmountPresets(),
+            'paymentCards' => PaymentCard::query()->where('is_active', true)->orderBy('bank_name')->get(),
             'defaultDeadlineHours' => $settings->get('default_payment_deadline_hours', 24),
             'reservationDurationMinutes' => $settings->reservationDurationMinutes(),
         ]);
@@ -80,26 +84,43 @@ class ReservationController extends Controller
 
     public function show(Reservation $reservation, SlotAvailabilityService $availability): View
     {
-        $reservation->load(['student.phones', 'slot.advisor', 'payment.approver', 'activityLogs.user']);
+        $reservation->load(['student.phones', 'slot.advisor', 'payment.approver', 'paymentCard', 'reportCards', 'activityLogs.user']);
+        $slots = $this->bookableSlots($reservation->slot);
+        $duration = app(SettingsService::class)->reservationDurationMinutes();
 
         return view('admin.reservations.show', [
             'reservation' => $reservation,
-            'availableSlots' => $availability->getAvailableSlots(),
+            'availableSlots' => $slots,
+            'slotIntervals' => $this->slotIntervals($slots, $availability, $duration, $reservation),
+            'slotDateGroups' => $availability->groupedIntervalsForSlots($slots, $duration, $reservation),
+            'reservationDurationMinutes' => $duration,
             'publicUrl' => route('public.reservations.show', $reservation->public_token),
         ]);
     }
 
     public function edit(Reservation $reservation, SettingsService $settings, SlotAvailabilityService $availability): View
     {
-        $reservation->load(['student.phones', 'payment', 'slot.advisor']);
+        $reservation->load(['student.phones', 'payment', 'paymentCard', 'slot.advisor']);
+        $slots = $this->bookableSlots($reservation->slot);
 
         return view('admin.reservations.edit', [
             'reservation' => $reservation,
+            'availableSlots' => $slots,
             'examTypes' => $settings->get('exam_types', []),
             'majors' => $settings->get('majors', []),
-            'slotIntervals' => $reservation->slot
-                ? $this->slotIntervals(collect([$reservation->slot]), $availability, $settings->reservationDurationMinutes(), $reservation)
-                : [],
+            'slotIntervals' => $this->slotIntervals($slots, $availability, $settings->reservationDurationMinutes(), $reservation),
+            'slotDateGroups' => $availability->groupedIntervalsForSlots($slots, $settings->reservationDurationMinutes(), $reservation),
+            'prepaymentPresets' => $settings->activePrepaymentAmountPresets(),
+            'paymentCards' => PaymentCard::query()
+                ->where(function ($query) use ($reservation): void {
+                    $query->where('is_active', true);
+
+                    if ($reservation->payment_card_id) {
+                        $query->orWhere('id', $reservation->payment_card_id);
+                    }
+                })
+                ->orderBy('bank_name')
+                ->get(),
             'reservationDurationMinutes' => $settings->reservationDurationMinutes(),
         ]);
     }
@@ -123,7 +144,12 @@ class ReservationController extends Controller
     public function changeSlot(ChangeReservationSlotRequest $request, Reservation $reservation, ReservationService $reservations): RedirectResponse
     {
         $slot = ReservationSlot::query()->findOrFail($request->validated('slot_id'));
-        $reservations->changeSlot($reservation, $slot);
+        $reservations->changeTime(
+            $reservation,
+            $slot,
+            $request->validated('reserved_start_time'),
+            $request->validated('reserved_end_time'),
+        );
 
         return back()->with('success', 'تایم رزرو تغییر کرد.');
     }
@@ -156,6 +182,21 @@ class ReservationController extends Controller
         return $payments->receiptResponse($reservation->payment);
     }
 
+    public function uploadReportCard(UploadReportCardRequest $request, Reservation $reservation, ReservationDocumentService $documents): RedirectResponse
+    {
+        $documents->uploadReportCardFromAdmin($reservation, $request->file('report_card'), $request->user());
+
+        return back()->with('success', 'کارنامه دانش‌آموز ثبت شد.');
+    }
+
+    public function document(Reservation $reservation, ReservationDocument $document)
+    {
+        abort_unless((int) $document->reservation_id === (int) $reservation->id, 404);
+        abort_unless(Storage::disk('local')->exists($document->file_path), 404);
+
+        return Storage::disk('local')->download($document->file_path, $document->original_name);
+    }
+
     private function slotIntervals($slots, SlotAvailabilityService $availability, int $durationMinutes, ?Reservation $ignoreReservation = null): array
     {
         return $slots
@@ -173,5 +214,22 @@ class ReservationController extends Controller
                     ->all(),
             ])
             ->all();
+    }
+
+    private function bookableSlots(?ReservationSlot $include = null)
+    {
+        return ReservationSlot::query()
+            ->with('advisor')
+            ->where(function ($query) use ($include): void {
+                $query->where('status', SlotStatus::Active)
+                    ->whereDate('date', '>=', Carbon::today());
+
+                if ($include) {
+                    $query->orWhere($include->getKeyName(), $include->getKey());
+                }
+            })
+            ->orderBy('date')
+            ->orderBy('start_time')
+            ->get();
     }
 }

@@ -1,0 +1,682 @@
+You are an expert Laravel developer.
+
+I have an existing Laravel reservation system for an entrance exam counseling institute. The UI language of the application is Persian and the entire UI must remain RTL. Code, database fields, class names, methods, services, and route names should remain English.
+
+Before coding:
+
+* Inspect the existing Laravel project structure.
+* Reuse the current layout, Blade components, routes, controllers, services, and CSS structure.
+* Use the new CSS/style system that was recently added to the project.
+* Do not break the existing visual structure.
+* Do not redesign the whole admin panel from scratch.
+* Apply changes in a clean, maintainable way.
+* Keep business logic inside services, not directly inside Blade or controllers.
+
+Main goal:
+Improve the reservation creation/editing flow and make it work through a modern appointment-selection modal similar to the provided reference screenshots.
+
+The modal should look and behave like a clean Persian appointment booking modal:
+
+* Centered modal with dark blurred overlay.
+* RTL layout.
+* Close button.
+* Header title: `انتخاب نوبت`
+* Advisor/consultant info area.
+* Horizontal date cards.
+* Time buttons/chips below the selected date.
+* Clear active/selected state.
+* Clear unavailable/disabled state.
+* When a date is selected, available appointment intervals for that day must be shown.
+* After the admin selects a date/time interval, show the reservation form inside the modal or continue to the next step inside the same modal.
+
+Important:
+The `Create New Reservation` action must be handled through this modal completely.
+
+Pages involved:
+
+* `/admin/reservations`
+* `/admin/reservations/create`
+* `/admin/reservations/{reservation}/edit`
+* `/admin/reservations/{reservation}`
+* `/admin/slots`
+* `/admin/slots/{slot}`
+
+Reservation create flow:
+When the admin clicks “Create New Reservation”:
+
+* Open the appointment selection modal.
+* By default, show today’s date first.
+* The date selector must use Jalali/Persian dates.
+* The date cards should be like the reference:
+
+  * امروز
+  * فردا
+  * weekday name
+  * Jalali day/month
+  * number of available appointments, if available
+  * if no appointments are available, show a disabled/empty state.
+* After selecting a date, show available time intervals for that date.
+* Example:
+  Parent slot: `۱۸:۰۰ تا ۲۱:۰۰`
+  Reservation duration: `۱۵ دقیقه`
+  Available interval options:
+
+  * `۱۸:۰۰ تا ۱۸:۱۵`
+  * `۱۸:۱۵ تا ۱۸:۳۰`
+  * `۱۸:۳۰ تا ۱۸:۴۵`
+  * etc.
+* Already reserved or locked intervals must be disabled and visually marked.
+* Active reservations must block their intervals.
+
+Active reservation statuses:
+
+* `pending_completion`
+* `pending_prepayment`
+* `pending_payment_approval`
+* `confirmed`
+
+Inactive reservation statuses:
+
+* `expired`
+* `cancelled`
+* `completed`
+* `no_show`
+* `payment_rejected`, only if the system setting says rejected payments release the slot.
+
+After the admin selects a date/time interval:
+
+* Show the reservation details form inside the modal.
+* The admin should fill student information.
+* The selected reservation interval must be clearly displayed:
+
+  * `بازه کلی تایم: ۱۸:۰۰ تا ۲۱:۰۰`
+  * `زمان اختصاص داده شده به این رزرو: ۱۸:۰۰ تا ۱۸:۱۵`
+* Store the exact selected reservation interval in the reservation record.
+* If needed, add these fields to the `reservations` table:
+
+  * `reserved_start_time`
+  * `reserved_end_time`
+* Validate that the selected interval is inside the parent slot range.
+* Validate that the selected interval does not overlap with another active reservation.
+
+Reservation edit flow:
+When the admin clicks edit on a reservation:
+
+* Open the same modal.
+* Load the existing reservation data.
+* Preselect the current date and reserved interval.
+* Allow the admin to edit student information, payment requirements, card number, major, exam types, and reservation time.
+* If the reservation time changes, validate availability and prevent overlapping.
+* Keep the same UI style as the create modal.
+
+Reservation show page change-time flow:
+On the reservation show page:
+`/admin/reservations/{reservation}`
+
+The “Change Time” action must open the same appointment selection modal, but in time-selection-only mode.
+
+In this mode:
+
+* Do not show the full student form.
+* Do not show fields like full name, phone, major, score, etc.
+* Only show:
+
+  * Date cards
+  * Available time intervals
+  * Current selected reservation time
+  * Confirm change button
+* After selecting a new interval and confirming, update only the reservation time/slot.
+* Validate availability and overlap.
+* Use the existing reservation change slot/time service if available.
+
+Default date behavior:
+
+* In reservation creation, the modal must show today’s date by default.
+* If today has available appointments, show them immediately.
+* If today has no available appointments, show a Persian message and a button:
+
+  * `برو به اولین نوبت آزاد بعدی`
+* Clicking it should automatically select the first future date that has available appointment intervals.
+
+Jalali date requirements:
+
+* All dates shown to admin and student must be Jalali/Persian.
+* All date inputs must use a Jalali date/time picker where manual input is needed.
+* Store dates in Gregorian format in the database.
+* Convert Jalali input to Gregorian before saving.
+* Convert Gregorian dates back to Jalali for display.
+* Reservation dates, payment deadlines, public link deadlines, completion deadlines, and upload dates must all be displayed in Jalali format.
+
+Prepayment amount improvements:
+In create/edit reservation:
+
+* Prepayment amount must support dynamic preset options.
+* These preset options must be managed from Settings.
+* Example preset options:
+
+  * `۵۰۰,۰۰۰ تومان`
+  * `۱,۰۰۰,۰۰۰ تومان`
+  * `۲,۰۰۰,۰۰۰ تومان`
+* If the admin does not want to use a preset amount, they must be able to enter a custom amount manually.
+* Add settings management for prepayment presets.
+* Suggested setting key:
+
+  * `prepayment_amount_presets`
+* Store it as JSON or another clean structure.
+* UI label suggestions:
+
+  * `مبلغ پیش‌پرداخت`
+  * `مبالغ پیش‌فرض`
+  * `مبلغ دلخواه`
+
+Admin card number assignment:
+In create/edit reservation:
+
+* The admin must be able to assign a bank card number to the student for prepayment.
+* Card numbers must be dynamic and managed from Settings.
+* Add a settings section for institute bank cards.
+* Each card should have:
+
+  * Card holder name
+  * Card number
+  * Bank name
+  * Optional description
+  * Active/inactive status
+* Suggested table/model if better than settings:
+
+  * `PaymentCard`
+* Suggested fields:
+
+  * `id`
+  * `holder_name`
+  * `card_number`
+  * `bank_name`
+  * `description`
+  * `is_active`
+  * `created_at`
+  * `updated_at`
+* Add `payment_card_id` to reservations if needed.
+* In the public student page, if prepayment is required, show the assigned card information clearly.
+* If no card is assigned but prepayment is required, show a warning to admin before creating/updating the reservation.
+* Card numbers must be displayed in Persian-friendly format, for example grouped every 4 digits.
+
+Exam type and major:
+Update reservation create/edit forms:
+
+* `exam_type` must support multiple selection.
+* `major` must be single selection only.
+* If the current database has `exam_type` as a string, migrate it to JSON or add a separate normalized table if the project structure supports it.
+* Keep validation correct.
+* Show selected exam types in Persian in reservation list, show page, edit page, public page, and dashboard cards if displayed.
+* Suggested labels:
+
+  * `نوع کنکور`
+  * `رشته`
+
+Reservation flow/circle UI:
+There is a circular/step flow UI on the student/public side. Fix and synchronize it with the actual reservation conditions.
+
+The flow must be dynamic based on reservation status and whether prepayment is required.
+
+Base steps:
+
+1. `ثبت اولیه`
+2. `تکمیل اطلاعات`
+3. `تأیید نهایی`
+4. `انجام شده`
+
+If prepayment is required, add payment-related steps:
+
+1. `ثبت اولیه`
+2. `تکمیل اطلاعات`
+3. `پرداخت پیش‌پرداخت`
+4. `تأیید فیش`
+5. `تأیید نهایی`
+6. `انجام شده`
+
+If prepayment is not required:
+
+* Do not show payment step.
+* Remove `پرداخت پیش‌پرداخت` from the flow.
+* Remove `تأیید فیش` from the flow.
+
+Add a new step for completed status:
+
+* If reservation status is `completed`, the final circle/step must show `انجام شده`.
+* If reservation status is `no_show`, show an appropriate failed/missed state:
+
+  * `عدم حضور`
+
+The flow UI must correctly reflect:
+
+* `pending_completion`
+* `pending_prepayment`
+* `pending_payment_approval`
+* `confirmed`
+* `payment_rejected`
+* `expired`
+* `cancelled`
+* `completed`
+* `no_show`
+
+Fix any bugs where the current flow does not match the student’s actual condition.
+
+Student public page behavior:
+The student only uses the secure public link.
+
+On the public page:
+
+* Show reservation information.
+* Show missing fields form only when needed.
+* Show receipt upload box only when prepayment is required and receipt is not approved.
+* Show assigned bank card info if payment is required.
+* Show reservation flow/circle dynamically.
+* Show appointment date/time in Jalali.
+* Show exact reservation interval, not just parent slot range.
+
+Important warning boxes:
+During the information completion step:
+
+* Show a warning/info box at the top with this exact Persian text:
+  `در صورت عدم تکمیل اطلاعات رزرو شما باطل خواهد شد`
+* Also show remaining validity/deadline based on the default link validity or the reservation-specific expiration time.
+
+During the payment step:
+
+* Show a similar warning/info box at the top.
+* Explain that if payment is not completed before the deadline, the reservation will be cancelled/expired.
+* Show the payment deadline in Jalali format.
+* Use Persian text.
+
+Link validity:
+
+* The default public link validity duration must be configurable in Settings.
+* Use this default when a reservation-specific deadline is not provided.
+* Existing reservation-specific deadline must take priority over the default.
+* Add or verify setting:
+
+  * `default_public_link_validity_minutes`
+  * or `default_public_link_validity_hours`
+* Show the remaining time/deadline in public UI.
+
+Report card upload:
+Add a report card upload box to reservation show page and public student page.
+
+Admin side:
+On `/admin/reservations/{reservation}`:
+
+* Add a clear box/card for uploading the student’s report card.
+* Admin can upload the report card manually.
+* Admin can view/download the uploaded report card.
+* Admin can replace it if needed.
+* Use permission check if needed, for example:
+
+  * `update_reservations`
+
+Student side:
+On public reservation link page:
+
+* Add a separate box/card for student report card upload.
+* Student can upload their report card.
+* Show upload status.
+* If uploaded, show a message:
+
+  * `کارنامه شما با موفقیت ثبت شده است.`
+* The student must not access other files or other reservations.
+
+Storage:
+
+* Store report card files in private storage.
+* Do not expose direct public file URLs.
+* Serve files through protected/admin routes for admins.
+* For student public page, only allow access to that reservation’s own uploaded file through the valid token.
+
+Suggested implementation:
+Use a generic `ReservationDocument` model/table instead of adding many columns.
+
+Suggested table:
+`reservation_documents`
+
+* `id`
+* `reservation_id`
+* `type`
+* `uploaded_by_type`
+* `uploaded_by_id`
+* `source`
+* `file_path`
+* `original_name`
+* `mime_type`
+* `size`
+* `created_at`
+* `updated_at`
+
+Document type:
+
+* `report_card`
+
+Source:
+
+* `admin`
+* `student`
+
+Allowed report card formats:
+
+* jpg
+* jpeg
+* png
+* webp
+* pdf
+
+Max file size:
+
+* Configurable from Settings.
+* Default: 10MB.
+
+Receipt upload on reservation show page:
+Make sure the uploaded payment receipt is visible on the reservation show page:
+`/admin/reservations/{reservation}`
+
+Requirements:
+
+* Show receipt preview if uploaded.
+* Show payment amount.
+* Show payment status.
+* Show upload time.
+* Show assigned payment card.
+* Allow approving the receipt from this same page.
+* Allow rejecting the receipt from this same page with a rejection reason.
+* Use existing `PaymentApprovalService`.
+* Do not duplicate approval/rejection logic.
+
+Slot/timeline display:
+Anywhere reservation time is displayed, show the exact reservation interval:
+
+* Reservation create modal
+* Reservation edit modal
+* Reservation show page
+* Reservations list
+* Public student page
+* Payment approval page
+* Dashboard cards
+* Slot show/timeline page
+
+Example:
+Instead of only:
+`۱۸:۰۰ تا ۲۱:۰۰`
+
+Show:
+`زمان رزرو: ۱۸:۰۰ تا ۱۸:۱۵`
+
+If useful, also show:
+`بازه کلی تایم: ۱۸:۰۰ تا ۲۱:۰۰`
+
+Slot details page:
+On `/admin/slots/{slot}`:
+
+* Keep the daily timeline table.
+* Show all intervals for that day.
+* Separate statuses visually:
+
+  * آزاد
+  * رزرو موقت
+  * در انتظار تکمیل اطلاعات
+  * در انتظار پیش‌پرداخت
+  * در انتظار تأیید فیش
+  * رزرو نهایی
+  * رد شده
+  * منقضی شده
+  * لغو شده
+  * انجام شده
+  * عدم حضور
+* Highlight the selected slot.
+* Show exact interval for each reservation.
+
+Settings page updates:
+Add settings sections for:
+
+1. Prepayment presets:
+
+* Admin can add/edit/delete preset amounts.
+* Active/inactive status if needed.
+* Used in reservation create/edit modal.
+
+2. Payment card numbers:
+
+* Admin can add/edit/delete card numbers.
+* Fields:
+
+  * Card holder name
+  * Card number
+  * Bank name
+  * Description
+  * Active/inactive
+* Used in reservation create/edit modal.
+* Displayed to student when payment is required.
+
+3. Default public link validity:
+
+* Used for information completion warning.
+* Used when no custom deadline exists.
+
+4. Default payment deadline:
+
+* Used for payment warning and prepayment flow.
+
+5. Report card upload max size:
+
+* Used for admin and student report card upload.
+
+Permissions:
+Make sure all actions are permission-protected.
+
+Examples:
+
+* Creating reservation: `create_reservations`
+* Editing reservation: `update_reservations`
+* Changing time: `change_reservation_slot`
+* Uploading receipt approval: `approve_payments`, `reject_payments`
+* Uploading report card from admin: `update_reservations`
+* Managing settings: `manage_settings`
+
+AJAX/API endpoints:
+If needed, add clean endpoints for the modal:
+
+* `GET /admin/reservations/modal/available-dates`
+* `GET /admin/reservations/modal/available-intervals?date=...&advisor_id=...`
+* `GET /admin/reservations/{reservation}/edit-modal`
+* `POST /admin/reservations`
+* `PUT /admin/reservations/{reservation}`
+* `POST /admin/reservations/{reservation}/change-time`
+
+Or use existing routes if the project already has a better structure.
+
+The modal should be dynamic:
+
+* Selecting a date loads intervals.
+* Selecting an interval updates selected time summary.
+* Changing advisor reloads dates/intervals.
+* Already reserved intervals are disabled.
+* Pending/locked intervals are marked with status.
+* The selected interval is highlighted.
+
+Validation:
+Create or update Form Request classes.
+
+Reservation create/update validation:
+
+* At least one phone number is required.
+* Major is single selection.
+* Exam types are multi-selection.
+* Selected interval is required.
+* Selected interval must be inside the parent slot.
+* Selected interval must not overlap with active reservations.
+* If prepayment is required:
+
+  * amount is required unless a preset amount is selected.
+  * payment card is required.
+  * payment deadline or default payment deadline must exist.
+* If prepayment is not required:
+
+  * payment fields are nullable.
+
+Report card validation:
+
+* Allowed types: jpg, jpeg, png, webp, pdf.
+* Max size from settings, default 10MB.
+
+Receipt validation:
+
+* Allowed types: jpg, jpeg, png, webp.
+* Max size from settings, default 5MB.
+
+Status behavior:
+If prepayment is required:
+
+* After reservation creation, status should be:
+
+  * `pending_completion` if required student fields are missing.
+  * otherwise `pending_prepayment`.
+* After student uploads receipt:
+
+  * `pending_payment_approval`
+* After admin approves receipt:
+
+  * `confirmed`
+* After admin rejects receipt:
+
+  * `payment_rejected`
+* If deadline expires:
+
+  * `expired`
+
+If prepayment is not required:
+
+* After reservation creation:
+
+  * `pending_completion` if required fields are missing.
+  * otherwise `confirmed`
+* After student completes missing fields:
+
+  * `confirmed`
+
+If reservation is completed:
+
+* Status becomes `completed`.
+* Flow should show final completed step.
+
+If reservation is no-show:
+
+* Status becomes `no_show`.
+* Flow should show missed/no-show state.
+
+UI text:
+All user-facing texts must be Persian.
+
+Suggested Persian labels:
+
+* ایجاد رزرو جدید
+* ویرایش رزرو
+* انتخاب نوبت
+* امروز
+* فردا
+* اولین نوبت آزاد بعدی
+* در حال حاضر برای این روز نوبتی تعریف نشده است
+* بازه کلی تایم
+* زمان اختصاص داده شده
+* زمان رزرو
+* مشخصات دانش‌آموز
+* نام و نام خانوادگی
+* رشته
+* نوع کنکور
+* تراز
+* شماره تماس اول
+* شماره تماس دوم
+* نیاز به پیش‌پرداخت
+* مبلغ پیش‌پرداخت
+* مبلغ دلخواه
+* شماره کارت پرداخت
+* مهلت پرداخت
+* آپلود فیش
+* آپلود کارنامه
+* کارنامه دانش‌آموز
+* تأیید فیش
+* رد فیش
+* دلیل رد فیش
+* تغییر تایم
+* ثبت تغییرات
+* رزرو شما با موفقیت نهایی شده است
+* فیش شما ثبت شد و در انتظار تأیید آموزشگاه است
+* کارنامه شما با موفقیت ثبت شده است
+* در صورت عدم تکمیل اطلاعات رزرو شما باطل خواهد شد
+* در صورت عدم پرداخت پیش‌پرداخت در زمان مقرر، رزرو شما باطل خواهد شد
+
+Do not:
+
+* Do not create a student login system.
+* Do not allow student-side cancellation.
+* Do not allow student-side time change.
+* Do not expose private files directly from public storage.
+* Do not duplicate payment approval business logic.
+* Do not put interval calculation directly inside Blade.
+* Do not break the existing UI/CSS structure.
+
+Services:
+Create or update these services if needed:
+
+* `ReservationService`
+* `SlotAvailabilityService`
+* `PaymentApprovalService`
+* `PublicReservationLinkService`
+* `ReservationExpirationService`
+* `ReservationDocumentService`
+* `SettingsService`
+
+Important service methods:
+`SlotAvailabilityService`:
+
+* `generateIntervalsForDate(string $date, ?int $advisorId = null)`
+* `generateIntervalsForSlot(ReservationSlot $slot, int $durationMinutes)`
+* `isIntervalAvailable(ReservationSlot $slot, string $startTime, string $endTime, ?Reservation $ignoreReservation = null)`
+* `assertIntervalAvailable(ReservationSlot $slot, string $startTime, string $endTime, ?Reservation $ignoreReservation = null)`
+
+`ReservationService`:
+
+* `createFromAdmin(array $data)`
+* `updateFromAdmin(Reservation $reservation, array $data)`
+* `changeTime(Reservation $reservation, ReservationSlot $slot, string $startTime, string $endTime)`
+* `resolveStatusAfterAdminSave(Reservation $reservation)`
+* `resolveStatusAfterStudentCompletion(Reservation $reservation)`
+
+`ReservationDocumentService`:
+
+* `uploadReportCardFromAdmin(Reservation $reservation, UploadedFile $file, User $user)`
+* `uploadReportCardFromStudent(Reservation $reservation, UploadedFile $file)`
+* `getReportCards(Reservation $reservation)`
+
+Use database transactions for:
+
+* Creating reservation
+* Updating reservation
+* Changing reservation time
+* Uploading receipt
+* Approving/rejecting receipt
+* Uploading/replacing report card
+
+Final result:
+After implementation:
+
+* Creating a reservation is handled through a modal like the reference screenshots.
+* Editing a reservation opens the same modal with existing data.
+* Changing time from the reservation show page opens the same modal in time-only mode.
+* Dates and times are Jalali/Persian in UI.
+* The reservation interval is shown everywhere.
+* Prepayment presets are dynamic from settings.
+* Payment card numbers are dynamic from settings.
+* Exam type supports multi-select.
+* Major is single-select.
+* Student/admin can upload report card.
+* Public flow circles are fully synchronized with the reservation conditions.
+* Payment step appears only when prepayment is required.
+* Completed step is added to the flow.
+* Warning boxes are shown during information completion and payment steps.
+* Existing CSS and visual structure are preserved.

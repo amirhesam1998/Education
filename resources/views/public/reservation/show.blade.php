@@ -126,6 +126,18 @@
     transform:scale(1.05);
 }
 
+.step.is-failed .step-dot{
+    background:var(--danger);
+    border-color:var(--danger);
+    color:#fff;
+    box-shadow:0 0 0 5px var(--danger-bg);
+}
+
+.step.is-failed .step-label{
+    color:var(--danger);
+    font-weight:700;
+}
+
 .step-label{
     position:relative;
     z-index:2;
@@ -254,23 +266,31 @@
         ];
 
         $statusTone = match(true) {
-            $reservation->status === \App\Enums\ReservationStatus::Confirmed => 'success',
-            in_array($reservation->status, [\App\Enums\ReservationStatus::Cancelled, \App\Enums\ReservationStatus::PaymentRejected], true) => 'danger',
+            in_array($reservation->status, [\App\Enums\ReservationStatus::Confirmed, \App\Enums\ReservationStatus::Completed], true) => 'success',
+            in_array($reservation->status, [\App\Enums\ReservationStatus::Cancelled, \App\Enums\ReservationStatus::PaymentRejected, \App\Enums\ReservationStatus::NoShow], true) => 'danger',
             $reservation->status === \App\Enums\ReservationStatus::Expired || $isLinkExpired => 'neutral',
             $reservation->status === \App\Enums\ReservationStatus::PendingPaymentApproval => 'info',
             default => 'warning',
         };
 
-        $infoStepDone = count($missing) === 0;
-        $paymentStepDone = ! $reservation->prepayment_required || $payment?->approved_at;
-        $confirmedStepDone = $reservation->status === \App\Enums\ReservationStatus::Confirmed;
+        $stepIcons = [
+            'created' => 'ri-file-list-3-line',
+            'completion' => 'ri-user-line',
+            'prepayment' => 'ri-bank-card-line',
+            'receipt_approval' => 'ri-shield-check-line',
+            'confirmed' => 'ri-checkbox-circle-line',
+            'completed' => 'ri-check-double-line',
+        ];
 
-        $currentStep = match(true) {
-            $confirmedStepDone => 4,
-            $paymentStepDone => 3,
-            $infoStepDone => 2,
-            default => 1,
+        $messageTone = match(true) {
+            in_array($reservation->status, [\App\Enums\ReservationStatus::Cancelled, \App\Enums\ReservationStatus::PaymentRejected, \App\Enums\ReservationStatus::NoShow], true) => 'danger',
+            $reservation->status === \App\Enums\ReservationStatus::Expired || $isLinkExpired => 'warning',
+            in_array($reservation->status, [\App\Enums\ReservationStatus::Confirmed, \App\Enums\ReservationStatus::Completed], true) => 'success',
+            default => 'info',
         };
+
+        $studentReportCard = $reservation->reportCards->firstWhere('source', \App\Models\ReservationDocument::SOURCE_STUDENT)
+            ?: $reservation->reportCards->first();
     @endphp
 
     {{-- Header + status --}}
@@ -286,48 +306,57 @@
 
             {{-- Progress tracker --}}
             <div class="steps">
-                <div class="step {{ $currentStep > 1 ? 'is-done' : 'is-current' }}">
-                    <div class="step-dot"><i class="ri-file-list-3-line"></i></div>
-                    <div class="step-label">ثبت رزرو</div>
-                </div>
-                <div class="step {{ $infoStepDone ? ($currentStep > 2 ? 'is-done' : 'is-current') : ($currentStep === 1 ? '' : 'is-current') }}">
-                    <div class="step-dot"><i class="ri-user-line"></i></div>
-                    <div class="step-label">تکمیل اطلاعات</div>
-                </div>
-                <div class="step {{ $paymentStepDone ? ($currentStep > 3 ? 'is-done' : 'is-current') : ($currentStep === 3 ? 'is-current' : '') }}">
-                    <div class="step-dot"><i class="ri-bank-card-line"></i></div>
-                    <div class="step-label">پرداخت</div>
-                </div>
-                <div class="step {{ $confirmedStepDone ? 'is-done' : ($currentStep === 4 ? 'is-current' : '') }}">
-                    <div class="step-dot"><i class="ri-checkbox-circle-line"></i></div>
-                    <div class="step-label">تأیید نهایی</div>
-                </div>
+                @foreach($flowSteps as $step)
+                    <div @class([
+                        'step',
+                        'is-done' => $step['state'] === 'completed',
+                        'is-current' => $step['state'] === 'active',
+                        'is-failed' => $step['state'] === 'failed',
+                    ])>
+                        <div class="step-dot"><i class="{{ $stepIcons[$step['key']] ?? 'ri-circle-line' }}"></i></div>
+                        <div class="step-label">{{ $step['label'] }}</div>
+                    </div>
+                @endforeach
             </div>
 
-            @if($reservation->status === \App\Enums\ReservationStatus::Expired || $isLinkExpired)
+            @if($flowMessage || $isLinkExpired)
+                <div class="alert alert-{{ $messageTone }}">
+                    <i class="ri-information-line"></i>
+                    <div>{{ $flowMessage ?: 'مهلت تکمیل اطلاعات یا پرداخت به پایان رسیده است. لطفاً با آموزشگاه تماس بگیرید.' }}</div>
+                </div>
+            @endif
+
+            @if($showCompletionWarning)
                 <div class="alert alert-warning">
-                    <i class="ri-time-line"></i>
-                    <div>{{ $settings->get('expired_message', 'مهلت تکمیل اطلاعات یا پرداخت به پایان رسیده است. لطفاً با آموزشگاه تماس بگیرید.') }}</div>
-                </div>
-            @elseif($reservation->status === \App\Enums\ReservationStatus::Cancelled)
-                <div class="alert alert-danger">
-                    <i class="ri-close-circle-line"></i>
-                    <div>{{ $settings->get('cancelled_message', 'این رزرو توسط آموزشگاه لغو شده است. لطفاً با آموزشگاه تماس بگیرید.') }}</div>
-                </div>
-            @elseif($reservation->status === \App\Enums\ReservationStatus::PendingPaymentApproval)
-                <div class="alert alert-info">
-                    <i class="ri-time-line"></i>
-                    <div>فیش شما ثبت شد و در انتظار تأیید آموزشگاه است.</div>
-                </div>
-            @elseif($reservation->status === \App\Enums\ReservationStatus::Confirmed)
-                <div class="alert alert-success">
-                    <i class="ri-checkbox-circle-line"></i>
-                    <div>رزرو شما با موفقیت نهایی شده است.</div>
-                </div>
-            @elseif($reservation->status === \App\Enums\ReservationStatus::PaymentRejected)
-                <div class="alert alert-danger">
                     <i class="ri-error-warning-line"></i>
-                    <div>فیش پرداخت شما رد شده است. در صورت باز بودن مهلت، فیش صحیح را بارگذاری کنید.</div>
+                    <div>
+                        <div>در صورت عدم تکمیل اطلاعات رزرو شما باطل خواهد شد</div>
+                        @if($reservation->public_token_expires_at)
+                            <div class="mt-1">مهلت تکمیل اطلاعات تا: {{ \App\Support\PersianDate::dateTime($reservation->public_token_expires_at) }}</div>
+                        @endif
+                    </div>
+                </div>
+            @endif
+
+            @if($showPaymentWarning)
+                <div class="alert alert-warning">
+                    <i class="ri-error-warning-line"></i>
+                    <div>
+                        <div>در صورت عدم پرداخت پیش‌پرداخت در زمان مقرر، رزرو شما باطل خواهد شد</div>
+                        <div class="mt-1">مبلغ پیش‌پرداخت: {{ \App\Support\PersianDate::money($reservation->prepayment_amount) }}</div>
+                        @if($reservation->payment_deadline_at)
+                            <div>مهلت پرداخت تا: {{ \App\Support\PersianDate::dateTime($reservation->payment_deadline_at) }}</div>
+                        @endif
+                        @if($reservation->paymentCard)
+                            <div class="mt-1">
+                                {{ $reservation->paymentCard->bank_name }}
+                                -
+                                {{ $reservation->paymentCard->holder_name }}
+                                -
+                                <span class="ltr">{{ $reservation->paymentCard->formattedNumber() }}</span>
+                            </div>
+                        @endif
+                    </div>
                 </div>
             @endif
 
@@ -346,7 +375,7 @@
                 </div>
                 <div class="info-item">
                     <div class="info-label"><i class="ri-file-text-line"></i> نوع کنکور</div>
-                    <div class="info-value">{{ $reservation->student?->exam_type ?: '-' }}</div>
+                    <div class="info-value">{{ $reservation->student?->examTypeLabel() ?: '-' }}</div>
                 </div>
                 <div class="info-item">
                     <div class="info-label"><i class="ri-phone-line"></i> شماره تماس</div>
@@ -373,6 +402,20 @@
                         <div class="info-label"><i class="ri-hourglass-line"></i> مهلت پرداخت</div>
                         <div class="info-value">{{ \App\Support\PersianDate::dateTime($reservation->payment_deadline_at) }}</div>
                     </div>
+                    @if($reservation->paymentCard)
+                        <div class="info-item">
+                            <div class="info-label"><i class="ri-bank-card-line"></i> شماره کارت پرداخت</div>
+                            <div class="info-value ltr">{{ $reservation->paymentCard->formattedNumber() }}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label"><i class="ri-bank-line"></i> بانک</div>
+                            <div class="info-value">{{ $reservation->paymentCard->bank_name }}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label"><i class="ri-user-line"></i> صاحب کارت</div>
+                            <div class="info-value">{{ $reservation->paymentCard->holder_name }}</div>
+                        </div>
+                    @endif
                 @endif
                 @foreach($statusDates as $label => $date)
                     @if($date)
@@ -413,7 +456,12 @@
                         @if(in_array('major', $missing, true))
                             <div class="col-md-6">
                                 <label class="form-label">رشته</label>
-                                <input name="major" value="{{ old('major') }}" class="form-control" required>
+                                <select name="major" class="form-select" required>
+                                    <option value="">انتخاب کنید</option>
+                                    @foreach($settings->get('majors', []) as $major)
+                                        <option value="{{ $major }}" @selected(old('major') === $major)>{{ $major }}</option>
+                                    @endforeach
+                                </select>
                             </div>
                         @endif
                         @if(in_array('score', $missing, true))
@@ -425,7 +473,11 @@
                         @if(in_array('exam_type', $missing, true))
                             <div class="col-md-6">
                                 <label class="form-label">نوع کنکور</label>
-                                <input name="exam_type" value="{{ old('exam_type') }}" class="form-control" required>
+                                <select name="exam_type[]" class="form-select" multiple size="4" required>
+                                    @foreach($settings->get('exam_types', []) as $examType)
+                                        <option value="{{ $examType }}" @selected(in_array($examType, old('exam_type', []), true))>{{ $examType }}</option>
+                                    @endforeach
+                                </select>
                             </div>
                         @endif
                         @if(in_array('phone_one', $missing, true))
@@ -451,6 +503,46 @@
         </div>
     @endif
 
+    {{-- Upload report card --}}
+    @if($studentReportCard || $canUploadReportCard)
+        <div class="card">
+            <div class="card-body">
+                <div class="section-title"><i class="ri-file-upload-line"></i> کارنامه دانش‌آموز</div>
+
+                @if($studentReportCard)
+                    <div class="alert alert-success">
+                        <i class="ri-checkbox-circle-line"></i>
+                        <div>
+                            کارنامه شما با موفقیت ثبت شده است.
+                            <div class="mt-1">
+                                {{ $studentReportCard->original_name }}
+                                -
+                                {{ \App\Support\PersianDate::dateTime($studentReportCard->created_at) }}
+                            </div>
+                        </div>
+                    </div>
+                    <a class="btn btn-outline-primary mb-3" href="{{ route('public.reservations.report-card.show', [$reservation->public_token, $studentReportCard]) }}">
+                        <i class="ri-download-line align-middle"></i> مشاهده کارنامه
+                    </a>
+                @endif
+
+                @if($canUploadReportCard)
+                    <form method="post" action="{{ route('public.reservations.report-card.store', $reservation->public_token) }}" enctype="multipart/form-data">
+                        @csrf
+                        <div class="upload-drop mb-3">
+                            <i class="ri-file-add-line"></i>
+                            <div class="upload-drop-text">{{ $studentReportCard ? 'برای جایگزینی کارنامه، فایل جدید را انتخاب کنید' : 'فایل کارنامه را انتخاب کنید (jpg, jpeg, png, webp یا pdf)' }}</div>
+                            <input type="file" name="report_card" class="form-control" accept=".jpg,.jpeg,.png,.webp,.pdf" required>
+                        </div>
+                        <button class="btn btn-primary">
+                            <i class="ri-upload-cloud-2-line align-middle"></i> {{ $studentReportCard ? 'جایگزینی کارنامه' : 'آپلود کارنامه' }}
+                        </button>
+                    </form>
+                @endif
+            </div>
+        </div>
+    @endif
+
     {{-- Upload payment receipt --}}
     @if(
         $canUpdate
@@ -461,6 +553,22 @@
         <div class="card">
             <div class="card-body">
                 <div class="section-title"><i class="ri-upload-cloud-2-line"></i> آپلود فیش پرداخت</div>
+
+                <div class="alert alert-info">
+                    <i class="ri-bank-card-line"></i>
+                    <div>
+                        لطفاً مبلغ پیش‌پرداخت را به شماره کارت زیر واریز کرده و تصویر فیش را ارسال کنید.
+                        @if($reservation->paymentCard)
+                            <div class="mt-2">
+                                <strong>{{ $reservation->paymentCard->bank_name }}</strong>
+                                -
+                                {{ $reservation->paymentCard->holder_name }}
+                                -
+                                <span class="ltr">{{ $reservation->paymentCard->formattedNumber() }}</span>
+                            </div>
+                        @endif
+                    </div>
+                </div>
 
                 @if($payment?->rejection_reason)
                     <div class="alert alert-danger">

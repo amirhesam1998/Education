@@ -55,6 +55,12 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function (): v
     Route::get('/reservations/{reservation}/receipt', [ReservationController::class, 'receipt'])
         ->middleware('permission:view_reservations')
         ->name('reservations.receipt');
+    Route::post('/reservations/{reservation}/documents/report-card', [ReservationController::class, 'uploadReportCard'])
+        ->middleware('permission:update_reservations')
+        ->name('reservations.documents.report-card.store');
+    Route::get('/reservations/{reservation}/documents/{document}', [ReservationController::class, 'document'])
+        ->middleware('permission:view_reservations')
+        ->name('reservations.documents.show');
 
     Route::get('/payments', [PaymentController::class, 'index'])
         ->middleware('permission:view_payments')
@@ -91,3 +97,5 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function (): v
 Route::get('/reservation/access/{token}', [PublicReservationController::class, 'show'])->name('public.reservations.show');
 Route::post('/reservation/access/{token}/complete', [PublicReservationController::class, 'complete'])->name('public.reservations.complete');
 Route::post('/reservation/access/{token}/upload-receipt', [PublicReservationController::class, 'uploadReceipt'])->name('public.reservations.upload-receipt');
+Route::post('/reservation/access/{token}/report-card', [PublicReservationController::class, 'uploadReportCard'])->name('public.reservations.report-card.store');
+Route::get('/reservation/access/{token}/report-card/{document}', [PublicReservationController::class, 'reportCard'])->name('public.reservations.report-card.show');

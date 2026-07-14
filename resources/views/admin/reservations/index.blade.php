@@ -180,8 +180,8 @@
                 <tr>
                     <td class="student-cell">
                         <div class="student-name">{{ $reservation->student?->full_name ?: 'نامشخص' }}</div>
-                        <div class="student-phone">{{ $reservation->student?->phones->pluck('phone')->implode(' / ') }}
-                        </div>
+                        <div class="student-phone">{{ $reservation->student?->phones->pluck('phone')->implode(' / ') }}</div>
+                        <div class="student-phone">{{ $reservation->student?->examTypeLabel() }}</div>
                     </td>
                     <td class="slot-cell">
                         @if($reservation->slot)

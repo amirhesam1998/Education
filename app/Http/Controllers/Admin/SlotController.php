@@ -37,6 +37,7 @@ class SlotController extends Controller
 
         return view('admin.slots.index', [
             'slots' => $slots,
+            'slotDateGroups' => $availability->groupedIntervalsForSlots($slots->getCollection()),
             'advisors' => Advisor::query()->orderBy('name')->get(),
             'statuses' => SlotStatus::options(),
             'availability' => $availability,

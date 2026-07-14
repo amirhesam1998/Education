@@ -51,6 +51,7 @@ class ReservationService
                 'status' => ReservationStatus::Draft,
                 'prepayment_required' => $prepaymentRequired,
                 'prepayment_amount' => $prepaymentRequired ? $data['prepayment_amount'] : null,
+                'payment_card_id' => $prepaymentRequired ? ($data['payment_card_id'] ?? null) : null,
                 'payment_deadline_at' => $prepaymentRequired ? $data['payment_deadline_at'] : null,
                 'created_by' => $user?->id,
                 'updated_by' => $user?->id,
@@ -62,7 +63,7 @@ class ReservationService
             $this->publicLink->generate($reservation);
             $this->activityLog->log('reservation_created', $reservation, $user);
 
-            return $reservation->load(['student.phones', 'slot.advisor', 'payment']);
+            return $reservation->load(['student.phones', 'slot.advisor', 'payment', 'paymentCard']);
         });
     }
 
@@ -88,14 +89,18 @@ class ReservationService
             ]));
 
             $this->syncPhones($reservation->student, $data);
-            $this->slotAvailability->assertIntervalAvailable($reservation->slot, $data['reserved_start_time'], $data['reserved_end_time'], $reservation);
+            $slot = ReservationSlot::query()->whereKey($data['slot_id'] ?? $reservation->slot_id)->lockForUpdate()->firstOrFail();
+            $this->slotAvailability->assertIntervalAvailable($slot, $data['reserved_start_time'], $data['reserved_end_time'], $reservation);
 
             $prepaymentRequired = (bool) ($data['prepayment_required'] ?? false);
             $reservation->fill([
+                'slot_id' => $slot->id,
+                'advisor_id' => $slot->advisor_id,
                 'reserved_start_time' => $data['reserved_start_time'],
                 'reserved_end_time' => $data['reserved_end_time'],
                 'prepayment_required' => $prepaymentRequired,
                 'prepayment_amount' => $prepaymentRequired ? ($data['prepayment_amount'] ?? null) : null,
+                'payment_card_id' => $prepaymentRequired ? ($data['payment_card_id'] ?? null) : null,
                 'payment_deadline_at' => $prepaymentRequired ? ($data['payment_deadline_at'] ?? null) : null,
                 'updated_by' => $user?->id,
                 'admin_note' => $data['admin_note'] ?? null,
@@ -109,7 +114,7 @@ class ReservationService
 
             $this->activityLog->log('reservation_updated', $reservation, $user, $old, $reservation->getChanges());
 
-            return $reservation->load(['student.phones', 'slot.advisor', 'payment']);
+            return $reservation->load(['student.phones', 'slot.advisor', 'payment', 'paymentCard']);
         });
     }
 
@@ -219,7 +224,44 @@ class ReservationService
                 'advisor_id' => $lockedSlot->advisor_id,
             ]);
 
-            return $reservation->load(['student.phones', 'slot.advisor', 'payment']);
+            return $reservation->load(['student.phones', 'slot.advisor', 'payment', 'paymentCard']);
+        });
+    }
+
+    public function changeTime(Reservation $reservation, ReservationSlot $newSlot, string $startTime, string $endTime): Reservation
+    {
+        /** @var User|null $user */
+        $user = auth()->user();
+
+        return DB::transaction(function () use ($reservation, $newSlot, $startTime, $endTime, $user): Reservation {
+            $reservation = Reservation::query()->whereKey($reservation->id)->lockForUpdate()->firstOrFail();
+            $lockedSlot = ReservationSlot::query()->whereKey($newSlot->id)->lockForUpdate()->firstOrFail();
+
+            $this->slotAvailability->assertIntervalAvailable($lockedSlot, $startTime, $endTime, $reservation);
+
+            $old = [
+                'slot_id' => $reservation->slot_id,
+                'advisor_id' => $reservation->advisor_id,
+                'reserved_start_time' => $reservation->reserved_start_time,
+                'reserved_end_time' => $reservation->reserved_end_time,
+            ];
+
+            $reservation->forceFill([
+                'slot_id' => $lockedSlot->id,
+                'advisor_id' => $lockedSlot->advisor_id,
+                'reserved_start_time' => $startTime,
+                'reserved_end_time' => $endTime,
+                'updated_by' => $user?->id,
+            ])->save();
+
+            $this->activityLog->log('reservation_time_changed', $reservation, $user, $old, [
+                'slot_id' => $lockedSlot->id,
+                'advisor_id' => $lockedSlot->advisor_id,
+                'reserved_start_time' => $startTime,
+                'reserved_end_time' => $endTime,
+            ]);
+
+            return $reservation->load(['student.phones', 'slot.advisor', 'payment', 'paymentCard']);
         });
     }
 

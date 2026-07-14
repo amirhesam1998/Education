@@ -7,6 +7,7 @@ use App\Enums\SlotStatus;
 use App\Models\Advisor;
 use App\Models\Reservation;
 use App\Models\ReservationSlot;
+use App\Support\PersianDate;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -34,6 +35,70 @@ class SlotAvailabilityService
                 'slot_id' => 'این تایم در حال حاضر قابل رزرو نیست.',
             ]);
         }
+    }
+
+    /**
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function generateIntervalsForDate(string $date, ?int $advisorId = null): Collection
+    {
+        $slots = ReservationSlot::query()
+            ->with('advisor')
+            ->where('status', SlotStatus::Active)
+            ->whereDate('date', $date)
+            ->when($advisorId, fn (Builder $query) => $query->where('advisor_id', $advisorId))
+            ->orderBy('start_time')
+            ->get();
+
+        return $this->groupedIntervalsForSlots($slots);
+    }
+
+    /**
+     * @param  iterable<int, ReservationSlot>  $slots
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function groupedIntervalsForSlots(iterable $slots, ?int $durationMinutes = null, ?Reservation $ignoreReservation = null): Collection
+    {
+        $durationMinutes ??= $this->settings->reservationDurationMinutes();
+
+        return collect($slots)
+            ->groupBy(fn (ReservationSlot $slot) => $slot->date->toDateString())
+            ->sortKeys()
+            ->map(function (Collection $dateSlots, string $date) use ($durationMinutes, $ignoreReservation): array {
+                $intervals = $dateSlots
+                    ->sortBy('start_time')
+                    ->flatMap(fn (ReservationSlot $slot) => $this
+                        ->generateIntervalsForSlot($slot, $durationMinutes, $ignoreReservation)
+                        ->map(fn (array $interval) => [
+                            'slot_id' => $slot->id,
+                            'start_time' => $interval['start_time'],
+                            'end_time' => $interval['end_time'],
+                            'value' => $interval['value'],
+                            'label' => PersianDate::time($interval['start_time']).' تا '.PersianDate::time($interval['end_time']),
+                            'slot_range' => PersianDate::time($slot->start_time).' تا '.PersianDate::time($slot->end_time),
+                            'advisor_name' => $slot->advisor?->name,
+                            'status' => $interval['status_key'],
+                            'status_label' => $interval['status_label'],
+                            'available' => $interval['available'],
+                            'is_available' => $interval['available'],
+                        ]))
+                    ->values();
+
+                $dateCarbon = Carbon::parse($date);
+
+                return [
+                    'date' => $date,
+                    'jalali_date' => PersianDate::date($date),
+                    'weekday_label' => $this->weekdayLabel($dateCarbon),
+                    'advisor_label' => $dateSlots->pluck('advisor.name')->filter()->unique()->implode('، '),
+                    'total_count' => $intervals->count(),
+                    'available_count' => $intervals->where('available', true)->count(),
+                    'reserved_count' => $intervals->where('available', false)->count(),
+                    'locked_count' => $intervals->where('status', 'locked')->count(),
+                    'intervals' => $intervals->all(),
+                ];
+            })
+            ->values();
     }
 
     /**
@@ -206,5 +271,18 @@ class SlotAvailabilityService
     private function normalizeTime(?string $time): string
     {
         return substr((string) $time, 0, 5);
+    }
+
+    private function weekdayLabel(Carbon $date): string
+    {
+        if ($date->isToday()) {
+            return 'امروز';
+        }
+
+        if ($date->isTomorrow()) {
+            return 'فردا';
+        }
+
+        return ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه'][$date->dayOfWeek];
     }
 }

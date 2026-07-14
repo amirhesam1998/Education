@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'تایمها')
+@section('title', 'تایم‌ها')
 
 @section('actions')
     @can('create_slots')
@@ -12,9 +12,6 @@
 
 @push('styles')
 <style>
-    /* ===========================================================
-       Slots index — page-local styles
-    =========================================================== */
     .filter-card .card-body{ padding: 1.1rem 1.25rem; }
     .filter-card .form-label{
         font-size: .78rem;
@@ -24,18 +21,7 @@
     }
     .filter-card .btn{ height: 40px; }
 
-    .advisor-cell{ display: flex; align-items: center; gap: .55rem; }
-    .advisor-avatar{
-        width: 30px; height: 30px;
-        border-radius: 50%;
-        background: var(--brand-100);
-        color: var(--brand-700);
-        display: flex; align-items: center; justify-content: center;
-        font-size: .78rem; font-weight: 700;
-        flex-shrink: 0;
-    }
-
-    .row-actions{ display: flex; gap: .4rem; flex-wrap: nowrap; }
+    .row-actions{ display: flex; gap: .4rem; flex-wrap: nowrap; justify-content: end; }
     .row-actions .btn{
         width: 34px; height: 34px;
         padding: 0;
@@ -47,21 +33,34 @@
     }
     .row-actions form{ margin: 0; }
 
-    /* Badge tones for the raw text-bg-* classes used by the backend */
     .badge.text-bg-secondary{ background: var(--ink-100) !important; color: var(--ink-700) !important; }
-    .badge.text-bg-success  { background: #e2f5ec !important; color: var(--success) !important; }
-    .badge.text-bg-warning  { background: #fbf1de !important; color: var(--warning) !important; }
-    .badge.text-bg-danger   { background: #fbe6e4 !important; color: var(--danger) !important; }
-    .badge.text-bg-info     { background: #e5eefb !important; color: var(--info) !important; }
+    .badge.text-bg-success{ background: #e2f5ec !important; color: var(--success) !important; }
+    .badge.text-bg-warning{ background: #fbf1de !important; color: var(--warning) !important; }
 
-    .capacity-pill{
-        display: inline-flex;
-        align-items: center;
-        gap: .3rem;
-        font-size: .82rem;
-        color: var(--ink-700);
+    .slot-date-group{ margin-bottom: 1rem; }
+    .slot-date-head{
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: flex-start;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface);
     }
-    .capacity-pill i{ color: var(--ink-500); }
+    .slot-date-title{ font-weight: 800; color: var(--ink-900); }
+    .slot-date-meta{ font-size: .8rem; color: var(--ink-500); margin-top: .2rem; }
+    .slot-date-counts{ display: flex; flex-wrap: wrap; gap: .45rem; justify-content: end; }
+    .slot-interval-list{ display: grid; gap: .55rem; padding: 1rem 1.25rem; }
+    .slot-interval-row{
+        display: grid;
+        grid-template-columns: minmax(130px, 1fr) minmax(110px, 1fr) minmax(100px, auto) auto;
+        gap: .75rem;
+        align-items: center;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: .65rem .75rem;
+        background: var(--bg);
+    }
 
     .empty-state{
         text-align: center;
@@ -89,14 +88,15 @@
 
     @media (max-width: 767.98px){
         .filter-card .col-md-3{ margin-bottom: .5rem; }
-        .row-actions{ flex-wrap: wrap; }
+        .row-actions{ flex-wrap: wrap; justify-content: start; }
+        .slot-date-head{ flex-direction: column; }
+        .slot-date-counts{ justify-content: start; }
+        .slot-interval-row{ grid-template-columns: 1fr; }
     }
 </style>
 @endpush
 
 @section('content')
-
-    {{-- Filters --}}
     <div class="card filter-card mb-3">
         <div class="card-body">
             <form class="row g-3" method="get">
@@ -134,85 +134,62 @@
         </div>
     </div>
 
-    {{-- Table --}}
-    <div class="card">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead>
-                <tr>
-                    <th>تاریخ</th>
-                    <th>ساعت</th>
-                    <th>مشاور</th>
-                    <th>ظرفیت</th>
-                    <th>رزرو فعال</th>
-                    <th>وضعیت تایم</th>
-                    <th>عملیات</th>
-                </tr>
-                </thead>
-                <tbody>
-                @forelse($slots as $slot)
-                    @php
-                        $activeCount = $availability->countActiveReservations($slot);
-                        $isAvailable = $availability->isAvailable($slot);
-                        $advisorInitial = mb_substr($slot->advisor?->name ?? '-', 0, 1);
-                    @endphp
-                    <tr>
-                        <td class="text-nowrap">{{ \App\Support\PersianDate::date($slot->date) }}</td>
-                        <td class="text-nowrap ltr">{{ \App\Support\PersianDate::time($slot->start_time) }} — {{ \App\Support\PersianDate::time($slot->end_time) }}</td>
-                        <td>
-                            <div class="advisor-cell">
-                                <span class="advisor-avatar">{{ $advisorInitial }}</span>
-                                <span>{{ $slot->advisor?->name ?: '-' }}</span>
-                            </div>
-                        </td>
-                        <td><span class="capacity-pill"><i class="ri-group-line"></i> {{ \App\Support\PersianDate::number($slot->capacity) }}</span></td>
-                        <td><span class="capacity-pill"><i class="ri-checkbox-circle-line"></i> {{ \App\Support\PersianDate::number($activeCount) }}</span></td>
-                        <td>
-                            @if($slot->status->value !== 'active')
-                                <span class="badge text-bg-secondary">غیرفعال</span>
-                            @elseif($isAvailable)
-                                <span class="badge text-bg-success">آزاد</span>
-                            @else
-                                <span class="badge text-bg-warning">رزرو شده / قفل</span>
-                            @endif
-                        </td>
-                        <td>
-                            <div class="row-actions">
-                                <a class="btn btn-outline-info" href="{{ route('admin.slots.show', $slot) }}" title="مشاهده">
-                                    <i class="ri-eye-line"></i>
+    @forelse($slotDateGroups as $dateGroup)
+        <div class="card slot-date-group">
+            <div class="slot-date-head">
+                <div>
+                    <div class="slot-date-title">{{ $dateGroup['jalali_date'] }}</div>
+                    <div class="slot-date-meta">{{ $dateGroup['weekday_label'] }} · {{ $dateGroup['advisor_label'] ?: 'همه مشاوران' }}</div>
+                </div>
+                <div class="slot-date-counts">
+                    <span class="badge text-bg-secondary">کل: {{ \App\Support\PersianDate::number($dateGroup['total_count']) }}</span>
+                    <span class="badge text-bg-success">آزاد: {{ \App\Support\PersianDate::number($dateGroup['available_count']) }}</span>
+                    <span class="badge text-bg-warning">رزرو/قفل: {{ \App\Support\PersianDate::number($dateGroup['reserved_count']) }}</span>
+                </div>
+            </div>
+            <div class="slot-interval-list">
+                @foreach($dateGroup['intervals'] as $interval)
+                    <div class="slot-interval-row">
+                        <div class="text-nowrap ltr">{{ $interval['label'] }}</div>
+                        <div>{{ $interval['advisor_name'] ?: '-' }}</div>
+                        <div>
+                            <span class="badge {{ $interval['available'] ? 'text-bg-success' : 'text-bg-warning' }}">
+                                {{ $interval['status_label'] }}
+                            </span>
+                        </div>
+                        <div class="row-actions">
+                            <a class="btn btn-outline-info" href="{{ route('admin.slots.show', $interval['slot_id']) }}" title="مشاهده">
+                                <i class="ri-eye-line"></i>
+                            </a>
+                            @can('update_slots')
+                                <a class="btn btn-outline-primary" href="{{ route('admin.slots.edit', $interval['slot_id']) }}" title="ویرایش">
+                                    <i class="ri-edit-line"></i>
                                 </a>
-                                @can('update_slots')
-                                    <a class="btn btn-outline-primary" href="{{ route('admin.slots.edit', $slot) }}" title="ویرایش">
-                                        <i class="ri-edit-line"></i>
-                                    </a>
-                                @endcan
-                                @can('delete_slots')
-                                    <form method="post" action="{{ route('admin.slots.destroy', $slot) }}" onsubmit="return confirm('حذف شود؟')">
-                                        @csrf
-                                        @method('delete')
-                                        <button class="btn btn-outline-danger" title="حذف">
-                                            <i class="ri-delete-bin-line"></i>
-                                        </button>
-                                    </form>
-                                @endcan
-                            </div>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="7">
-                            <div class="empty-state">
-                                <i class="ri-calendar-close-line"></i>
-                                تایمی یافت نشد
-                            </div>
-                        </td>
-                    </tr>
-                @endforelse
-                </tbody>
-            </table>
+                            @endcan
+                            @can('delete_slots')
+                                <form method="post" action="{{ route('admin.slots.destroy', $interval['slot_id']) }}" onsubmit="return confirm('حذف شود؟')">
+                                    @csrf
+                                    @method('delete')
+                                    <button class="btn btn-outline-danger" title="حذف">
+                                        <i class="ri-delete-bin-line"></i>
+                                    </button>
+                                </form>
+                            @endcan
+                        </div>
+                    </div>
+                @endforeach
+            </div>
         </div>
-        @if($slots->hasPages())
-            <div class="pagination-wrap">{{ $slots->links() }}</div>
-        @endif
-    </div>
+    @empty
+        <div class="card">
+            <div class="empty-state">
+                <i class="ri-calendar-close-line"></i>
+                تایمی یافت نشد
+            </div>
+        </div>
+    @endforelse
+
+    @if($slots->hasPages())
+        <div class="card"><div class="pagination-wrap">{{ $slots->links() }}</div></div>
+    @endif
 @endsection

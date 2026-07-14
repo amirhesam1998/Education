@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'status',
     'prepayment_required',
     'prepayment_amount',
+    'payment_card_id',
     'payment_deadline_at',
     'public_token',
     'public_token_expires_at',
@@ -53,9 +54,24 @@ class Reservation extends Model
         return $this->hasOne(ReservationPayment::class);
     }
 
+    public function paymentCard(): BelongsTo
+    {
+        return $this->belongsTo(PaymentCard::class);
+    }
+
     public function activityLogs(): HasMany
     {
         return $this->hasMany(ActivityLog::class);
+    }
+
+    public function documents(): HasMany
+    {
+        return $this->hasMany(ReservationDocument::class);
+    }
+
+    public function reportCards(): HasMany
+    {
+        return $this->documents()->where('type', ReservationDocument::TYPE_REPORT_CARD);
     }
 
     public function creator(): BelongsTo
@@ -126,6 +142,7 @@ class Reservation extends Model
             'status' => ReservationStatus::class,
             'prepayment_required' => 'boolean',
             'prepayment_amount' => 'integer',
+            'payment_card_id' => 'integer',
             'payment_deadline_at' => 'datetime',
             'public_token_expires_at' => 'datetime',
             'public_token_used_at' => 'datetime',

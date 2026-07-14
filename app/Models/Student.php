@@ -28,4 +28,22 @@ class Student extends Model
     {
         return $this->phones->firstWhere('is_primary', true) ?? $this->phones->first();
     }
+
+    public function examTypeLabel(): string
+    {
+        $examTypes = $this->exam_type;
+
+        if (is_string($examTypes)) {
+            return $examTypes;
+        }
+
+        return collect($examTypes)->filter()->implode('، ') ?: '-';
+    }
+
+    protected function casts(): array
+    {
+        return [
+            'exam_type' => 'array',
+        ];
+    }
 }
