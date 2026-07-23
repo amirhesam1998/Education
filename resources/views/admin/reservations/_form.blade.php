@@ -387,8 +387,8 @@
     $phones = $student?->phones ?? collect();
     $phoneOne = old('phone_one', $phones->firstWhere('is_primary', true)?->phone ?? $phones->get(0)?->phone);
     $phoneTwo = old('phone_two', $phones->where('is_primary', false)->first()?->phone ?? $phones->get(1)?->phone);
-    $selectedSlotId = old('slot_id', $reservation->slot_id);
-    $selectedInterval = old('reservation_interval', ($reservation->assignedStartTime() && $reservation->assignedEndTime()) ? substr($reservation->assignedStartTime(), 0, 5).'|'.substr($reservation->assignedEndTime(), 0, 5) : '');
+    $selectedSlotId = old('slot_id', request('slot_id', $reservation->slot_id));
+    $selectedInterval = old('reservation_interval', request('reservation_interval', ($reservation->assignedStartTime() && $reservation->assignedEndTime()) ? substr($reservation->assignedStartTime(), 0, 5).'|'.substr($reservation->assignedEndTime(), 0, 5) : ''));
     $selectedExamTypes = old('exam_type', is_array($student?->exam_type) ? $student->exam_type : array_filter([(string) $student?->exam_type]));
     $closeUrl = $reservation->exists ? route('admin.reservations.show', $reservation) : route('admin.reservations.index');
     $weekdays = ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه'];

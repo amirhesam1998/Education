@@ -431,6 +431,11 @@
                     <i class="ri-bank-card-line"></i> فیشهای پرداخت
                 </a>
             @endcan
+            @can('view_reports')
+                <a class="nav-link {{ request()->routeIs('admin.study-programs.*') ? 'active' : '' }}" href="{{ route('admin.study-programs.index') }}">
+                    <i class="ri-graduation-cap-line"></i> رشته‌محل‌ها
+                </a>
+            @endcan
         </nav>
 
         @canany(['manage_users', 'manage_roles', 'manage_settings'])

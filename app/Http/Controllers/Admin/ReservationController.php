@@ -8,17 +8,20 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\UploadReportCardRequest;
 use App\Http\Requests\Admin\CancelReservationRequest;
 use App\Http\Requests\Admin\ChangeReservationSlotRequest;
+use App\Http\Requests\Admin\StoreReservationFollowUpRequest;
 use App\Http\Requests\Admin\StoreReservationRequest;
 use App\Http\Requests\Admin\UpdateReservationRequest;
 use App\Models\Advisor;
 use App\Models\PaymentCard;
 use App\Models\Reservation;
 use App\Models\ReservationDocument;
+use App\Models\ReservationFollowUp;
 use App\Models\ReservationSlot;
 use App\Services\PaymentApprovalService;
 use App\Services\PublicReservationLinkService;
 use App\Services\ReservationService;
 use App\Services\ReservationDocumentService;
+use App\Services\ReservationFollowUpService;
 use App\Services\SettingsService;
 use App\Services\SlotAvailabilityService;
 use App\Support\PersianDate;
@@ -54,12 +57,12 @@ class ReservationController extends Controller
         ]);
     }
 
-    public function create(SlotAvailabilityService $availability, SettingsService $settings): View
+    public function create(Request $request, SlotAvailabilityService $availability, SettingsService $settings): View
     {
         $slots = $this->bookableSlots();
 
         return view('admin.reservations.create', [
-            'reservation' => new Reservation(),
+            'reservation' => new Reservation(['slot_id' => $request->integer('slot_id') ?: null]),
             'availableSlots' => $slots,
             'slotIntervals' => $this->slotIntervals($slots, $availability, $settings->reservationDurationMinutes()),
             'slotDateGroups' => $availability->groupedIntervalsForSlots($slots, $settings->reservationDurationMinutes()),
@@ -84,15 +87,19 @@ class ReservationController extends Controller
 
     public function show(Reservation $reservation, SlotAvailabilityService $availability): View
     {
-        $reservation->load(['student.phones', 'slot.advisor', 'payment.approver', 'paymentCard', 'reportCards', 'activityLogs.user']);
+        $reservation->load(['student.phones', 'slot.advisor', 'payment.approver', 'paymentCard', 'reportCards', 'activeFollowUp.slot.advisor', 'activityLogs.user']);
         $slots = $this->bookableSlots($reservation->slot);
+        $followUp = $reservation->activeFollowUp;
+        $followUpSlots = $this->bookableSlots($followUp?->slot);
         $duration = app(SettingsService::class)->reservationDurationMinutes();
 
         return view('admin.reservations.show', [
             'reservation' => $reservation,
+            'activeFollowUp' => $followUp,
             'availableSlots' => $slots,
             'slotIntervals' => $this->slotIntervals($slots, $availability, $duration, $reservation),
             'slotDateGroups' => $availability->groupedIntervalsForSlots($slots, $duration, $reservation),
+            'followUpSlotDateGroups' => $availability->groupedIntervalsForSlots($followUpSlots, $duration, null, $followUp),
             'reservationDurationMinutes' => $duration,
             'publicUrl' => route('public.reservations.show', $reservation->public_token),
         ]);
@@ -197,11 +204,27 @@ class ReservationController extends Controller
         return Storage::disk('local')->download($document->file_path, $document->original_name);
     }
 
-    private function slotIntervals($slots, SlotAvailabilityService $availability, int $durationMinutes, ?Reservation $ignoreReservation = null): array
+    public function storeFollowUp(StoreReservationFollowUpRequest $request, Reservation $reservation, ReservationFollowUpService $followUps): RedirectResponse
+    {
+        $followUps->createOrUpdateFollowUp($reservation, $request->validated(), $request->user());
+
+        return back()->with('success', 'تایم مراجعه بعدی ذخیره شد.');
+    }
+
+    public function destroyFollowUp(Reservation $reservation, ReservationFollowUp $followUp, ReservationFollowUpService $followUps): RedirectResponse
+    {
+        abort_unless((int) $followUp->reservation_id === (int) $reservation->id, 404);
+
+        $followUps->deleteFollowUp($followUp, request()->user());
+
+        return back()->with('success', 'تایم مراجعه بعدی حذف شد.');
+    }
+
+    private function slotIntervals($slots, SlotAvailabilityService $availability, int $durationMinutes, ?Reservation $ignoreReservation = null, ?ReservationFollowUp $ignoreFollowUp = null): array
     {
         return $slots
             ->mapWithKeys(fn (ReservationSlot $slot) => [
-                $slot->id => $availability->generateIntervalsForSlot($slot, $durationMinutes, $ignoreReservation)
+                $slot->id => $availability->generateIntervalsForSlot($slot, $durationMinutes, $ignoreReservation, $ignoreFollowUp)
                     ->map(fn (array $interval) => [
                         'value' => $interval['value'],
                         'label' => $interval['label'],

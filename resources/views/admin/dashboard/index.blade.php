@@ -65,6 +65,7 @@
     }
     .stat-trend.up{ color: var(--success); }
     .stat-trend.down{ color: var(--danger); }
+    .stat-trend.neutral{ color: var(--ink-500); }
 
     .panel-row{
         display: grid;
@@ -121,36 +122,48 @@
     <div class="stat-grid">
         <div class="stat-card">
             <div>
-                <div class="stat-value">{{ $stats['today_reservations'] ?? 12 }}</div>
-                <div class="stat-label">رزرو امروز</div>
-                <div class="stat-trend up"><i class="ri-arrow-up-line"></i> ۸٪ نسبت به دیروز</div>
+                <div class="stat-value">{{ \App\Support\PersianDate::number($stats['today_reservations']['value'] ?? 0) }}</div>
+                <div class="stat-label">{{ $stats['today_reservations']['label'] ?? 'رزرو امروز' }}</div>
+                <div class="stat-trend {{ $stats['today_reservations']['trend']['tone'] ?? 'neutral' }}">
+                    <i class="{{ $stats['today_reservations']['trend']['icon'] ?? 'ri-subtract-line' }}"></i>
+                    {{ \App\Support\PersianDate::number($stats['today_reservations']['trend']['text'] ?? '') }}
+                </div>
             </div>
             <div class="stat-icon tone-brand"><i class="ri-calendar-check-line"></i></div>
         </div>
 
         <div class="stat-card">
             <div>
-                <div class="stat-value">{{ $stats['pending_payments'] ?? 4 }}</div>
-                <div class="stat-label">فیش در انتظار تایید</div>
-                <div class="stat-trend down"><i class="ri-arrow-down-line"></i> ۲ مورد کمتر</div>
+                <div class="stat-value">{{ \App\Support\PersianDate::number($stats['pending_payments']['value'] ?? 0) }}</div>
+                <div class="stat-label">{{ $stats['pending_payments']['label'] ?? 'فیش در انتظار تایید' }}</div>
+                <div class="stat-trend {{ $stats['pending_payments']['trend']['tone'] ?? 'neutral' }}">
+                    <i class="{{ $stats['pending_payments']['trend']['icon'] ?? 'ri-information-line' }}"></i>
+                    {{ \App\Support\PersianDate::number($stats['pending_payments']['trend']['text'] ?? '') }}
+                </div>
             </div>
             <div class="stat-icon tone-warn"><i class="ri-bank-card-line"></i></div>
         </div>
 
         <div class="stat-card">
             <div>
-                <div class="stat-value">{{ $stats['available_slots'] ?? 27 }}</div>
-                <div class="stat-label">تایم خالی این هفته</div>
-                <div class="stat-trend up"><i class="ri-arrow-up-line"></i> ۵ تایم جدید</div>
+                <div class="stat-value">{{ \App\Support\PersianDate::number($stats['available_intervals']['value'] ?? 0) }}</div>
+                <div class="stat-label">{{ $stats['available_intervals']['label'] ?? 'تایم خالی این هفته' }}</div>
+                <div class="stat-trend {{ $stats['available_intervals']['trend']['tone'] ?? 'neutral' }}">
+                    <i class="{{ $stats['available_intervals']['trend']['icon'] ?? 'ri-subtract-line' }}"></i>
+                    {{ \App\Support\PersianDate::number($stats['available_intervals']['trend']['text'] ?? '') }}
+                </div>
             </div>
             <div class="stat-icon tone-info"><i class="ri-time-line"></i></div>
         </div>
 
         <div class="stat-card">
             <div>
-                <div class="stat-value">{{ $stats['active_users'] ?? 138 }}</div>
-                <div class="stat-label">کاربر فعال</div>
-                <div class="stat-trend up"><i class="ri-arrow-up-line"></i> ۱۲ کاربر جدید</div>
+                <div class="stat-value">{{ \App\Support\PersianDate::number($stats['active_reservations']['value'] ?? 0) }}</div>
+                <div class="stat-label">{{ $stats['active_reservations']['label'] ?? 'رزروهای فعال' }}</div>
+                <div class="stat-trend {{ $stats['active_reservations']['trend']['tone'] ?? 'neutral' }}">
+                    <i class="{{ $stats['active_reservations']['trend']['icon'] ?? 'ri-information-line' }}"></i>
+                    {{ \App\Support\PersianDate::number($stats['active_reservations']['trend']['text'] ?? '') }}
+                </div>
             </div>
             <div class="stat-icon tone-danger"><i class="ri-user-heart-line"></i></div>
         </div>
@@ -174,18 +187,48 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse(($reservations ?? []) as $r)
+                        @forelse($latestReservations as $reservation)
+                            @php
+                                $statusColor = match ($reservation->status) {
+                                    \App\Enums\ReservationStatus::Confirmed, \App\Enums\ReservationStatus::Completed => 'success',
+                                    \App\Enums\ReservationStatus::PendingCompletion,
+                                    \App\Enums\ReservationStatus::PendingPrepayment,
+                                    \App\Enums\ReservationStatus::PendingPaymentApproval => 'warning',
+                                    \App\Enums\ReservationStatus::PaymentRejected,
+                                    \App\Enums\ReservationStatus::Cancelled,
+                                    \App\Enums\ReservationStatus::Expired,
+                                    \App\Enums\ReservationStatus::NoShow => 'danger',
+                                    default => 'secondary',
+                                };
+                            @endphp
                             <tr>
-                                <td>{{ $r->client_name }}</td>
-                                <td>{{ $r->counselor_name }}</td>
-                                <td class="ltr">{{ $r->scheduled_at }}</td>
-                                <td><span class="badge bg-{{ $r->status_color }}">{{ $r->status_label }}</span></td>
+                                <td>
+                                    <a href="{{ route('admin.reservations.show', $reservation) }}">
+                                        {{ $reservation->student?->full_name ?: '-' }}
+                                    </a>
+                                </td>
+                                <td>{{ $reservation->advisor?->name ?: $reservation->slot?->advisor?->name ?: '-' }}</td>
+                                <td>
+                                    {{ $reservation->slot ? \App\Support\PersianDate::date($reservation->slot->date) : '-' }}
+                                    @if($reservation->assignedStartTime() && $reservation->assignedEndTime())
+                                        <span class="ltr d-inline-block">
+                                            {{ \App\Support\PersianDate::time($reservation->assignedStartTime()) }}
+                                            تا
+                                            {{ \App\Support\PersianDate::time($reservation->assignedEndTime()) }}
+                                        </span>
+                                    @endif
+                                </td>
+                                <td><span class="badge bg-{{ $statusColor }}">{{ $reservation->status->label() }}</span></td>
                             </tr>
                         @empty
-                            <tr><td>سارا احمدی</td><td>دکتر رضایی</td><td class="">2025/07/12 10:30</td><td><span class="badge bg-success">تایید شده</span></td></tr>
-                            <tr><td>محمد کریمی</td><td>دکتر موسوی</td><td class="">2025/07/12 12:00</td><td><span class="badge bg-warning">در انتظار</span></td></tr>
-                            <tr><td>نیلوفر صادقی</td><td>دکتر رضایی</td><td class="">2025/07/13 09:00</td><td><span class="badge bg-info">جدید</span></td></tr>
-                            <tr><td>امیر حسینی</td><td>دکتر جعفری</td><td class="">2025/07/13 16:30</td><td><span class="badge bg-danger">لغو شده</span></td></tr>
+                            <tr>
+                                <td colspan="4">
+                                    <div class="empty-state">
+                                        <i class="ri-file-list-3-line"></i>
+                                        هنوز رزروی ثبت نشده است.
+                                    </div>
+                                </td>
+                            </tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -198,35 +241,36 @@
                 <i class="ri-calendar-2-line align-middle text-muted me-1"></i> برنامه امروز
             </div>
             <div class="p-3">
-                @forelse(($agenda ?? []) as $item)
+                @forelse($todayReservations as $reservation)
+                    @php
+                        $statusColor = match ($reservation->status) {
+                            \App\Enums\ReservationStatus::Confirmed, \App\Enums\ReservationStatus::Completed => 'success',
+                            \App\Enums\ReservationStatus::PendingCompletion,
+                            \App\Enums\ReservationStatus::PendingPrepayment,
+                            \App\Enums\ReservationStatus::PendingPaymentApproval => 'warning',
+                            default => 'secondary',
+                        };
+                    @endphp
                     <div class="agenda-item">
-                        <div class="agenda-time ltr">{{ $item->time }}</div>
+                        <div class="agenda-time ltr">
+                            {{ \App\Support\PersianDate::time($reservation->assignedStartTime()) }}
+                            تا
+                            {{ \App\Support\PersianDate::time($reservation->assignedEndTime()) }}
+                        </div>
                         <div>
-                            <div class="agenda-title">{{ $item->title }}</div>
-                            <div class="agenda-sub">{{ $item->subtitle }}</div>
+                            <div class="agenda-title">
+                                {{ $reservation->student?->full_name ?: '-' }}
+                                <span class="badge bg-{{ $statusColor }}">{{ $reservation->status->label() }}</span>
+                            </div>
+                            <div class="agenda-sub">{{ $reservation->advisor?->name ?: $reservation->slot?->advisor?->name ?: '-' }}</div>
                         </div>
                     </div>
                 @empty
-                    <div class="agenda-item">
-                        <div class="agenda-time ltr">09:00</div>
-                        <div><div class="agenda-title">جلسه مشاوره تحصیلی</div><div class="agenda-sub">نیلوفر صادقی — دکتر رضایی</div></div>
-                    </div>
-                    <div class="agenda-item">
-                        <div class="agenda-time ltr">10:30</div>
-                        <div><div class="agenda-title">جلسه مشاوره تحصیلی</div><div class="agenda-sub">سارا احمدی — دکتر رضایی</div></div>
-                    </div>
-                    <div class="agenda-item">
-                        <div class="agenda-time ltr">16:30</div>
-                        <div><div class="agenda-title">جلسه مشاوره شغلی</div><div class="agenda-sub">امیر حسینی — دکتر جعفری</div></div>
-                    </div>
-                @endforelse
-
-                @if(isset($agenda) && count($agenda) === 0)
                     <div class="empty-state">
                         <i class="ri-calendar-line"></i>
-                        برای امروز جلسهای ثبت نشده است
+                        برای امروز برنامه‌ای ثبت نشده است.
                     </div>
-                @endif
+                @endforelse
             </div>
         </div>
     </div>

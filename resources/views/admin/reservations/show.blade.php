@@ -111,6 +111,72 @@
 </script>
 @endpush
 
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const dateGroups = @json($followUpSlotDateGroups ?? []);
+        const slotInput = document.getElementById('follow_up_slot_id');
+        const intervalInput = document.getElementById('follow_up_reservation_interval');
+        const summary = document.getElementById('follow-up-interval-summary');
+        const cards = Array.from(document.querySelectorAll('[data-follow-up-date-card]'));
+        const chipList = document.querySelector('[data-follow-up-time-chips]');
+        const selectedInterval = intervalInput?.dataset.selected || '';
+
+        if (!dateGroups.length || !slotInput || !intervalInput || !summary || !cards.length || !chipList) {
+            return;
+        }
+
+        const groupsByDate = Object.fromEntries(dateGroups.map((group) => [group.date, group]));
+        const selectedGroup = dateGroups.find((group) => group.intervals.some((interval) => String(interval.slot_id) === String(slotInput.value)))
+            || dateGroups[0];
+
+        function syncFields(interval) {
+            slotInput.value = interval.slot_id;
+            intervalInput.value = interval.value;
+            summary.querySelector('[data-follow-up-date]').textContent = groupsByDate[interval.date]?.jalali_date || '-';
+            summary.querySelector('[data-follow-up-range]').textContent = interval.label || '-';
+            summary.querySelector('[data-follow-up-slot-range]').textContent = interval.slot_range || '-';
+        }
+
+        function renderDate(dateKey) {
+            const group = groupsByDate[dateKey];
+
+            if (!group) {
+                return;
+            }
+
+            cards.forEach((card) => card.classList.toggle('is-active', card.dataset.dateKey === dateKey));
+            chipList.innerHTML = '';
+
+            const current = group.intervals.find((interval) => String(interval.slot_id) === String(slotInput.value) && interval.value === (intervalInput.value || selectedInterval));
+            const initial = current || group.intervals.find((interval) => interval.available) || group.intervals[0];
+
+            group.intervals.forEach((interval) => {
+                interval.date = group.date;
+                const chip = document.createElement('button');
+                chip.type = 'button';
+                chip.className = 'time-chip';
+                chip.textContent = `${interval.label}${interval.available ? '' : ` - ${interval.status_label}`}`;
+                chip.disabled = !interval.available && interval.value !== selectedInterval;
+                chip.classList.toggle('is-active', initial && String(interval.slot_id) === String(initial.slot_id) && interval.value === initial.value);
+                chip.addEventListener('click', () => {
+                    syncFields(interval);
+                    renderDate(group.date);
+                });
+                chipList.appendChild(chip);
+            });
+
+            if (initial) {
+                syncFields(initial);
+            }
+        }
+
+        cards.forEach((card) => card.addEventListener('click', () => renderDate(card.dataset.dateKey)));
+        renderDate(selectedGroup.date);
+    });
+</script>
+@endpush
+
 @push('styles')
 <style>
     /* ===========================================================
@@ -244,6 +310,30 @@
         box-shadow: 0 0 0 3px rgba(47, 143, 131, .1);
     }
     .change-date-card:disabled{ opacity: .55; cursor: not-allowed; background: var(--ink-100); }
+    .time-chip-list{
+        display: flex;
+        flex-wrap: wrap;
+        gap: .5rem;
+        min-height: 42px;
+    }
+    .time-chip{
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--surface);
+        color: var(--ink-700);
+        padding: .48rem .85rem;
+        font-size: .83rem;
+    }
+    .time-chip.is-active{
+        border-color: var(--brand-500);
+        background: var(--brand-500);
+        color: #fff;
+    }
+    .time-chip:disabled{
+        opacity: .52;
+        cursor: not-allowed;
+        text-decoration: line-through;
+    }
 
     @media (max-width: 991.98px){
         .info-grid{ grid-template-columns: repeat(2, 1fr); }
@@ -594,6 +684,102 @@
                     </div>
                 </div>
             @endcan
+
+            {{-- Follow-up --}}
+            <div class="card side-card card-section">
+                <div class="card-body">
+                    <h2><i class="ri-calendar-event-line"></i> تایم مراجعه بعدی</h2>
+
+                    @if($activeFollowUp)
+                        <div class="info-item mb-2">
+                            <div class="info-label">تاریخ</div>
+                            <div class="info-value">{{ \App\Support\PersianDate::date($activeFollowUp->follow_up_date) }}</div>
+                        </div>
+                        <div class="info-item mb-2">
+                            <div class="info-label">زمان</div>
+                            <div class="info-value ltr">{{ \App\Support\PersianDate::time($activeFollowUp->reserved_start_time).' - '.\App\Support\PersianDate::time($activeFollowUp->reserved_end_time) }}</div>
+                        </div>
+                        <div class="info-item mb-3">
+                            <div class="info-label">مشاور</div>
+                            <div class="info-value">{{ $activeFollowUp->advisor?->name ?: $activeFollowUp->slot?->advisor?->name }}</div>
+                        </div>
+                    @else
+                        <div class="empty-state py-3">
+                            هنوز تایم مراجعه بعدی ثبت نشده است.
+                        </div>
+                    @endif
+
+                    @can('update_reservations')
+                        <button class="btn btn-outline-primary w-100 mb-2" type="button" onclick="document.getElementById('follow-up-dialog').showModal()">
+                            <i class="ri-calendar-check-line align-middle"></i>
+                            {{ $activeFollowUp ? 'ویرایش تایم مراجعه بعدی' : 'ثبت تایم مراجعه بعدی' }}
+                        </button>
+
+                        @if($activeFollowUp)
+                            <form method="post" action="{{ route('admin.reservations.follow-up.destroy', [$reservation, $activeFollowUp]) }}">
+                                @csrf
+                                @method('delete')
+                                <button class="btn btn-outline-danger w-100">
+                                    <i class="ri-delete-bin-line align-middle"></i> حذف تایم مراجعه بعدی
+                                </button>
+                            </form>
+                        @endif
+                    @endcan
+
+                    <dialog class="change-time-dialog" id="follow-up-dialog">
+                        <div class="dialog-head">
+                            <span><i class="ri-calendar-event-line align-middle"></i> تایم مراجعه بعدی</span>
+                            <button class="btn btn-sm btn-outline-secondary" type="button" onclick="this.closest('dialog').close()">
+                                <i class="ri-close-line"></i>
+                            </button>
+                        </div>
+                        <form method="post" action="{{ route('admin.reservations.follow-up.store', $reservation) }}" class="dialog-body">
+                            @csrf
+
+                            @if(($followUpSlotDateGroups ?? collect())->isNotEmpty())
+                                <label class="form-label">تاریخ مراجعه</label>
+                                <div class="change-date-row">
+                                    @foreach($followUpSlotDateGroups as $dateGroup)
+                                        <button
+                                            type="button"
+                                            class="change-date-card"
+                                            data-follow-up-date-card
+                                            data-date-key="{{ $dateGroup['date'] }}"
+                                            @disabled(($dateGroup['available_count'] ?? 0) === 0 && ! collect($dateGroup['intervals'])->contains('slot_id', (int) $activeFollowUp?->slot_id))
+                                        >
+                                            <span>{{ $dateGroup['weekday_label'] }}</span>
+                                            <strong>{{ $dateGroup['jalali_date'] }}</strong>
+                                            <small>{{ $dateGroup['advisor_label'] ?: '-' }}</small>
+                                            <small>{{ \App\Support\PersianDate::number($dateGroup['available_count']) }} نوبت آزاد</small>
+                                        </button>
+                                    @endforeach
+                                </div>
+
+                                <input type="hidden" name="slot_id" id="follow_up_slot_id" value="{{ old('slot_id', $activeFollowUp?->slot_id) }}">
+                                <input type="hidden" name="reservation_interval" id="follow_up_reservation_interval" value="{{ old('reservation_interval', $activeFollowUp ? substr((string) $activeFollowUp->reserved_start_time, 0, 5).'|'.substr((string) $activeFollowUp->reserved_end_time, 0, 5) : '') }}" data-selected="{{ $activeFollowUp ? substr((string) $activeFollowUp->reserved_start_time, 0, 5).'|'.substr((string) $activeFollowUp->reserved_end_time, 0, 5) : '' }}">
+
+                                <label class="form-label">زمان مراجعه</label>
+                                <div class="time-chip-list mb-3" data-follow-up-time-chips></div>
+
+                                <div id="follow-up-interval-summary" class="alert alert-info mb-3">
+                                    <div><strong>تاریخ:</strong> <span data-follow-up-date>-</span></div>
+                                    <div><strong>بازه کلی تایم:</strong> <span data-follow-up-slot-range>-</span></div>
+                                    <div><strong>زمان مراجعه بعدی:</strong> <span data-follow-up-range>-</span></div>
+                                </div>
+
+                                <label class="form-label">یادداشت</label>
+                                <textarea name="note" rows="2" class="form-control mb-3">{{ old('note', $activeFollowUp?->note) }}</textarea>
+
+                                <button class="btn btn-primary w-100">
+                                    <i class="ri-save-line align-middle"></i> ذخیره تایم مراجعه بعدی
+                                </button>
+                            @else
+                                <div class="empty-state">برای این تاریخ نوبتی تعریف نشده است.</div>
+                            @endif
+                        </form>
+                    </dialog>
+                </div>
+            </div>
 
             {{-- Actions --}}
             <div class="card side-card card-section mb-0">

@@ -25,22 +25,19 @@ class SlotController extends Controller
             ? PersianDate::toGregorianDate($request->input('date'))
             : null;
 
-        $slots = ReservationSlot::query()
-            ->with('advisor')
-            ->when($dateFilter, fn ($query) => $query->whereDate('date', $dateFilter))
-            ->when($request->filled('advisor_id'), fn ($query) => $query->where('advisor_id', $request->integer('advisor_id')))
-            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
-            ->orderByDesc('date')
-            ->orderBy('start_time')
-            ->paginate(20)
-            ->withQueryString();
-
         return view('admin.slots.index', [
-            'slots' => $slots,
-            'slotDateGroups' => $availability->groupedIntervalsForSlots($slots->getCollection()),
+            'slotDateGroups' => $availability->getGroupedScheduleForAdmin([
+                'date' => $dateFilter,
+                'advisor_id' => $request->filled('advisor_id') ? $request->integer('advisor_id') : null,
+                'status' => $request->filled('status') ? (string) $request->string('status') : null,
+                'availability' => $request->filled('availability') ? (string) $request->string('availability') : null,
+            ]),
             'advisors' => Advisor::query()->orderBy('name')->get(),
             'statuses' => SlotStatus::options(),
-            'availability' => $availability,
+            'availabilityOptions' => [
+                'available' => 'نوبت آزاد',
+                'reserved' => 'نوبت رزرو شده',
+            ],
         ]);
     }
 

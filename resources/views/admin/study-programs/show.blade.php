@@ -1,0 +1,45 @@
+@extends('layouts.admin')
+
+@section('title', 'جزئیات رشته‌محل')
+
+@section('actions')
+    <a class="btn btn-outline-secondary" href="{{ route('admin.study-programs.index') }}">بازگشت</a>
+@endsection
+
+@section('content')
+    <div class="card">
+        <div class="card-body">
+            <div class="row g-3">
+                @foreach([
+                    'کدرشته محل' => $program->code,
+                    'سال' => $program->examYear?->year,
+                    'گروه' => $program->examGroup?->name,
+                    'استان' => $program->province?->name,
+                    'شهر' => $program->city?->name,
+                    'دانشگاه / مؤسسه' => $program->institution?->name,
+                    'رشته' => $program->academicField?->name,
+                    'نوع دوره' => $program->courseType?->name,
+                    'دوره درج‌شده در دفترچه' => $program->original_course_type,
+                    'نحوه پذیرش' => $program->admissionType?->name,
+                    'صفحه دفترچه' => $program->booklet_page,
+                    'روش تشخیص شهر' => $program->city_detection_method,
+                    'فایل منبع' => $program->source_file,
+                    'ردیف فایل' => $program->source_row,
+                ] as $label => $value)
+                    <div class="col-md-4">
+                        <div class="border rounded p-3 h-100">
+                            <div class="text-muted small mb-1">{{ $label }}</div>
+                            <div class="fw-bold">{{ \App\Support\PersianDate::number($value ?: '-') }}</div>
+                        </div>
+                    </div>
+                @endforeach
+                <div class="col-12">
+                    <div class="border rounded p-3">
+                        <div class="text-muted small mb-1">توضیحات</div>
+                        <div>{{ $program->description ?: '-' }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+@endsection

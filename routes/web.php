@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\ReservationController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\SlotController;
+use App\Http\Controllers\Admin\StudyProgramController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PublicAccess\PublicReservationController;
@@ -16,6 +17,8 @@ Route::redirect('/', '/admin/dashboard');
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->name('login.store');
+    Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
+    Route::post('/register', [AuthController::class, 'register'])->name('register.store');
 });
 
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
@@ -43,6 +46,12 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function (): v
     Route::post('/reservations/{reservation}/change-slot', [ReservationController::class, 'changeSlot'])
         ->middleware('permission:change_reservation_slot')
         ->name('reservations.change-slot');
+    Route::post('/reservations/{reservation}/follow-up', [ReservationController::class, 'storeFollowUp'])
+        ->middleware('permission:update_reservations')
+        ->name('reservations.follow-up.store');
+    Route::delete('/reservations/{reservation}/follow-up/{followUp}', [ReservationController::class, 'destroyFollowUp'])
+        ->middleware('permission:update_reservations')
+        ->name('reservations.follow-up.destroy');
     Route::post('/reservations/{reservation}/regenerate-link', [ReservationController::class, 'regenerateLink'])
         ->middleware('permission:update_reservations')
         ->name('reservations.regenerate-link');
@@ -92,6 +101,28 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function (): v
     Route::put('/settings', [SettingController::class, 'update'])
         ->middleware('permission:manage_settings')
         ->name('settings.update');
+
+    Route::get('/study-programs', [StudyProgramController::class, 'index'])
+        ->middleware('permission:view_reports')
+        ->name('study-programs.index');
+    Route::get('/study-programs/cities', [StudyProgramController::class, 'cities'])
+        ->middleware('permission:view_reports')
+        ->name('study-programs.cities');
+    Route::get('/study-programs/reviews', [StudyProgramController::class, 'reviews'])
+        ->middleware('permission:view_reports')
+        ->name('study-programs.reviews');
+    Route::post('/study-programs/reviews/{review}/reject', [StudyProgramController::class, 'rejectReview'])
+        ->middleware('permission:view_reports')
+        ->name('study-programs.reviews.reject');
+    Route::get('/study-programs/imports', [StudyProgramController::class, 'imports'])
+        ->middleware('permission:view_reports')
+        ->name('study-programs.imports');
+    Route::get('/study-programs/imports/{import}/failures', [StudyProgramController::class, 'failures'])
+        ->middleware('permission:view_reports')
+        ->name('study-programs.failures');
+    Route::get('/study-programs/{studyProgram}', [StudyProgramController::class, 'show'])
+        ->middleware('permission:view_reports')
+        ->name('study-programs.show');
 });
 
 Route::get('/reservation/access/{token}', [PublicReservationController::class, 'show'])->name('public.reservations.show');

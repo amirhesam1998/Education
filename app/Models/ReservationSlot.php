@@ -31,6 +31,11 @@ class ReservationSlot extends Model
         return $this->hasMany(Reservation::class, 'slot_id');
     }
 
+    public function followUps(): HasMany
+    {
+        return $this->hasMany(ReservationFollowUp::class, 'slot_id');
+    }
+
     protected function casts(): array
     {
         return [

@@ -74,6 +74,16 @@ class Reservation extends Model
         return $this->documents()->where('type', ReservationDocument::TYPE_REPORT_CARD);
     }
 
+    public function followUps(): HasMany
+    {
+        return $this->hasMany(ReservationFollowUp::class);
+    }
+
+    public function activeFollowUp(): HasOne
+    {
+        return $this->hasOne(ReservationFollowUp::class)->where('status', ReservationFollowUp::STATUS_SCHEDULED);
+    }
+
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

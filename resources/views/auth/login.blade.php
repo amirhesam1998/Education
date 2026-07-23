@@ -609,6 +609,13 @@
                         </div>
                     @endif
 
+                    @if(session('success'))
+                        <div class="alert mb-3" style="background:#edf8f4;color:var(--success);">
+                            <i class="ri-checkbox-circle-line mt-1"></i>
+                            <div>{{ session('success') }}</div>
+                        </div>
+                    @endif
+
                     <form method="post" action="{{ route('login.store') }}" id="loginForm">
                         @csrf
                         <div class="mb-3">
@@ -642,6 +649,10 @@
                             <span class="btn-label">ورود</span>
                         </button>
                     </form>
+
+                    <div class="text-center mt-3 small">
+                        <a href="{{ route('register') }}">ثبت‌نام حساب جدید</a>
+                    </div>
                 </div>
             </div>
 

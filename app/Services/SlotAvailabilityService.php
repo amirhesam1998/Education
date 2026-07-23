@@ -6,6 +6,7 @@ use App\Enums\ReservationStatus;
 use App\Enums\SlotStatus;
 use App\Models\Advisor;
 use App\Models\Reservation;
+use App\Models\ReservationFollowUp;
 use App\Models\ReservationSlot;
 use App\Support\PersianDate;
 use Illuminate\Database\Eloquent\Builder;
@@ -54,21 +55,49 @@ class SlotAvailabilityService
     }
 
     /**
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function getGroupedScheduleForAdmin(array $filters = []): Collection
+    {
+        $slots = ReservationSlot::query()
+            ->with('advisor')
+            ->when($filters['date'] ?? null, fn (Builder $query, string $date) => $query->whereDate('date', $date))
+            ->when($filters['advisor_id'] ?? null, fn (Builder $query, int $advisorId) => $query->where('advisor_id', $advisorId))
+            ->when($filters['status'] ?? null, fn (Builder $query, string $status) => $query->where('status', $status))
+            ->orderBy('date')
+            ->orderBy('start_time')
+            ->get();
+
+        $groups = $this->groupedIntervalsForSlots($slots);
+
+        return match ($filters['availability'] ?? null) {
+            'available' => $this->filterGroupsByAvailability($groups, true),
+            'reserved' => $this->filterGroupsByAvailability($groups, false),
+            default => $groups,
+        };
+    }
+
+    /**
      * @param  iterable<int, ReservationSlot>  $slots
      * @return Collection<int, array<string, mixed>>
      */
-    public function groupedIntervalsForSlots(iterable $slots, ?int $durationMinutes = null, ?Reservation $ignoreReservation = null): Collection
+    public function groupedIntervalsForSlots(
+        iterable $slots,
+        ?int $durationMinutes = null,
+        ?Reservation $ignoreReservation = null,
+        ?ReservationFollowUp $ignoreFollowUp = null,
+    ): Collection
     {
         $durationMinutes ??= $this->settings->reservationDurationMinutes();
 
         return collect($slots)
             ->groupBy(fn (ReservationSlot $slot) => $slot->date->toDateString())
             ->sortKeys()
-            ->map(function (Collection $dateSlots, string $date) use ($durationMinutes, $ignoreReservation): array {
+            ->map(function (Collection $dateSlots, string $date) use ($durationMinutes, $ignoreReservation, $ignoreFollowUp): array {
                 $intervals = $dateSlots
                     ->sortBy('start_time')
                     ->flatMap(fn (ReservationSlot $slot) => $this
-                        ->generateIntervalsForSlot($slot, $durationMinutes, $ignoreReservation)
+                        ->generateIntervalsForSlot($slot, $durationMinutes, $ignoreReservation, $ignoreFollowUp)
                         ->map(fn (array $interval) => [
                             'slot_id' => $slot->id,
                             'start_time' => $interval['start_time'],
@@ -81,6 +110,9 @@ class SlotAvailabilityService
                             'status_label' => $interval['status_label'],
                             'available' => $interval['available'],
                             'is_available' => $interval['available'],
+                            'reservation_id' => $interval['reservation_id'],
+                            'student_name' => $interval['student_name'],
+                            'action' => $interval['action'],
                         ]))
                     ->values();
 
@@ -104,7 +136,12 @@ class SlotAvailabilityService
     /**
      * @return Collection<int, array<string, mixed>>
      */
-    public function generateIntervalsForSlot(ReservationSlot $slot, int $durationMinutes, ?Reservation $ignoreReservation = null): Collection
+    public function generateIntervalsForSlot(
+        ReservationSlot $slot,
+        int $durationMinutes,
+        ?Reservation $ignoreReservation = null,
+        ?ReservationFollowUp $ignoreFollowUp = null,
+    ): Collection
     {
         $durationMinutes = max(1, $durationMinutes);
         $date = $slot->date->toDateString();
@@ -116,7 +153,10 @@ class SlotAvailabilityService
             $startTime = $cursor->format('H:i');
             $endTime = $cursor->copy()->addMinutes($durationMinutes)->format('H:i');
             $overlappingReservation = $this->firstOverlappingActiveReservation($slot, $startTime, $endTime, $ignoreReservation);
-            $available = $slot->status === SlotStatus::Active && $overlappingReservation === null;
+            $overlappingFollowUp = $overlappingReservation
+                ? null
+                : $this->firstOverlappingActiveFollowUp($slot, $startTime, $endTime, $ignoreFollowUp);
+            $available = $slot->status === SlotStatus::Active && $overlappingReservation === null && $overlappingFollowUp === null;
 
             $intervals->push([
                 'start_time' => $startTime,
@@ -124,9 +164,13 @@ class SlotAvailabilityService
                 'value' => $startTime.'|'.$endTime,
                 'label' => $startTime.' تا '.$endTime,
                 'available' => $available,
-                'status_key' => $available ? 'available' : ($overlappingReservation?->status->value ?? 'locked'),
-                'status_label' => $available ? 'آزاد' : $this->intervalUnavailableLabel($overlappingReservation),
+                'status_key' => $available ? 'available' : ($overlappingFollowUp ? 'follow_up' : ($overlappingReservation?->status->value ?? 'locked')),
+                'status_label' => $available ? 'آزاد' : $this->intervalUnavailableLabel($overlappingReservation, $overlappingFollowUp),
                 'reservation' => $overlappingReservation,
+                'follow_up' => $overlappingFollowUp,
+                'reservation_id' => $overlappingReservation?->id ?? $overlappingFollowUp?->reservation_id,
+                'student_name' => $overlappingReservation?->student?->full_name ?? $overlappingFollowUp?->reservation?->student?->full_name,
+                'action' => $available ? 'create_reservation' : (($overlappingReservation || $overlappingFollowUp) ? 'view_reservation' : 'disabled'),
             ]);
 
             $cursor->addMinutes($durationMinutes);
@@ -139,7 +183,8 @@ class SlotAvailabilityService
     {
         return $slot->status === SlotStatus::Active
             && $this->intervalIsInsideSlot($slot, $startTime, $endTime)
-            && $this->firstOverlappingActiveReservation($slot, $startTime, $endTime, $ignoreReservation) === null;
+            && $this->firstOverlappingActiveReservation($slot, $startTime, $endTime, $ignoreReservation) === null
+            && $this->firstOverlappingActiveFollowUp($slot, $startTime, $endTime) === null;
     }
 
     public function assertIntervalAvailable(ReservationSlot $slot, string $startTime, string $endTime, ?Reservation $ignoreReservation = null): void
@@ -151,6 +196,25 @@ class SlotAvailabilityService
         }
 
         if (! $this->isIntervalAvailable($slot, $startTime, $endTime, $ignoreReservation)) {
+            throw ValidationException::withMessages([
+                'reservation_interval' => 'این بازه قبلاً رزرو شده است.',
+            ]);
+        }
+    }
+
+    public function assertIntervalAvailableForFollowUp(ReservationSlot $slot, string $startTime, string $endTime, ?ReservationFollowUp $ignoreFollowUp = null): void
+    {
+        if (! $this->intervalIsInsideSlot($slot, $startTime, $endTime)) {
+            throw ValidationException::withMessages([
+                'reservation_interval' => 'زمان مراجعه بعدی باید داخل بازه کلی تایم باشد.',
+            ]);
+        }
+
+        if (
+            $slot->status !== SlotStatus::Active
+            || $this->firstOverlappingActiveReservation($slot, $startTime, $endTime) !== null
+            || $this->firstOverlappingActiveFollowUp($slot, $startTime, $endTime, $ignoreFollowUp) !== null
+        ) {
             throw ValidationException::withMessages([
                 'reservation_interval' => 'این بازه قبلاً رزرو شده است.',
             ]);
@@ -228,12 +292,34 @@ class SlotAvailabilityService
             ->whereIn('status', $this->activeReservationStatuses())
             ->where('reserved_start_time', '<', $endTime)
             ->where('reserved_end_time', '>', $startTime)
-            ->when($ignoreReservation, fn (Builder $query) => $query->whereKeyNot($ignoreReservation->id))
+            ->when($ignoreReservation, fn (Builder $query) => $query->where('id', '!=', $ignoreReservation->id))
             ->where(function (Builder $query) use ($slot): void {
                 $query->where('slot_id', $slot->id)
                     ->orWhere(function (Builder $query) use ($slot): void {
                         $query->where('advisor_id', $slot->advisor_id)
                             ->whereHas('slot', fn (Builder $slotQuery) => $slotQuery->whereDate('date', $slot->date));
+                    });
+            })
+            ->oldest('reserved_start_time')
+            ->first();
+    }
+
+    private function firstOverlappingActiveFollowUp(ReservationSlot $slot, string $startTime, string $endTime, ?ReservationFollowUp $ignoreFollowUp = null): ?ReservationFollowUp
+    {
+        $startTime = $this->normalizeTime($startTime);
+        $endTime = $this->normalizeTime($endTime);
+
+        return ReservationFollowUp::query()
+            ->with(['reservation.student.phones', 'slot.advisor'])
+            ->where('status', ReservationFollowUp::STATUS_SCHEDULED)
+            ->where('reserved_start_time', '<', $endTime)
+            ->where('reserved_end_time', '>', $startTime)
+            ->when($ignoreFollowUp, fn (Builder $query) => $query->where('id', '!=', $ignoreFollowUp->id))
+            ->where(function (Builder $query) use ($slot): void {
+                $query->where('slot_id', $slot->id)
+                    ->orWhere(function (Builder $query) use ($slot): void {
+                        $query->where('advisor_id', $slot->advisor_id)
+                            ->whereDate('follow_up_date', $slot->date);
                     });
             })
             ->oldest('reserved_start_time')
@@ -252,8 +338,12 @@ class SlotAvailabilityService
             && $startTime < $endTime;
     }
 
-    private function intervalUnavailableLabel(?Reservation $reservation): string
+    private function intervalUnavailableLabel(?Reservation $reservation, ?ReservationFollowUp $followUp = null): string
     {
+        if ($followUp) {
+            return 'مراجعه بعدی';
+        }
+
         if (! $reservation) {
             return 'رزرو موقت';
         }
@@ -284,5 +374,21 @@ class SlotAvailabilityService
         }
 
         return ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه'][$date->dayOfWeek];
+    }
+
+    private function filterGroupsByAvailability(Collection $groups, bool $available): Collection
+    {
+        return $groups
+            ->map(function (array $group) use ($available): array {
+                $intervals = collect($group['intervals'])->where('available', $available)->values();
+                $group['intervals'] = $intervals->all();
+                $group['total_count'] = $intervals->count();
+                $group['available_count'] = $intervals->where('available', true)->count();
+                $group['reserved_count'] = $intervals->where('available', false)->count();
+
+                return $group;
+            })
+            ->filter(fn (array $group) => count($group['intervals']) > 0)
+            ->values();
     }
 }
