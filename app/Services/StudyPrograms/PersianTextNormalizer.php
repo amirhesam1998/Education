@@ -44,4 +44,3 @@ class PersianTextNormalizer
         return $value === '' || $value === '-' ? null : $value;
     }
 }
-

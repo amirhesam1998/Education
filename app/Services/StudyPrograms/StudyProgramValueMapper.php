@@ -81,6 +81,7 @@ class StudyProgramValueMapper
     public function validProvince(?string $value): ?string
     {
         $lookup = $this->normalizer->lookup($value);
+        $lookup = preg_replace('/^استان\s+/u', '', $lookup) ?? $lookup;
 
         foreach (self::OFFICIAL_PROVINCES as $province) {
             if ($lookup === $this->normalizer->lookup($province)) {

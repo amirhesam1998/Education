@@ -16,6 +16,11 @@ class AuditStudyPrograms extends Command
     {
         $year = (int) $this->option('year');
         $base = StudyProgram::query()->whereHas('examYear', fn ($query) => $query->where('year', $year));
+        $productionCities = DB::table('study_programs')
+            ->join('exam_years', 'exam_years.id', '=', 'study_programs.exam_year_id')
+            ->join('cities', 'cities.id', '=', 'study_programs.city_id')
+            ->where('exam_years.year', $year)
+            ->where('study_programs.validation_status', 'validated');
         $official = array_map(fn ($name) => app(\App\Services\StudyPrograms\PersianTextNormalizer::class)->lookup($name), StudyProgramValueMapper::OFFICIAL_PROVINCES);
         $report = [
             'total_production_records' => (clone $base)->count(),
@@ -30,7 +35,20 @@ class AuditStudyPrograms extends Command
             'rows_by_admission_type' => (clone $base)->leftJoin('admission_types', 'admission_types.id', '=', 'study_programs.admission_type_id')->groupBy('admission_types.slug')->pluck(DB::raw('count(*)'), 'admission_types.slug')->all(),
             'malformed_province_values' => DB::table('provinces')->whereNotIn('normalized_name', $official)->pluck('name')->all(),
             'cities_without_provinces' => DB::table('cities')->whereNull('province_id')->count(),
+            'malformed_city_values' => (clone $productionCities)
+                ->where(fn ($q) => $q
+                    ->where('cities.name', 'like', '%دانشگاه%')
+                    ->orWhere('cities.name', 'like', '%استان%')
+                    ->orWhere('cities.name', 'regexp', '(^| )[0-9]{5}($| )')
+                    ->orWhereRaw("cities.name like '% %' and substring_index(cities.name, ' ', 1) = substring_index(substring_index(cities.name, ' ', 2), ' ', -1)"))
+                ->count(),
+            'duplicate_normalized_cities' => DB::table('cities')->select('province_id', 'normalized_name')->groupBy('province_id', 'normalized_name')->havingRaw('count(*) > 1')->count(),
+            'city_names_containing_university' => DB::table('cities')->where('name', 'like', '%دانشگاه%')->count(),
+            'city_names_containing_province_label' => DB::table('cities')->where('name', 'like', '%استان%')->count(),
+            'city_names_containing_five_digit_codes' => DB::table('cities')->where('name', 'regexp', '(^| )[0-9]{5}($| )')->count(),
+            'repeated_city_words' => DB::table('cities')->whereRaw("name like '% %' and substring_index(name, ' ', 1) = substring_index(substring_index(name, ' ', 2), ' ', -1)")->count(),
             'city_province_mismatches' => DB::table('study_programs')->join('cities', 'cities.id', '=', 'study_programs.city_id')->whereColumn('cities.province_id', '!=', 'study_programs.province_id')->count(),
+            'missing_cities' => (clone $base)->whereNull('city_id')->count(),
             'missing_institutions' => (clone $base)->whereNull('institution_id')->count(),
             'missing_academic_fields' => (clone $base)->whereNull('academic_field_id')->count(),
             'unknown_course_types' => (clone $base)->whereHas('courseType', fn ($q) => $q->where('slug', 'other'))->count(),
@@ -57,7 +75,19 @@ class AuditStudyPrograms extends Command
 
         $this->line($content);
 
-        return self::SUCCESS;
+        $blocking = [
+            'malformed_province_values' => count($report['malformed_province_values']),
+            'malformed_city_values' => $report['malformed_city_values'],
+            'city_province_mismatches' => $report['city_province_mismatches'],
+            'missing_institutions' => $report['missing_institutions'],
+            'missing_academic_fields' => $report['missing_academic_fields'],
+            'unknown_course_types' => $report['unknown_course_types'],
+            'unknown_admission_types' => $report['unknown_admission_types'],
+            'duplicate_identity_hashes' => $report['duplicate_identity_hashes'],
+            'public_records_marked_for_review' => $report['public_records_marked_for_review'],
+        ];
+
+        return array_sum($blocking) === 0 ? self::SUCCESS : self::FAILURE;
     }
 
     private function csv(array $report): string
@@ -71,4 +101,3 @@ class AuditStudyPrograms extends Command
         return stream_get_contents($handle);
     }
 }
-

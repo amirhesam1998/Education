@@ -17,19 +17,19 @@
             <form class="row g-3" method="get">
                 <div class="col-md-2">
                     <label class="form-label">سال</label>
-                    <select name="year" class="form-select">
+                    <select name="exam_year_id" id="yearSelect" class="form-select">
                         <option value="">همه</option>
                         @foreach($years as $year)
-                            <option value="{{ $year->year }}" @selected(request('year') == $year->year)>{{ \App\Support\PersianDate::number($year->year) }}</option>
+                            <option value="{{ $year->id }}" @selected((int) request('exam_year_id') === $year->id)>{{ \App\Support\PersianDate::number($year->year) }}</option>
                         @endforeach
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label">گروه</label>
-                    <select name="group" class="form-select">
+                    <label class="form-label">گروه آزمایشی</label>
+                    <select name="exam_group_id" id="groupSelect" class="form-select">
                         <option value="">همه</option>
                         @foreach($groups as $group)
-                            <option value="{{ $group->slug }}" @selected(request('group') === $group->slug)>{{ $group->name }}</option>
+                            <option value="{{ $group->id }}" @selected((int) request('exam_group_id') === $group->id)>{{ $group->name }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -52,17 +52,41 @@
                     </select>
                 </div>
                 <div class="col-md-2">
+                    <label class="form-label">دانشگاه / مؤسسه</label>
+                    <input id="institutionSearch" class="form-control mb-1" placeholder="جستجو">
+                    <select name="institution_id" id="institutionSelect" class="form-select">
+                        <option value="">همه</option>
+                        @if($selectedInstitution)
+                            <option value="{{ $selectedInstitution->id }}" selected>{{ $selectedInstitution->name }}</option>
+                        @endif
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">رشته</label>
+                    <input id="fieldSearch" class="form-control mb-1" placeholder="جستجو">
+                    <select name="academic_field_id" id="fieldSelect" class="form-select">
+                        <option value="">همه</option>
+                        @if($selectedAcademicField)
+                            <option value="{{ $selectedAcademicField->id }}" selected>{{ $selectedAcademicField->name }}</option>
+                        @endif
+                    </select>
+                </div>
+                <div class="col-md-2">
                     <label class="form-label">نوع دوره</label>
-                    <select name="course_type" class="form-select">
+                    <select name="course_type_id" class="form-select">
                         <option value="">همه</option>
                         @foreach($courseTypes as $type)
-                            <option value="{{ $type->slug }}" @selected(request('course_type') === $type->slug)>{{ $type->name }}</option>
+                            <option value="{{ $type->id }}" @selected((int) request('course_type_id') === $type->id)>{{ $type->name }}</option>
                         @endforeach
                     </select>
                 </div>
                 <div class="col-md-2">
                     <label class="form-label">کدرشته</label>
                     <input name="code" value="{{ request('code') }}" class="form-control ltr">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">جستجو</label>
+                    <input name="search" value="{{ request('search') }}" class="form-control">
                 </div>
                 <div class="col-md-2 d-flex align-items-end gap-2">
                     <button class="btn btn-primary flex-grow-1"><i class="ri-search-line align-middle"></i> جستجو</button>
@@ -82,8 +106,10 @@
                     <th>رشته</th>
                     <th>دانشگاه / مؤسسه</th>
                     <th>شهر</th>
+                    <th>استان</th>
                     <th>نوع دوره</th>
                     <th>پذیرش</th>
+                    <th>وضعیت توضیحات</th>
                     <th></th>
                 </tr>
                 </thead>
@@ -94,13 +120,15 @@
                         <td>{{ $program->examGroup?->name }}</td>
                         <td>{{ $program->academicField?->name ?: '-' }}</td>
                         <td>{{ $program->institution?->name ?: '-' }}</td>
-                        <td>{{ $program->city?->name ?: $program->province?->name ?: '-' }}</td>
+                        <td>{{ $program->city?->name ?: '-' }}</td>
+                        <td>{{ $program->province?->name ?: '-' }}</td>
                         <td><span class="badge bg-info">{{ $program->courseType?->name ?: '-' }}</span></td>
                         <td><span class="badge bg-secondary">{{ $program->admissionType?->name ?: '-' }}</span></td>
+                        <td>{!! $program->description ? '<span class="badge bg-success">دارای توضیحات</span>' : '-' !!}</td>
                         <td><a class="btn btn-sm btn-outline-primary" href="{{ route('admin.study-programs.show', $program) }}">مشاهده</a></td>
                     </tr>
                 @empty
-                    <tr><td colspan="8"><div class="empty-state">رشته‌محلی یافت نشد.</div></td></tr>
+                    <tr><td colspan="10"><div class="empty-state">رشته‌محلی یافت نشد.</div></td></tr>
                 @endforelse
                 </tbody>
             </table>
@@ -118,10 +146,43 @@
             city.innerHTML = '<option value="">همه شهرها</option>';
             city.disabled = !this.value;
             if (!this.value) return;
-            const response = await fetch(`{{ route('admin.study-programs.cities') }}?province_id=${this.value}&only_with_programs=1`);
+            const params = new URLSearchParams({
+                province_id: this.value,
+                exam_year_id: document.getElementById('yearSelect')?.value || '',
+                exam_group_id: document.getElementById('groupSelect')?.value || '',
+                only_with_programs: '1'
+            });
+            const response = await fetch(`{{ route('admin.study-programs.filter-options.cities') }}?${params}`);
             for (const item of await response.json()) {
                 city.add(new Option(item.name, item.id));
             }
         });
+
+        async function loadRemoteSelect(selectId, searchId, url) {
+            const select = document.getElementById(selectId);
+            const search = document.getElementById(searchId);
+            if (!select || !search) return;
+            const load = async () => {
+                const params = new URLSearchParams({
+                    search: search.value,
+                    exam_year_id: document.getElementById('yearSelect')?.value || '',
+                    exam_group_id: document.getElementById('groupSelect')?.value || '',
+                    province_id: document.getElementById('provinceSelect')?.value || '',
+                    city_id: document.getElementById('citySelect')?.value || '',
+                    institution_id: document.getElementById('institutionSelect')?.value || '',
+                });
+                const selected = select.value;
+                select.innerHTML = '<option value="">همه</option>';
+                const response = await fetch(`${url}?${params}`);
+                for (const item of (await response.json()).results) {
+                    select.add(new Option(item.text, item.id, false, String(item.id) === selected));
+                }
+            };
+            search.addEventListener('input', load);
+            select.addEventListener('focus', load, { once: true });
+        }
+
+        loadRemoteSelect('institutionSelect', 'institutionSearch', '{{ route('admin.study-programs.filter-options.institutions') }}');
+        loadRemoteSelect('fieldSelect', 'fieldSearch', '{{ route('admin.study-programs.filter-options.academic-fields') }}');
     </script>
 @endpush

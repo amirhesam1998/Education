@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'exam_group_id',
     'source_path',
     'source_filename',
+    'source_file',
     'file_hash',
     'status',
     'total_rows',

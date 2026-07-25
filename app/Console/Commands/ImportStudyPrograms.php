@@ -9,7 +9,7 @@ use Illuminate\Console\Command;
 class ImportStudyPrograms extends Command
 {
     protected $signature = 'education:import-study-programs
-        {--path= : پوشه فایل‌های V2}
+        {--path= : پوشه فایل‌های V3}
         {--file= : مسیر یک فایل مشخص}
         {--year=1404 : سال آزمون}
         {--group= : گروه آزمون}
@@ -23,12 +23,12 @@ class ImportStudyPrograms extends Command
         {--skip-reference : عدم import مرجع سراسری}
         {--rollback-import= : در این نسخه پشتیبانی نمی‌شود}';
 
-    protected $description = 'Import V2 Iranian university study programs.';
+    protected $description = 'Import V3 Iranian university study programs.';
 
     public function handle(StudyProgramFileDiscovery $files, StudyProgramImporter $importer): int
     {
         $started = microtime(true);
-        $path = $this->option('path') ?: base_path('Docs/v2');
+        $path = $this->option('path') ?: base_path('Docs');
         $detected = $files->discover($path, $this->option('group'), $this->option('file'));
         $totals = ['files_detected' => $detected->count(), 'files_processed' => 0, 'reference_rows' => 0, 'reference_skipped' => 0, 'total_rows' => 0, 'inserted' => 0, 'updated' => 0, 'unchanged' => 0, 'review_rows' => 0, 'skipped' => 0, 'failed' => 0];
 
@@ -38,7 +38,7 @@ class ImportStudyPrograms extends Command
         }
 
         if ($detected->isEmpty()) {
-            $this->error('فایل V2 معتبری پیدا نشد.');
+            $this->error('فایل V3 معتبری پیدا نشد.');
             return self::FAILURE;
         }
 
@@ -86,4 +86,3 @@ class ImportStudyPrograms extends Command
         return self::SUCCESS;
     }
 }
-

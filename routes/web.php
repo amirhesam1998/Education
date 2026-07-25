@@ -108,6 +108,15 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function (): v
     Route::get('/study-programs/cities', [StudyProgramController::class, 'cities'])
         ->middleware('permission:view_reports')
         ->name('study-programs.cities');
+    Route::get('/study-programs/filter-options/cities', [StudyProgramController::class, 'cities'])
+        ->middleware('permission:view_reports')
+        ->name('study-programs.filter-options.cities');
+    Route::get('/study-programs/filter-options/institutions', [StudyProgramController::class, 'institutions'])
+        ->middleware('permission:view_reports')
+        ->name('study-programs.filter-options.institutions');
+    Route::get('/study-programs/filter-options/academic-fields', [StudyProgramController::class, 'academicFields'])
+        ->middleware('permission:view_reports')
+        ->name('study-programs.filter-options.academic-fields');
     Route::get('/study-programs/reviews', [StudyProgramController::class, 'reviews'])
         ->middleware('permission:view_reports')
         ->name('study-programs.reviews');

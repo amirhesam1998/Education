@@ -41,7 +41,7 @@ class StudyProgramNormalizationTest extends TestCase
         $this->assertSame("\u{0631}\u{0648}\u{0632}\u{0627}\u{0646}\u{0647}", $mapper->courseTypeName('day'));
         $this->assertSame("\u{0633}\u{0648}\u{0627}\u{0628}\u{0642} \u{062A}\u{062D}\u{0635}\u{06CC}\u{0644}\u{06CC}", $mapper->admissionTypeName('academic_records'));
         $this->assertSame("\u{06AF}\u{06CC}\u{0644}\u{0627}\u{0646}", $mapper->validProvince("\u{06AF}\u{06CC}\u{0644}\u{0627}\u{0646}"));
-        $this->assertNull($mapper->validProvince("\u{0627}\u{0633}\u{062A}\u{0627}\u{0646} \u{06AF}\u{06CC}\u{0644}\u{0627}\u{0646}"));
+        $this->assertSame("\u{06AF}\u{06CC}\u{0644}\u{0627}\u{0646}", $mapper->validProvince("\u{0627}\u{0633}\u{062A}\u{0627}\u{0646} \u{06AF}\u{06CC}\u{0644}\u{0627}\u{0646}"));
     }
 
     #[Test]

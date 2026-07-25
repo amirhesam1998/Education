@@ -20,8 +20,9 @@ class XlsxRowReader
         $shared = $this->sharedStrings($zip);
         $rels = $this->relations($zip);
         $workbook = simplexml_load_string((string) $zip->getFromName('xl/workbook.xml'));
+        $sheets = $workbook?->xpath('//*[local-name()="sheet"]') ?: [];
 
-        foreach ($workbook->sheets->sheet as $sheet) {
+        foreach ($sheets as $sheet) {
             $attrs = $sheet->attributes('r', true);
             $path = $rels[(string) $attrs['id']] ?? null;
 
@@ -94,7 +95,7 @@ class XlsxRowReader
         $xml = simplexml_load_string((string) $zip->getFromName('xl/_rels/workbook.xml.rels'));
         $rels = [];
 
-        foreach ($xml->Relationship as $rel) {
+        foreach (($xml?->xpath('//*[local-name()="Relationship"]') ?: []) as $rel) {
             $target = (string) $rel['Target'];
             $rels[(string) $rel['Id']] = str_starts_with($target, '/') ? ltrim($target, '/') : 'xl/'.ltrim($target, '/');
         }

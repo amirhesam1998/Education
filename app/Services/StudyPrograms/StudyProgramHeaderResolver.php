@@ -34,6 +34,8 @@ class StudyProgramHeaderResolver
         'source_hash' => ['هش منبع'],
     ];
 
+    public const V3 = self::V2;
+
     public const REFERENCE = [
         'province' => ['استان'],
         'city' => ['شهر'],
@@ -68,4 +70,3 @@ class StudyProgramHeaderResolver
         return $map;
     }
 }
-

@@ -81,7 +81,7 @@ class BackupStudyPrograms extends Command
         $files[basename($metadataPath)] = hash_file('sha256', $metadataPath);
 
         $manifest = [
-            'backup_timestamp' => now()->toDateTimeString(),
+            'timestamp' => now()->toDateTimeString(),
             'database_connection' => DB::connection()->getName(),
             'affected_tables' => array_keys($counts),
             'row_counts' => $counts,
@@ -89,8 +89,18 @@ class BackupStudyPrograms extends Command
             'status' => 'success',
         ];
 
-        $manifestPath = $dir.'/manifest.json';
+        $manifestPath = $dir.'/backup-manifest.json';
         file_put_contents($manifestPath, json_encode($manifest, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+
+        $legacyManifestPath = $dir.'/manifest.json';
+        copy($manifestPath, $legacyManifestPath);
+
+        foreach ($files as $filename => $checksum) {
+            if (! is_file($dir.'/'.$filename) || hash_file('sha256', $dir.'/'.$filename) !== $checksum) {
+                $this->error('اعتبارسنجی بکاپ ناموفق بود.');
+                return self::FAILURE;
+            }
+        }
 
         if (! is_readable($manifestPath)) {
             $this->error('اعتبارسنجی بکاپ ناموفق بود.');

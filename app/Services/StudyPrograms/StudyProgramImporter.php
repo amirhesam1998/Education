@@ -34,26 +34,35 @@ class StudyProgramImporter
     public function importReference(string $file, bool $dryRun = false): array
     {
         $stats = ['reference_rows' => 0, 'reference_skipped' => 0];
-        $header = null;
-        $map = null;
+        $headers = [];
+        $maps = [];
 
         foreach ($this->reader->rows($file) as $row) {
-            if ($row['sheet'] !== 'مرجع سراسری') {
+            $sheet = $this->normalizer->lookup($row['sheet']);
+            if (! in_array($sheet, [
+                $this->normalizer->lookup('دانشگاه‌ها و شهرها'),
+                $this->normalizer->lookup('مرجع دانشگاه‌ها'),
+                $this->normalizer->lookup('شهرهای مرجع'),
+            ], true)) {
                 continue;
             }
 
-            if (! $header) {
-                $header = array_values($row['values']);
-                $map = $this->headers->resolve($header, StudyProgramHeaderResolver::REFERENCE, ['province', 'city', 'institution']);
+            if (! isset($headers[$row['sheet']])) {
+                $headers[$row['sheet']] = array_values($row['values']);
+                $required = $sheet === $this->normalizer->lookup('شهرهای مرجع')
+                    ? ['province', 'city']
+                    : ['province', 'city', 'institution'];
+                $maps[$row['sheet']] = $this->headers->resolve($headers[$row['sheet']], StudyProgramHeaderResolver::REFERENCE, $required);
                 continue;
             }
 
+            $map = $maps[$row['sheet']];
             $province = $this->mapper->validProvince($this->cell($row, $map, 'province'));
             $city = $this->cell($row, $map, 'city');
             $institution = $this->cell($row, $map, 'institution');
             $campus = $this->cell($row, $map, 'campus');
 
-            if (! $province || ! $city || ! $institution) {
+            if (! $province || ! $city || $this->cityReviewReason($city, $province, false)) {
                 $stats['reference_skipped']++;
                 continue;
             }
@@ -64,8 +73,10 @@ class StudyProgramImporter
             if (! $dryRun) {
                 $provinceId = $this->province($province);
                 $cityId = $this->city($city, $provinceId);
-                $institutionId = $this->institution($institution, $provinceId, $cityId);
-                $campus && $this->campus($campus, $institutionId, $provinceId, $cityId);
+                if ($institution) {
+                    $institutionId = $this->institution($institution, $provinceId, $cityId);
+                    $campus && $this->campus($campus, $institutionId, $provinceId, $cityId);
+                }
             }
         }
 
@@ -77,10 +88,9 @@ class StudyProgramImporter
         $chunkSize = min(max((int) ($options['chunk'] ?? 1000), 500), 1000);
         $dryRun = (bool) ($options['dry_run'] ?? false);
         $this->dryRun = $dryRun;
-        $force = (bool) ($options['force'] ?? false);
         $onlyValidated = (bool) ($options['only_validated'] ?? false);
         $fileHash = hash_file('sha256', $file);
-        $lock = Cache::lock("study-program-v2:$year:$groupSlug:$fileHash", 600);
+        $lock = Cache::lock("study-program-v3:$year:$groupSlug:$fileHash", 600);
 
         if (! $lock->get()) {
             throw new RuntimeException('این فایل هم‌زمان در حال import است.');
@@ -90,19 +100,16 @@ class StudyProgramImporter
             $examYear = $dryRun ? $this->fakeYear($year) : ExamYear::query()->firstOrCreate(['year' => $year], ['is_active' => true]);
             $examGroup = $dryRun ? $this->fakeGroup($groupSlug) : ExamGroup::query()->firstOrCreate(['slug' => $groupSlug], ['name' => StudyProgramValueMapper::EXAM_GROUPS[$groupSlug] ?? $groupSlug]);
 
-            if (! $force && ! $dryRun && StudyProgramImport::query()->where('file_hash', $fileHash)->where('status', 'completed')->exists()) {
-                return $this->summary(['skipped' => 1]);
-            }
-
             $import = $dryRun ? null : StudyProgramImport::query()->create([
                 'exam_year_id' => $examYear->id,
                 'exam_group_id' => $examGroup->id,
                 'source_path' => $file,
                 'source_filename' => basename($file),
+                'source_file' => basename($file),
                 'file_hash' => $fileHash,
                 'status' => 'running',
                 'started_at' => now(),
-                'metadata' => ['v2' => true],
+                'metadata' => ['v3' => true],
             ]);
 
             $stats = $this->summary();
@@ -111,13 +118,17 @@ class StudyProgramImporter
             $this->preload();
 
             foreach ($this->reader->rows($file) as $row) {
-                if (! in_array($row['sheet'], ['کدرشته‌ها', 'نیازمند بررسی'], true)) {
+                $sheet = $this->normalizer->lookup($row['sheet']);
+                if (! in_array($sheet, [
+                    $this->normalizer->lookup('کدرشته‌ها'),
+                    $this->normalizer->lookup('نیازمند بررسی'),
+                ], true)) {
                     continue;
                 }
 
                 if (! isset($headers[$row['sheet']])) {
                     $headers[$row['sheet']] = array_values($row['values']);
-                    $maps[$row['sheet']] = $this->headers->resolve($headers[$row['sheet']], StudyProgramHeaderResolver::V2, ['code', 'province', 'city', 'course_type_slug', 'academic_field', 'institution', 'admission_type_slug', 'validation_status']);
+                    $maps[$row['sheet']] = $this->headers->resolve($headers[$row['sheet']], StudyProgramHeaderResolver::V3, ['code', 'province', 'city', 'course_type_slug', 'academic_field', 'institution', 'admission_type_slug', 'validation_status']);
                     continue;
                 }
 
@@ -126,13 +137,13 @@ class StudyProgramImporter
                     continue;
                 }
 
-                $data = $this->rowData($row, $maps[$row['sheet']], $examYear->id, $examGroup->id, basename($file), $groupSlug, $stats);
+                $data = $this->rowData($row, $maps[$row['sheet']], $year, $examYear->id, $examGroup->id, basename($file), $groupSlug, $stats);
 
-                if ($row['sheet'] === 'کدرشته‌ها' && $status !== 'تأیید ساختاری') {
+                if ($sheet === $this->normalizer->lookup('کدرشته‌ها') && $this->normalizer->lookup($status) !== $this->normalizer->lookup('تأیید ساختاری')) {
                     continue;
                 }
 
-                if ($row['sheet'] === 'نیازمند بررسی') {
+                if ($sheet === $this->normalizer->lookup('نیازمند بررسی')) {
                     if (! $onlyValidated) {
                         $reviews[] = $data['review'];
                         $stats['review_rows']++;
@@ -180,7 +191,7 @@ class StudyProgramImporter
         }
     }
 
-    private function rowData(array $row, array $map, int $yearId, int $groupId, string $fallbackFile, string $expectedGroup, array &$stats): array
+    private function rowData(array $row, array $map, int $year, int $yearId, int $groupId, string $fallbackFile, string $expectedGroup, array &$stats): array
     {
         $raw = $row['values'];
         $code = $this->cell($row, $map, 'code');
@@ -192,8 +203,9 @@ class StudyProgramImporter
         $courseSlug = $this->cell($row, $map, 'course_type_slug');
         $admissionSlug = $this->cell($row, $map, 'admission_type_slug');
         $sourceFile = $this->cell($row, $map, 'source_file') ?: $fallbackFile;
-        $sourceHash = $this->cell($row, $map, 'source_hash') ?: hash('sha256', json_encode($raw, JSON_UNESCAPED_UNICODE));
         $validationStatus = $this->cell($row, $map, 'validation_status');
+        $description = $this->cell($row, $map, 'description');
+        $cityProblem = $this->cityReviewReason($cityName, $provinceName);
         $review = [];
         $blockingReview = [];
 
@@ -205,13 +217,17 @@ class StudyProgramImporter
             $review[] = 'استان نامعتبر';
             $blockingReview[] = 'استان نامعتبر';
         }
-        if (! $cityName) {
-            $review[] = 'شهر نامعتبر';
-            $blockingReview[] = 'شهر نامعتبر';
+        if (! $cityName || $cityProblem) {
+            $review[] = $cityProblem ?: 'شهر نامعتبر';
+            $blockingReview[] = $cityProblem ?: 'شهر نامعتبر';
         }
         if (! isset(StudyProgramValueMapper::COURSE_TYPES[$courseSlug])) {
             $review[] = 'نوع دوره نامعتبر';
             $blockingReview[] = 'نوع دوره نامعتبر';
+        }
+        if (! $fieldName) {
+            $review[] = 'رشته نامعتبر';
+            $blockingReview[] = 'رشته نامعتبر';
         }
         if (! isset(StudyProgramValueMapper::ADMISSION_TYPES[$admissionSlug]) || $admissionSlug === 'unknown') {
             $review[] = 'نحوه پذیرش نامعتبر';
@@ -223,7 +239,7 @@ class StudyProgramImporter
         }
 
         $provinceId = $provinceName ? $this->province($provinceName) : null;
-        $cityId = $cityName && $provinceId ? $this->city($cityName, $provinceId) : null;
+        $cityId = $cityName && $provinceId && ! $cityProblem ? $this->city($cityName, $provinceId) : null;
 
         $institutionId = $institutionName && $provinceId && $cityId ? $this->institution($institutionName, $provinceId, $cityId) : null;
         $campusId = $campusName && $institutionId ? $this->campus($campusName, $institutionId, $provinceId, $cityId) : null;
@@ -232,9 +248,26 @@ class StudyProgramImporter
         $admissionTypeId = isset(StudyProgramValueMapper::ADMISSION_TYPES[$admissionSlug]) ? $this->slugLookup(AdmissionType::class, $admissionSlug, StudyProgramValueMapper::ADMISSION_TYPES[$admissionSlug]) : null;
         $capacity1 = $this->integer($this->cell($row, $map, 'first_capacity'), $review, 'ظرفیت نیمسال اول نامعتبر');
         $capacity2 = $this->integer($this->cell($row, $map, 'second_capacity'), $review, 'ظرفیت نیمسال دوم نامعتبر');
-        $identityInput = implode('|', [$yearId, $expectedGroup, $code, $this->normalizer->lookup($institutionName), $this->normalizer->lookup($campusName), $this->normalizer->lookup($fieldName), $courseSlug]);
+        $identityInput = implode('|', [$year, $expectedGroup, $code, $this->normalizer->lookup($institutionName), $this->normalizer->lookup($campusName), $this->normalizer->lookup($fieldName), $courseSlug]);
         $identityHash = hash('sha256', $identityInput);
-        $sourceReviewReason = $validationStatus === 'تأیید ساختاری' ? null : $this->cell($row, $map, 'review_reason');
+        $sourceHash = $this->sourceHash([
+            'code' => $code,
+            'province' => $provinceName,
+            'city' => $cityName,
+            'institution' => $institutionName,
+            'campus' => $campusName,
+            'academic_field' => $fieldName,
+            'course_type' => $courseSlug,
+            'admission_type' => $admissionSlug,
+            'accepts_male' => $this->cell($row, $map, 'accepts_male'),
+            'accepts_female' => $this->cell($row, $map, 'accepts_female'),
+            'first_capacity' => $this->cell($row, $map, 'first_capacity'),
+            'second_capacity' => $this->cell($row, $map, 'second_capacity'),
+            'description' => $description,
+            'booklet_page' => $this->cell($row, $map, 'booklet_page'),
+            'booklet_section' => $this->cell($row, $map, 'booklet_section'),
+        ]);
+        $sourceReviewReason = $this->normalizer->lookup($validationStatus) === $this->normalizer->lookup('تأیید ساختاری') ? null : $this->cell($row, $map, 'review_reason');
         $reviewReason = trim(implode('، ', array_filter([$sourceReviewReason, ...$review])));
 
         $base = [
@@ -267,13 +300,15 @@ class StudyProgramImporter
                 'accepts_female' => $this->gender($this->cell($row, $map, 'accepts_female'), 'زن'),
                 'first_semester_capacity' => $capacity1,
                 'second_semester_capacity' => $capacity2,
-                'description' => $this->cell($row, $map, 'description'),
+                'description' => $description,
                 'booklet_page' => $this->integer($this->cell($row, $map, 'booklet_page'), $review, 'صفحه دفترچه نامعتبر'),
                 'booklet_section' => $this->cell($row, $map, 'booklet_section'),
                 'city_detection_method' => $this->cell($row, $map, 'city_detection_method'),
                 'validation_status' => 'validated',
             ],
-            'review' => $base + [
+            'review' => [
+                'source_hash' => hash('sha256', $sourceHash.'|review|'.$fallbackFile.'|'.$row['sheet'].'|'.($row['row'] ?? '')),
+            ] + $base + [
                 'review_reason' => $reviewReason ?: 'نیازمند بررسی',
                 'status' => 'pending',
             ],
@@ -314,6 +349,12 @@ class StudyProgramImporter
             CourseType::class => CourseType::query()->pluck('id', 'slug')->all(),
             AdmissionType::class => AdmissionType::query()->pluck('id', 'slug')->all(),
         ];
+
+        foreach (Province::query()->with('cities')->get() as $province) {
+            foreach ($province->cities as $city) {
+                $this->referenceCities[$province->normalized_name][$city->normalized_name] = true;
+            }
+        }
     }
 
     private function cell(array $row, array $map, string $key): ?string
@@ -410,6 +451,43 @@ class StudyProgramImporter
     private function gender(?string $value, string $expected): ?bool
     {
         return $value === null ? null : str_contains($this->normalizer->lookup($value), $this->normalizer->lookup($expected));
+    }
+
+    private function cityReviewReason(?string $city, ?string $province, bool $requireKnown = true): ?string
+    {
+        $cityLookup = $this->normalizer->lookup($city);
+        if ($cityLookup === '') {
+            return 'شهر نامعتبر';
+        }
+
+        if (preg_match('/\b\d{5}\b/u', $cityLookup) || str_contains($cityLookup, 'دانشگاه') || str_contains($cityLookup, 'استان')) {
+            return 'شهر خارج از مرجع V3';
+        }
+
+        $words = preg_split('/\s+/u', $cityLookup, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        if (count($words) >= 2 && $words[0] === $words[1]) {
+            return 'شهر تکراری یا خراب';
+        }
+
+        $provinceName = $this->mapper->validProvince($province);
+        if ($requireKnown && $provinceName && $this->referenceCities) {
+            $provinceLookup = $this->normalizer->lookup($provinceName);
+            if (! isset($this->referenceCities[$provinceLookup][$cityLookup])) {
+                return 'شهر خارج از مرجع V3';
+            }
+        }
+
+        return null;
+    }
+
+    private function sourceHash(array $values): string
+    {
+        $normalized = [];
+        foreach ($values as $key => $value) {
+            $normalized[$key] = $this->normalizer->nullable((string) $value);
+        }
+
+        return hash('sha256', json_encode($normalized, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
     }
 
     private function fakeYear(int $year): ExamYear

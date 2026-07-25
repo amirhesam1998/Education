@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Schema;
 
 class ResetStudyPrograms extends Command
 {
-    protected $signature = 'education:reset-study-programs {--year=1404} {--confirm-reset} {--force-without-backup}';
+    protected $signature = 'education:reset-study-programs {--year=1404} {--confirm-reset}';
     protected $description = 'Delete old study-program data after a verified backup.';
 
     public const OFFICIAL_PROVINCES = [
@@ -28,7 +28,7 @@ class ResetStudyPrograms extends Command
             return self::FAILURE;
         }
 
-        if (! $this->option('force-without-backup') && ! $this->latestBackupManifest()) {
+        if (! $this->latestBackupManifest()) {
             $this->error('بکاپ موفق پیدا نشد. ابتدا education:backup-study-programs را اجرا کنید.');
             return self::FAILURE;
         }
@@ -80,33 +80,34 @@ class ResetStudyPrograms extends Command
                     ->delete();
             }
 
-            if (Schema::hasTable('institution_campuses')) {
-                $deleted['orphan_campuses'] = DB::table('institution_campuses')
+            $malformedCityIds = DB::table('cities')
+                ->where(fn ($q) => $q
+                    ->where('name', 'like', '%دانشگاه%')
+                    ->orWhere('name', 'like', '%استان%')
+                    ->orWhere('name', 'regexp', '(^| )[0-9]{5}($| )')
+                    ->orWhereRaw("name like '% %' and substring_index(name, ' ', 1) = substring_index(substring_index(name, ' ', 2), ' ', -1)"))
+                ->pluck('id');
+
+            if ($malformedCityIds->isNotEmpty() && Schema::hasTable('institution_campuses')) {
+                $deleted['malformed_city_orphan_campuses'] = DB::table('institution_campuses')
+                    ->whereIn('city_id', $malformedCityIds)
                     ->whereNotExists(fn ($q) => $q->selectRaw(1)->from('study_programs')->whereColumn('study_programs.institution_campus_id', 'institution_campuses.id'))
                     ->delete();
             }
 
-            $deleted['orphan_institutions'] = DB::table('institutions')
-                ->whereNotExists(fn ($q) => $q->selectRaw(1)->from('study_programs')->whereColumn('study_programs.institution_id', 'institutions.id'))
-                ->whereNotExists(fn ($q) => $q->selectRaw(1)->from('institution_campuses')->whereColumn('institution_campuses.institution_id', 'institutions.id'))
-                ->delete();
+            if ($malformedCityIds->isNotEmpty()) {
+                $deleted['malformed_city_orphan_institutions'] = DB::table('institutions')
+                    ->whereIn('city_id', $malformedCityIds)
+                    ->whereNotExists(fn ($q) => $q->selectRaw(1)->from('study_programs')->whereColumn('study_programs.institution_id', 'institutions.id'))
+                    ->whereNotExists(fn ($q) => $q->selectRaw(1)->from('institution_campuses')->whereColumn('institution_campuses.institution_id', 'institutions.id'))
+                    ->delete();
+            }
 
-            $deleted['orphan_cities'] = DB::table('cities')
+            $deleted['malformed_orphan_cities'] = DB::table('cities')
+                ->whereIn('id', $malformedCityIds)
                 ->whereNotExists(fn ($q) => $q->selectRaw(1)->from('study_programs')->whereColumn('study_programs.city_id', 'cities.id'))
                 ->whereNotExists(fn ($q) => $q->selectRaw(1)->from('institutions')->whereColumn('institutions.city_id', 'cities.id'))
                 ->whereNotExists(fn ($q) => $q->selectRaw(1)->from('institution_campuses')->whereColumn('institution_campuses.city_id', 'cities.id'))
-                ->delete();
-
-            $deleted['orphan_academic_fields'] = DB::table('academic_fields')
-                ->whereNotExists(fn ($q) => $q->selectRaw(1)->from('study_programs')->whereColumn('study_programs.academic_field_id', 'academic_fields.id'))
-                ->delete();
-
-            $deleted['orphan_course_types'] = DB::table('course_types')
-                ->whereNotExists(fn ($q) => $q->selectRaw(1)->from('study_programs')->whereColumn('study_programs.course_type_id', 'course_types.id'))
-                ->delete();
-
-            $deleted['orphan_admission_types'] = DB::table('admission_types')
-                ->whereNotExists(fn ($q) => $q->selectRaw(1)->from('study_programs')->whereColumn('study_programs.admission_type_id', 'admission_types.id'))
                 ->delete();
 
             $deleted['malformed_orphan_provinces'] = DB::table('provinces')
@@ -124,12 +125,17 @@ class ResetStudyPrograms extends Command
 
     private function latestBackupManifest(): ?string
     {
-        $manifests = glob(storage_path('app/backups/study-programs/*/manifest.json')) ?: [];
+        $manifests = array_merge(
+            glob(storage_path('app/backups/study-programs/*/backup-manifest.json')) ?: [],
+            glob(storage_path('app/backups/study-programs/*/manifest.json')) ?: [],
+        );
         rsort($manifests);
 
         foreach ($manifests as $manifest) {
             $data = json_decode((string) file_get_contents($manifest), true);
-            if (($data['status'] ?? null) === 'success') {
+            $dir = dirname($manifest);
+            $verified = collect($data['files'] ?? [])->every(fn ($checksum, $file) => is_file($dir.'/'.$file) && hash_file('sha256', $dir.'/'.$file) === $checksum);
+            if (($data['status'] ?? null) === 'success' && $verified) {
                 return $manifest;
             }
         }
