@@ -52,7 +52,7 @@ class ReservationController extends Controller
 
         return view('admin.reservations.index', [
             'reservations' => $reservations,
-            'advisors' => Advisor::query()->orderBy('name')->get(),
+            'advisors' => Advisor::query()->selectableConsultants()->get(),
             'statuses' => ReservationStatus::options(),
         ]);
     }

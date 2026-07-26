@@ -6,7 +6,9 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -18,6 +20,13 @@ class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, HasRoles, Notifiable;
+
+    public const ROLE_CONSULTANT = 'Consultant';
+
+    public function advisor(): HasOne
+    {
+        return $this->hasOne(Advisor::class);
+    }
 
     public function createdReservations(): HasMany
     {
@@ -32,6 +41,13 @@ class User extends Authenticatable
     public function activityLogs(): HasMany
     {
         return $this->hasMany(ActivityLog::class);
+    }
+
+    public function scopeActiveConsultants(Builder $query): Builder
+    {
+        return $query
+            ->where('status', 'active')
+            ->whereHas('roles', fn (Builder $roleQuery) => $roleQuery->where('name', self::ROLE_CONSULTANT));
     }
 
     /**

@@ -3,9 +3,13 @@
 namespace App\Http\Requests\Admin;
 
 use App\Enums\SlotStatus;
+use App\Models\Advisor;
+use App\Models\ReservationSlot;
 use App\Support\PersianDate;
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class UpdateSlotRequest extends FormRequest
 {
@@ -24,13 +28,32 @@ class UpdateSlotRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'advisor_id' => ['required', 'exists:advisors,id'],
+            'advisor_id' => ['required', 'integer', $this->consultantAdvisorRule()],
             'date' => ['required', 'date'],
             'start_time' => ['required', 'date_format:H:i'],
             'end_time' => ['required', 'date_format:H:i', 'after:start_time'],
             'capacity' => ['required', 'integer', 'min:1', 'max:50'],
             'status' => ['required', Rule::in(array_keys(SlotStatus::options()))],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+
+            if ($this->hasSlotOverlap(
+                (int) $this->input('advisor_id'),
+                (string) $this->input('date'),
+                (string) $this->input('start_time'),
+                (string) $this->input('end_time'),
+                $this->route('slot')?->id,
+            )) {
+                $validator->errors()->add('start_time', 'برای این مشاور در این بازه زمانی قبلا تایم ثبت شده است.');
+            }
+        });
     }
 
     public function attributes(): array
@@ -43,5 +66,28 @@ class UpdateSlotRequest extends FormRequest
             'capacity' => 'ظرفیت',
             'status' => 'وضعیت',
         ];
+    }
+
+    private function consultantAdvisorRule(): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail): void {
+            $slot = $this->route('slot');
+            $include = $slot instanceof ReservationSlot ? $slot->advisor : null;
+
+            if (! Advisor::query()->selectableConsultants($include)->whereKey($value)->exists()) {
+                $fail('مشاور انتخاب شده معتبر نیست.');
+            }
+        };
+    }
+
+    private function hasSlotOverlap(int $advisorId, string $date, string $startTime, string $endTime, ?int $ignoreSlotId): bool
+    {
+        return ReservationSlot::query()
+            ->where('advisor_id', $advisorId)
+            ->whereDate('date', $date)
+            ->where('start_time', '<', $endTime)
+            ->where('end_time', '>', $startTime)
+            ->when($ignoreSlotId, fn ($query) => $query->where('id', '!=', $ignoreSlotId))
+            ->exists();
     }
 }

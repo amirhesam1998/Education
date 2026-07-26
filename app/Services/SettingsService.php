@@ -53,6 +53,11 @@ class SettingsService
         return max(1, (int) $this->get('reservation_duration_minutes', 15));
     }
 
+    public function minimumPrepaymentAmount(): int
+    {
+        return max(0, (int) $this->get('minimum_prepayment_amount', 1000));
+    }
+
     /**
      * @return array<int, array{amount:int, label:string, is_active:bool}>
      */

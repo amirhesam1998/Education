@@ -16,8 +16,10 @@ class UpdateReservationRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $prepaymentRequired = $this->boolean('prepayment_required');
+
         $this->merge([
-            'prepayment_required' => $this->boolean('prepayment_required'),
+            'prepayment_required' => $prepaymentRequired,
             'payment_deadline_at' => PersianDate::toGregorianDateTime($this->input('payment_deadline_at')),
             'exam_type' => is_array($this->input('exam_type')) ? array_values(array_filter($this->input('exam_type'))) : [],
             ...$this->parsedReservationInterval(),
@@ -29,6 +31,7 @@ class UpdateReservationRequest extends FormRequest
         $settings = app(SettingsService::class);
         $majors = $settings->get('majors', []);
         $examTypes = $settings->get('exam_types', []);
+        $prepaymentRequired = $this->boolean('prepayment_required');
 
         return [
             'full_name' => ['nullable', 'string', 'max:255'],
@@ -43,9 +46,9 @@ class UpdateReservationRequest extends FormRequest
             'reserved_start_time' => ['required', 'date_format:H:i'],
             'reserved_end_time' => ['required', 'date_format:H:i', 'after:reserved_start_time'],
             'prepayment_required' => ['boolean'],
-            'prepayment_amount' => [Rule::requiredIf($this->boolean('prepayment_required')), 'nullable', 'integer', 'min:1000'],
-            'payment_card_id' => [Rule::requiredIf($this->boolean('prepayment_required')), 'nullable', 'exists:payment_cards,id'],
-            'payment_deadline_at' => [Rule::requiredIf($this->boolean('prepayment_required')), 'nullable', 'date'],
+            'prepayment_amount' => [Rule::excludeIf(! $prepaymentRequired), Rule::requiredIf($prepaymentRequired), 'nullable', 'integer', 'min:'.$settings->minimumPrepaymentAmount()],
+            'payment_card_id' => [Rule::excludeIf(! $prepaymentRequired), Rule::requiredIf($prepaymentRequired), 'nullable', 'exists:payment_cards,id'],
+            'payment_deadline_at' => [Rule::excludeIf(! $prepaymentRequired), Rule::requiredIf($prepaymentRequired), 'nullable', 'date'],
             'admin_note' => ['nullable', 'string', 'max:5000'],
         ];
     }

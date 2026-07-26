@@ -32,7 +32,7 @@ class SlotController extends Controller
                 'status' => $request->filled('status') ? (string) $request->string('status') : null,
                 'availability' => $request->filled('availability') ? (string) $request->string('availability') : null,
             ]),
-            'advisors' => Advisor::query()->orderBy('name')->get(),
+            'advisors' => $this->consultantOptions(),
             'statuses' => SlotStatus::options(),
             'availabilityOptions' => [
                 'available' => 'نوبت آزاد',
@@ -45,7 +45,7 @@ class SlotController extends Controller
     {
         return view('admin.slots.create', [
             'slot' => new ReservationSlot(['capacity' => 1, 'status' => SlotStatus::Active]),
-            'advisors' => Advisor::query()->where('status', 'active')->orderBy('name')->get(),
+            'advisors' => $this->consultantOptions(),
             'statuses' => SlotStatus::options(),
         ]);
     }
@@ -62,7 +62,7 @@ class SlotController extends Controller
 
         return view('admin.slots.show', [
             'slot' => $slot,
-            'advisors' => Advisor::query()->orderBy('name')->get(),
+            'advisors' => $this->consultantOptions($slot),
             'activeReservationsCount' => $availability->countLoadedActiveReservations($slot),
             'remainingCapacity' => $availability->remainingCapacity($slot),
             'timelineRows' => $timeline->rowsForDate($slot, $filters),
@@ -85,7 +85,7 @@ class SlotController extends Controller
     {
         return view('admin.slots.edit', [
             'slot' => $slot,
-            'advisors' => Advisor::query()->orderBy('name')->get(),
+            'advisors' => $this->consultantOptions($slot),
             'statuses' => SlotStatus::options(),
         ]);
     }
@@ -125,6 +125,13 @@ class SlotController extends Controller
         ]);
 
         return 1;
+    }
+
+    private function consultantOptions(?ReservationSlot $slot = null)
+    {
+        return Advisor::query()
+            ->selectableConsultants($slot?->advisor)
+            ->get();
     }
 
     private function createRepeatedSlots(array $data): int

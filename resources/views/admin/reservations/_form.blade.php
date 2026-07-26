@@ -377,6 +377,38 @@
                 }
             });
         });
+
+        const requiredInput = document.getElementById('prepayment_required');
+        const prepaymentFields = Array.from(document.querySelectorAll('[data-prepayment-field]'));
+
+        function setPrepaymentFieldsEnabled(enabled, restoreDefaults = false) {
+            prepaymentFields.forEach((field) => {
+                field.classList.toggle('d-none', !enabled);
+
+                field.querySelectorAll('input, select, textarea, button').forEach((control) => {
+                    control.disabled = !enabled;
+
+                    if (!enabled && 'value' in control) {
+                        control.value = '';
+                    }
+                });
+            });
+
+            if (enabled && restoreDefaults) {
+                prepaymentFields.forEach((field) => {
+                    field.querySelectorAll('[data-default-value]').forEach((control) => {
+                        if (!control.value) {
+                            control.value = control.dataset.defaultValue || '';
+                        }
+                    });
+                });
+            }
+        }
+
+        if (requiredInput) {
+            requiredInput.addEventListener('change', () => setPrepaymentFieldsEnabled(requiredInput.checked, true));
+            setPrepaymentFieldsEnabled(requiredInput.checked);
+        }
     });
 </script>
 @endpush
@@ -542,9 +574,9 @@
                     <label class="form-check-label" for="prepayment_required">نیاز به پیش پرداخت</label>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-4" data-prepayment-field>
                 <label class="form-label">مبلغ پیش پرداخت</label>
-                <input type="number" name="prepayment_amount" id="prepayment_amount" value="{{ old('prepayment_amount', $reservation->prepayment_amount ?? $defaultPrepaymentAmount ?? '') }}" class="form-control">
+                <input type="number" name="prepayment_amount" id="prepayment_amount" value="{{ old('prepayment_amount', $reservation->prepayment_amount ?? $defaultPrepaymentAmount ?? '') }}" data-default-value="{{ $reservation->prepayment_amount ?? $defaultPrepaymentAmount ?? '' }}" class="form-control">
                 @if(! empty($prepaymentPresets))
                     <div class="d-flex flex-wrap gap-2 mt-2">
                         @foreach($prepaymentPresets as $preset)
@@ -555,7 +587,7 @@
                     </div>
                 @endif
             </div>
-            <div class="col-md-4">
+            <div class="col-md-4" data-prepayment-field>
                 <label class="form-label">شماره کارت پرداخت</label>
                 <select name="payment_card_id" class="form-select">
                     <option value="">انتخاب کارت پرداخت</option>
@@ -569,9 +601,9 @@
                     <div class="form-hint text-danger">برای رزرو دارای پیش‌پرداخت، کارت پرداخت را انتخاب کنید.</div>
                 @endif
             </div>
-            <div class="col-md-4">
+            <div class="col-md-4" data-prepayment-field>
                 <label class="form-label">مهلت پرداخت</label>
-                <input type="text" name="payment_deadline_at" value="{{ \App\Support\PersianDate::inputDateTime(old('payment_deadline_at', $reservation->payment_deadline_at ?? now()->addHours($defaultDeadlineHours ?? 24))) }}" class="form-control jalali-datetime-picker" autocomplete="off">
+                <input type="text" name="payment_deadline_at" value="{{ \App\Support\PersianDate::inputDateTime(old('payment_deadline_at', $reservation->payment_deadline_at ?? now()->addHours($defaultDeadlineHours ?? 24))) }}" data-default-value="{{ \App\Support\PersianDate::inputDateTime($reservation->payment_deadline_at ?? now()->addHours($defaultDeadlineHours ?? 24)) }}" class="form-control jalali-datetime-picker" autocomplete="off">
             </div>
         </div>
     </div>

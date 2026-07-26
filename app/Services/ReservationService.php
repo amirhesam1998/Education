@@ -40,7 +40,7 @@ class ReservationService
 
             $this->syncPhones($student, $data);
 
-            $prepaymentRequired = (bool) ($data['prepayment_required'] ?? false);
+            $prepaymentRequired = $this->prepaymentRequired($data['prepayment_required'] ?? false);
 
             $reservation = Reservation::query()->create([
                 'student_id' => $student->id,
@@ -92,7 +92,7 @@ class ReservationService
             $slot = ReservationSlot::query()->whereKey($data['slot_id'] ?? $reservation->slot_id)->lockForUpdate()->firstOrFail();
             $this->slotAvailability->assertIntervalAvailable($slot, $data['reserved_start_time'], $data['reserved_end_time'], $reservation);
 
-            $prepaymentRequired = (bool) ($data['prepayment_required'] ?? false);
+            $prepaymentRequired = $this->prepaymentRequired($data['prepayment_required'] ?? false);
             $reservation->fill([
                 'slot_id' => $slot->id,
                 'advisor_id' => $slot->advisor_id,
@@ -353,10 +353,20 @@ class ReservationService
             ['reservation_id' => $reservation->id],
             [
                 'amount' => null,
+                'receipt_image_path' => null,
                 'status' => PaymentStatus::NotRequired,
+                'uploaded_at' => null,
+                'approved_at' => null,
+                'rejected_at' => null,
+                'approved_by' => null,
                 'rejection_reason' => null,
             ],
         );
+    }
+
+    private function prepaymentRequired(mixed $value): bool
+    {
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false;
     }
 
     private function advanceStatus(Reservation $reservation): void

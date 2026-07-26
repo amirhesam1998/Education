@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreUserRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
+use App\Models\Advisor;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -42,6 +43,7 @@ class UserController extends Controller
         $data = $request->validated();
         $user = User::query()->create(Arr::except($data, ['roles', 'password_confirmation']));
         $user->syncRoles($data['roles'] ?? []);
+        Advisor::syncForUser($user);
 
         return redirect()->route('admin.users.index')->with('success', 'کاربر ثبت شد.');
     }
@@ -64,6 +66,7 @@ class UserController extends Controller
 
         $user->update(Arr::except($data, ['roles', 'password_confirmation']));
         $user->syncRoles($data['roles'] ?? []);
+        Advisor::syncForUser($user);
 
         return redirect()->route('admin.users.index')->with('success', 'کاربر بروزرسانی شد.');
     }
