@@ -45,7 +45,8 @@ class StudyProgramQuery
                 $q->where('description', 'like', '%'.$search.'%')
                     ->orWhere('code', 'like', '%'.$search.'%')
                     ->orWhereHas('institution', fn ($institution) => $institution->where('name', 'like', '%'.$search.'%'))
-                    ->orWhereHas('academicField', fn ($field) => $field->where('name', 'like', '%'.$search.'%'));
+                    ->orWhereHas('academicField', fn ($field) => $field->where('name', 'like', '%'.$search.'%'))
+                    ->orWhereHas('city', fn ($city) => $city->where('name', 'like', '%'.$search.'%'));
             }));
     }
 

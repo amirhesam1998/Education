@@ -106,6 +106,38 @@ Audit:
 php artisan education:audit-study-programs --year=1404 --format=json --output=storage\app\study-program-v2-audit.json
 ```
 
+## Snapshot Seeder / بازیابی بعد از پاک شدن دیتابیس
+
+بعد از اجرای migrationها، برای برگرداندن دیتای تمیز انتخاب‌رشته ۱۴۰۴ از snapshot seeder استفاده کن:
+
+```bash
+php artisan db:seed --class=StudyProgramsSnapshotSeeder
+```
+
+فایل seeder:
+
+```text
+database/seeders/StudyProgramsSnapshotSeeder.php
+```
+
+داده‌های snapshot:
+
+```text
+database/seeders/data/study_programs_1404/
+```
+
+این snapshot شامل lookup tableها و داده‌های انتخاب‌رشته است: `exam_years`, `exam_groups`, `provinces`, `cities`, `institutions`, `institution_campuses`, `academic_fields`, `course_types`, `admission_types`, `study_programs`, و `study_program_review_records`.
+
+اگر دیتابیس از قبل دیتای انتخاب‌رشته دارد و می‌خواهی فقط جدول‌های catalog انتخاب‌رشته دقیقاً با snapshot جایگزین شوند، در PowerShell:
+
+```powershell
+$env:STUDY_PROGRAM_SNAPSHOT_REPLACE = 'true'
+php artisan db:seed --class=StudyProgramsSnapshotSeeder
+Remove-Item Env:\STUDY_PROGRAM_SNAPSHOT_REPLACE
+```
+
+حالت replace فقط برای جدول‌های انتخاب‌رشته است و برای دیتابیس خالی لازم نیست.
+
 ## Backup And Reset
 
 Backups are written to:

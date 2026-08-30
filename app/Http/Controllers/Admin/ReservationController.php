@@ -7,6 +7,7 @@ use App\Enums\SlotStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UploadReportCardRequest;
 use App\Http\Requests\Admin\CancelReservationRequest;
+use App\Http\Requests\Admin\DisablePublicLinkRequest;
 use App\Http\Requests\Admin\ChangeReservationSlotRequest;
 use App\Http\Requests\Admin\StoreReservationFollowUpRequest;
 use App\Http\Requests\Admin\StoreReservationRequest;
@@ -87,7 +88,7 @@ class ReservationController extends Controller
 
     public function show(Reservation $reservation, SlotAvailabilityService $availability): View
     {
-        $reservation->load(['student.phones', 'slot.advisor', 'payment.approver', 'paymentCard', 'reportCards', 'activeFollowUp.slot.advisor', 'activityLogs.user']);
+        $reservation->load(['student.phones', 'slot.advisor', 'payment.approver', 'paymentCard', 'reportCards', 'activeFollowUp.slot.advisor', 'activityLogs.user', 'fieldSelectionPlans.items', 'fieldSelectionPlans.creator']);
         $slots = $this->bookableSlots($reservation->slot);
         $followUp = $reservation->activeFollowUp;
         $followUpSlots = $this->bookableSlots($followUp?->slot);
@@ -166,6 +167,20 @@ class ReservationController extends Controller
         $links->regenerate($reservation);
 
         return back()->with('success', 'لینک جدید ساخته شد.');
+    }
+
+    public function disablePublicLink(DisablePublicLinkRequest $request, Reservation $reservation, PublicReservationLinkService $links): RedirectResponse
+    {
+        $links->disable($reservation, $request->user(), $request->validated('reason'));
+
+        return back()->with('success', 'لینک عمومی رزرو موقتاً غیرفعال شد.');
+    }
+
+    public function enablePublicLink(Reservation $reservation, PublicReservationLinkService $links): RedirectResponse
+    {
+        $links->enable($reservation, request()->user());
+
+        return back()->with('success', 'لینک عمومی رزرو فعال شد.');
     }
 
     public function complete(Reservation $reservation, ReservationService $reservations): RedirectResponse

@@ -169,6 +169,17 @@
         </div>
     </div>
 
+    <div class="card mb-4">
+        <div class="card-header"><i class="ri-bank-card-line align-middle text-muted me-1"></i> وضعیت پرداخت رزروهای ثبت‌شده توسط شما</div>
+        <div class="card-body">
+            <div class="stat-grid mb-0">
+                @foreach(['paid' => ['پرداخت شده', 'ri-checkbox-circle-line', 'tone-brand'], 'unpaid' => ['پرداخت نشده', 'ri-money-dollar-circle-line', 'tone-danger'], 'pending_payment' => ['در انتظار پرداخت', 'ri-time-line', 'tone-warn'], 'pending_approval' => ['در انتظار تأیید فیش', 'ri-file-search-line', 'tone-info'], 'rejected' => ['رد شده', 'ri-close-circle-line', 'tone-danger'], 'expired' => ['منقضی شده', 'ri-calendar-close-line', 'tone-warn']] as $key => [$label, $icon, $tone])
+                    <div class="stat-card"><div><div class="stat-value">{{ \App\Support\PersianDate::number($creatorPaymentSummary[$key] ?? 0) }}</div><div class="stat-label">{{ $label }}</div></div><div class="stat-icon {{ $tone }}"><i class="{{ $icon }}"></i></div></div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+
     <div class="panel-row">
         {{-- Recent reservations table --}}
         <div class="card">

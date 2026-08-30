@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Enums\ReservationStatus;
 use App\Models\Reservation;
+use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -60,6 +62,64 @@ class PublicReservationLinkService
         }
 
         return $reservation;
+    }
+
+    public function disable(Reservation $reservation, User $user, ?string $reason = null): Reservation
+    {
+        $old = ['public_link_disabled_at' => $reservation->public_link_disabled_at, 'public_link_disabled_reason' => $reservation->public_link_disabled_reason];
+
+        $reservation->forceFill([
+            'public_link_disabled_at' => now(),
+            'public_link_disabled_by' => $user->id,
+            'public_link_disabled_reason' => $reason,
+        ])->save();
+
+        $this->activityLog->log('public_link_disabled', $reservation, $user, $old, ['reason' => $reason]);
+
+        return $reservation;
+    }
+
+    public function enable(Reservation $reservation, User $user): Reservation
+    {
+        $old = ['public_link_disabled_at' => $reservation->public_link_disabled_at, 'public_link_disabled_reason' => $reservation->public_link_disabled_reason];
+
+        $reservation->forceFill([
+            'public_link_disabled_at' => null,
+            'public_link_disabled_by' => null,
+            'public_link_disabled_reason' => null,
+        ])->save();
+
+        $this->activityLog->log('public_link_enabled', $reservation, $user, $old);
+
+        return $reservation;
+    }
+
+    public function isAccessible(Reservation $reservation): bool
+    {
+        return ! $reservation->public_link_disabled_at
+            && ! $this->isExpired($reservation)
+            && ! in_array($reservation->status?->value, ['cancelled', 'no_show'], true);
+    }
+
+    public function getBlockedReasonMessage(Reservation $reservation): string
+    {
+        if ($reservation->public_link_disabled_at) {
+            return 'لینک رزرو شما موقتاً غیرفعال شده است. لطفاً با آموزشگاه تماس بگیرید.';
+        }
+
+        if ($reservation->status === ReservationStatus::Cancelled) {
+            return 'این رزرو توسط آموزشگاه لغو شده است. لطفاً با آموزشگاه تماس بگیرید.';
+        }
+
+        if ($reservation->status === ReservationStatus::NoShow) {
+            return 'عدم حضور برای این رزرو ثبت شده است. لطفاً با آموزشگاه تماس بگیرید.';
+        }
+
+        if ($this->isExpired($reservation) || $reservation->status === ReservationStatus::Expired) {
+            return 'مهلت تکمیل اطلاعات یا پرداخت به پایان رسیده است. لطفاً با آموزشگاه تماس بگیرید.';
+        }
+
+        return 'دسترسی به این لینک رزرو امکان‌پذیر نیست. لطفاً با آموزشگاه تماس بگیرید.';
     }
 
     public function isExpired(Reservation $reservation): bool

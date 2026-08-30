@@ -9,8 +9,17 @@ composer install
 cp .env.example .env
 php artisan key:generate
 php artisan migrate --seed
+php artisan db:seed --class=StudyProgramsSnapshotSeeder
 php artisan serve
 ```
+
+اگر فقط می‌خواهید دیتای انتخاب‌رشته ۱۴۰۴ را بعداً بازیابی کنید، دستور اصلی همین است:
+
+```bash
+php artisan db:seed --class=StudyProgramsSnapshotSeeder
+```
+
+جزئیات کامل در `README-study-program-import.md` آمده است.
 
 اگر از فایلهای آپلودی خصوصی استفاده می‌کنید، نیازی به `storage:link` برای فیشها نیست؛ فیشها روی دیسک `local` و داخل `storage/app/private` ذخیره می‌شوند و فقط از مسیر محافظت شده ادمین نمایش داده می‌شوند.
 

@@ -578,6 +578,30 @@
                 </div>
             </div>
 
+            @if(in_array($reservation->status, [\App\Enums\ReservationStatus::Confirmed, \App\Enums\ReservationStatus::Completed], true))
+                @php($selectionPlans = $reservation->fieldSelectionPlans)
+                @php($selectionPlan = $selectionPlans->firstWhere('status', \App\Models\FieldSelectionPlan::STATUS_DRAFT) ?: $selectionPlans->firstWhere('status', \App\Models\FieldSelectionPlan::STATUS_PUBLISHED))
+                <div class="card card-section">
+                    <div class="card-header d-flex justify-content-between align-items-center"><span><i class="ri-list-ordered"></i> انتخاب رشته</span>
+                        @can('manage_field_selection')
+                            @if($selectionPlan)
+                                <a class="btn btn-sm btn-primary" href="{{ route('admin.reservations.field-selection.show', [$reservation, 'plan' => $selectionPlan]) }}">مدیریت انتخاب رشته</a>
+                            @else
+                                <form method="post" action="{{ route('admin.reservations.field-selection.store', $reservation) }}">@csrf<button class="btn btn-sm btn-primary">مدیریت انتخاب رشته</button></form>
+                            @endif
+                        @endcan
+                    </div>
+                    <div class="card-body">
+                        @if($selectionPlan)
+                            <div class="info-grid"><div class="info-item"><div class="info-label">نسخه فعلی</div><div class="info-value">{{ \App\Support\PersianDate::number($selectionPlan->version) }}</div></div><div class="info-item"><div class="info-label">وضعیت</div><div class="info-value">{{ $selectionPlan->status === 'published' ? 'منتشرشده' : ($selectionPlan->status === 'archived' ? 'بایگانی‌شده' : 'پیش‌نویس') }}</div></div><div class="info-item"><div class="info-label">تعداد انتخاب‌ها</div><div class="info-value">{{ \App\Support\PersianDate::number($selectionPlan->items->count()) }}</div></div></div>
+                            @can('view_field_selection')<a class="btn btn-outline-secondary mt-3" target="_blank" href="{{ route('admin.field-selection-plans.print', $selectionPlan) }}"><i class="ri-printer-line"></i> چاپ انتخاب رشته</a>@endcan
+                        @else
+                            <div class="empty-state">هنوز رشته‌ای برای این دانش‌آموز ثبت نشده است.</div>
+                        @endif
+                    </div>
+                </div>
+            @endif
+
             {{-- Activity log --}}
             <div class="card card-section mb-0">
                 <div class="card-header"><i class="ri-history-line"></i> تاریخچه فعالیت</div>
@@ -617,6 +641,11 @@
                                 <i class="ri-refresh-line align-middle"></i> ساخت لینک جدید
                             </button>
                         </form>
+                        @if($reservation->public_link_disabled_at)
+                            <form method="post" action="{{ route('admin.reservations.enable-public-link', $reservation) }}" class="mt-2">@csrf<button class="btn btn-success w-100"><i class="ri-links-line align-middle"></i> فعالسازی مجدد لینک</button></form>
+                        @else
+                            <form method="post" action="{{ route('admin.reservations.disable-public-link', $reservation) }}" class="mt-2">@csrf<textarea name="reason" rows="2" class="form-control mb-2" placeholder="دلیل غیرفعال‌سازی (اختیاری)"></textarea><button class="btn btn-outline-danger w-100"><i class="ri-forbid-2-line align-middle"></i> غیرفعال کردن موقت لینک</button></form>
+                        @endif
                     @endcan
                 </div>
             </div>

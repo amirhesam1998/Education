@@ -21,6 +21,8 @@ class PermissionRoleSeeder extends Seeder
         'view_reservations',
         'create_reservations',
         'update_reservations',
+        'manage_field_selection',
+        'view_field_selection',
         'cancel_reservations',
         'change_reservation_slot',
         'confirm_reservations',
@@ -56,6 +58,7 @@ class PermissionRoleSeeder extends Seeder
                 'create_reservations',
                 'update_reservations',
                 'change_reservation_slot',
+                'view_field_selection',
             ],
             'Accountant' => [
                 'view_dashboard',
@@ -69,6 +72,8 @@ class PermissionRoleSeeder extends Seeder
                 'view_slots',
                 'view_reservations',
                 'confirm_reservations',
+                'view_field_selection',
+                'manage_field_selection',
             ],
         ];
 

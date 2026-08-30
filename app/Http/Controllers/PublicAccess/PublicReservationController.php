@@ -8,6 +8,7 @@ use App\Http\Requests\UploadReportCardRequest;
 use App\Http\Requests\PublicAccess\CompleteReservationRequest;
 use App\Http\Requests\PublicAccess\UploadReceiptRequest;
 use App\Models\ReservationDocument;
+use App\Models\FieldSelectionPlan;
 use App\Services\PaymentApprovalService;
 use App\Services\PublicReservationLinkService;
 use App\Services\ReservationDocumentService;
@@ -26,6 +27,10 @@ class PublicReservationController extends Controller
         $this->expireIfOverdue($reservation, $links, $reservations);
         $reservation->refresh()->load(['student.phones', 'slot.advisor', 'advisor', 'payment', 'paymentCard', 'reportCards']);
 
+        if (! $links->isAccessible($reservation)) {
+            return view('public.reservation.blocked', ['message' => $links->getBlockedReasonMessage($reservation)]);
+        }
+
         return view('public.reservation.show', [
             'reservation' => $reservation,
             'settings' => $settings,
@@ -35,6 +40,11 @@ class PublicReservationController extends Controller
             'showPaymentWarning' => $flow->shouldShowPaymentWarning($reservation),
             'isLinkExpired' => $links->isExpired($reservation),
             'canUploadReportCard' => $this->canUploadReportCard($reservation, $links),
+            'publishedFieldSelectionPlan' => FieldSelectionPlan::query()
+                ->where('reservation_id', $reservation->id)
+                ->where('status', FieldSelectionPlan::STATUS_PUBLISHED)
+                ->latest('version')
+                ->first(),
         ]);
     }
 
@@ -97,22 +107,64 @@ class PublicReservationController extends Controller
     {
         $reservation = $links->validateToken($token);
 
+        if (! $links->isAccessible($reservation)) {
+            return view('public.reservation.blocked', ['message' => $links->getBlockedReasonMessage($reservation)]);
+        }
         abort_unless((int) $document->reservation_id === (int) $reservation->id, 404);
         abort_unless(Storage::disk('local')->exists($document->file_path), 404);
 
         return Storage::disk('local')->download($document->file_path, $document->original_name);
     }
 
+    public function fieldSelection(string $token, PublicReservationLinkService $links, ReservationService $reservations): View
+    {
+        $reservation = $links->validateToken($token);
+        $this->expireIfOverdue($reservation, $links, $reservations);
+        $reservation->refresh()->load(['student.phones', 'slot.advisor', 'advisor']);
+
+        if (! $links->isAccessible($reservation)) {
+            return view('public.reservation.blocked', ['message' => $links->getBlockedReasonMessage($reservation)]);
+        }
+
+        $plan = FieldSelectionPlan::query()
+            ->with('items')
+            ->where('reservation_id', $reservation->id)
+            ->where('status', FieldSelectionPlan::STATUS_PUBLISHED)
+            ->latest('version')
+            ->first();
+
+        return view('public.field-selection.show', compact('reservation', 'plan'));
+    }
+
+    public function fieldSelectionPrint(string $token, PublicReservationLinkService $links, ReservationService $reservations): View
+    {
+        $reservation = $links->validateToken($token);
+        $this->expireIfOverdue($reservation, $links, $reservations);
+
+        if (! $links->isAccessible($reservation)) {
+            return view('public.reservation.blocked', ['message' => $links->getBlockedReasonMessage($reservation)]);
+        }
+
+        $plan = FieldSelectionPlan::query()
+            ->with(['items', 'student', 'reservation.slot.advisor', 'reservation.advisor'])
+            ->where('reservation_id', $reservation->id)
+            ->where('status', FieldSelectionPlan::STATUS_PUBLISHED)
+            ->latest('version')
+            ->firstOrFail();
+
+        return view('field-selection.print', compact('plan'));
+    }
+
     private function canUsePublicForm($reservation, PublicReservationLinkService $links): bool
     {
-        return ! $links->isExpired($reservation)
+        return $links->isAccessible($reservation)
             && $reservation->status instanceof ReservationStatus
             && $reservation->status->allowsPublicUpdates();
     }
 
     private function canUploadReportCard($reservation, PublicReservationLinkService $links): bool
     {
-        return ! $links->isExpired($reservation)
+        return $links->isAccessible($reservation)
             && $reservation->status instanceof ReservationStatus
             && ! in_array($reservation->status, [
                 ReservationStatus::Expired,

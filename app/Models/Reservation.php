@@ -23,6 +23,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'public_token',
     'public_token_expires_at',
     'public_token_used_at',
+    'public_link_disabled_at',
+    'public_link_disabled_by',
+    'public_link_disabled_reason',
     'confirmed_at',
     'cancelled_at',
     'expired_at',
@@ -77,6 +80,21 @@ class Reservation extends Model
     public function followUps(): HasMany
     {
         return $this->hasMany(ReservationFollowUp::class);
+    }
+
+    public function fieldSelectionPlans(): HasMany
+    {
+        return $this->hasMany(FieldSelectionPlan::class)->orderByDesc('version');
+    }
+
+    public function latestFieldSelectionPlan(): HasOne
+    {
+        return $this->hasOne(FieldSelectionPlan::class)->latestOfMany('version');
+    }
+
+    public function publicLinkDisabler(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'public_link_disabled_by');
     }
 
     public function activeFollowUp(): HasOne
@@ -156,6 +174,7 @@ class Reservation extends Model
             'payment_deadline_at' => 'datetime',
             'public_token_expires_at' => 'datetime',
             'public_token_used_at' => 'datetime',
+            'public_link_disabled_at' => 'datetime',
             'confirmed_at' => 'datetime',
             'cancelled_at' => 'datetime',
             'expired_at' => 'datetime',

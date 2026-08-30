@@ -360,6 +360,11 @@
                 </div>
             @endif
 
+            <div class="alert alert-warning">
+                <i class="ri-error-warning-line"></i>
+                <div>در صورت تمایل به لغو یا تغییر زمان رزرو، باید حداقل ۲۴ ساعت قبل از زمان رزرو به آموزشگاه اطلاع دهید.</div>
+            </div>
+
             <div class="info-grid mt-1">
                 <div class="info-item">
                     <div class="info-label"><i class="ri-user-line"></i> نام و نام خانوادگی</div>
@@ -436,6 +441,9 @@
                     @endif
                 </div>
             </div>
+            @if($publishedFieldSelectionPlan)
+                <a class="btn btn-outline-primary mt-3" href="{{ route('public.reservations.field-selection.show', $reservation->public_token) }}"><i class="ri-list-ordered"></i> مشاهده انتخاب رشته</a>
+            @endif
         </div>
     </div>
 

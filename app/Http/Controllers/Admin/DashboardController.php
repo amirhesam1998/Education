@@ -12,6 +12,7 @@ class DashboardController extends Controller
     {
         return view('admin.dashboard.index', [
             'stats' => $dashboard->getStats(),
+            'creatorPaymentSummary' => $dashboard->getCreatorPaymentSummary(request()->user()),
             'todayReservations' => $dashboard->getTodayReservations(),
             'latestReservations' => $dashboard->getLatestReservations(),
         ]);

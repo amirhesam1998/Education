@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\FieldSelectionController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\ReservationController;
 use App\Http\Controllers\Admin\RoleController;
@@ -55,6 +56,12 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function (): v
     Route::post('/reservations/{reservation}/regenerate-link', [ReservationController::class, 'regenerateLink'])
         ->middleware('permission:update_reservations')
         ->name('reservations.regenerate-link');
+    Route::post('/reservations/{reservation}/disable-public-link', [ReservationController::class, 'disablePublicLink'])
+        ->middleware('permission:update_reservations')
+        ->name('reservations.disable-public-link');
+    Route::post('/reservations/{reservation}/enable-public-link', [ReservationController::class, 'enablePublicLink'])
+        ->middleware('permission:update_reservations')
+        ->name('reservations.enable-public-link');
     Route::post('/reservations/{reservation}/complete', [ReservationController::class, 'complete'])
         ->middleware('permission:confirm_reservations')
         ->name('reservations.complete');
@@ -70,6 +77,46 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function (): v
     Route::get('/reservations/{reservation}/documents/{document}', [ReservationController::class, 'document'])
         ->middleware('permission:view_reservations')
         ->name('reservations.documents.show');
+
+    Route::post('/reservations/{reservation}/field-selection', [FieldSelectionController::class, 'createPlan'])
+        ->middleware('permission:manage_field_selection')
+        ->name('reservations.field-selection.store');
+    Route::get('/reservations/{reservation}/field-selection', [FieldSelectionController::class, 'show'])
+        ->middleware('permission:view_field_selection')
+        ->name('reservations.field-selection.show');
+    Route::post('/field-selection-plans/{plan}/items', [FieldSelectionController::class, 'addItem'])
+        ->middleware('permission:manage_field_selection')
+        ->name('field-selection-plans.items.store');
+    Route::post('/field-selection-plans/{plan}/items/from-catalog', [FieldSelectionController::class, 'addItemFromCatalog'])
+        ->middleware('permission:manage_field_selection')
+        ->name('field-selection-plans.items.from-catalog');
+    Route::post('/field-selection-plans/{plan}/bulk-update', [FieldSelectionController::class, 'bulkUpdate'])
+        ->middleware('permission:manage_field_selection')
+        ->name('field-selection-plans.bulk-update');
+    Route::put('/field-selection-items/{item}', [FieldSelectionController::class, 'updateItem'])
+        ->middleware('permission:manage_field_selection')
+        ->name('field-selection-items.update');
+    Route::delete('/field-selection-items/{item}', [FieldSelectionController::class, 'deleteItem'])
+        ->middleware('permission:manage_field_selection')
+        ->name('field-selection-items.destroy');
+    Route::post('/field-selection-plans/{plan}/reorder', [FieldSelectionController::class, 'reorder'])
+        ->middleware('permission:manage_field_selection')
+        ->name('field-selection-plans.reorder');
+    Route::post('/field-selection-plans/{plan}/publish', [FieldSelectionController::class, 'publish'])
+        ->middleware('permission:manage_field_selection')
+        ->name('field-selection-plans.publish');
+    Route::post('/field-selection-plans/{plan}/new-version', [FieldSelectionController::class, 'newVersion'])
+        ->middleware('permission:manage_field_selection')
+        ->name('field-selection-plans.new-version');
+    Route::get('/field-selection-plans/{plan}/print', [FieldSelectionController::class, 'print'])
+        ->middleware('permission:view_field_selection')
+        ->name('field-selection-plans.print');
+    Route::get('/field-selection/search-fields', [FieldSelectionController::class, 'searchFields'])
+        ->middleware('permission:view_field_selection')
+        ->name('field-selection.search-fields');
+    Route::get('/field-selection/filter-options/cities', [FieldSelectionController::class, 'filterCities'])
+        ->middleware('permission:view_field_selection')
+        ->name('field-selection.filter-options.cities');
 
     Route::get('/payments', [PaymentController::class, 'index'])
         ->middleware('permission:view_payments')
@@ -135,6 +182,8 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function (): v
 });
 
 Route::get('/reservation/access/{token}', [PublicReservationController::class, 'show'])->name('public.reservations.show');
+Route::get('/reservation/access/{token}/field-selection', [PublicReservationController::class, 'fieldSelection'])->name('public.reservations.field-selection.show');
+Route::get('/reservation/access/{token}/field-selection/print', [PublicReservationController::class, 'fieldSelectionPrint'])->name('public.reservations.field-selection.print');
 Route::post('/reservation/access/{token}/complete', [PublicReservationController::class, 'complete'])->name('public.reservations.complete');
 Route::post('/reservation/access/{token}/upload-receipt', [PublicReservationController::class, 'uploadReceipt'])->name('public.reservations.upload-receipt');
 Route::post('/reservation/access/{token}/report-card', [PublicReservationController::class, 'uploadReportCard'])->name('public.reservations.report-card.store');

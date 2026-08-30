@@ -1,0 +1,89 @@
+{
+    "snapshot": "study_programs_1404_after_field_quality_finalization",
+    "format": "jsonl.gz",
+    "generated_at": "2026-08-25T11:06:38.810180Z",
+    "source_database": "mysql",
+    "notes": [
+        "Snapshot generated after conservative academic_fields.name cleanup was applied to the production study_programs table.",
+        "Use php artisan db:seed --class=StudyProgramsSnapshotSeeder to upsert this snapshot.",
+        "Use STUDY_PROGRAM_SNAPSHOT_REPLACE=true for a destructive replace of only the study-program catalog tables."
+    ],
+    "tables": {
+        "exam_years": {
+            "rows": 1,
+            "file": "exam_years.jsonl.gz",
+            "bytes": 99,
+            "sha256": "f8ffce62aefdb0cfdbb7a8737784b083ffc6bc7ee947e2794fc7707429638c77"
+        },
+        "exam_groups": {
+            "rows": 5,
+            "file": "exam_groups.jsonl.gz",
+            "bytes": 217,
+            "sha256": "11f36ccf864b4ebf9df6b41ee66da6ababf823fb34877ace618edd28821905a9"
+        },
+        "provinces": {
+            "rows": 31,
+            "file": "provinces.jsonl.gz",
+            "bytes": 630,
+            "sha256": "929d6675a0812c5eab565bc0f0ff9d967a864977ad56e85cd3c93cb5b3c5887a"
+        },
+        "cities": {
+            "rows": 1450,
+            "file": "cities.jsonl.gz",
+            "bytes": 18984,
+            "sha256": "a1f820a15fd41ea010761fdc268ba06b87df1f0357414f199ad7826c7569ff91"
+        },
+        "institutions": {
+            "rows": 482,
+            "file": "institutions.jsonl.gz",
+            "bytes": 8921,
+            "sha256": "b0d561d3f0673b31d8b379773df9dc8aa0835ca078afa20bf6402200a2ad7be4"
+        },
+        "institution_campuses": {
+            "rows": 1399,
+            "file": "institution_campuses.jsonl.gz",
+            "bytes": 18918,
+            "sha256": "b038ebe765cd0945aad3bf7e549099bcb07e08b03ac54bd21f88f1c73b22a46f"
+        },
+        "academic_fields": {
+            "rows": 710,
+            "file": "academic_fields.jsonl.gz",
+            "bytes": 11397,
+            "sha256": "0a5f0defc8a4f3d27b1e7f6f22b1a0b1a1d8d1ffa6c273b45ee5e7b20cf39ea6"
+        },
+        "course_types": {
+            "rows": 7,
+            "file": "course_types.jsonl.gz",
+            "bytes": 305,
+            "sha256": "25e34c64744238d616dd583fb446cc9574075b96383de3e5e23b2ed17e89dea5"
+        },
+        "admission_types": {
+            "rows": 2,
+            "file": "admission_types.jsonl.gz",
+            "bytes": 170,
+            "sha256": "384c44216a72df3b945a21b32ad4ab46f425ee2e5e996f4bf39b01308446a03c"
+        },
+        "study_programs": {
+            "rows": 50693,
+            "file": "study_programs.jsonl.gz",
+            "bytes": 8774787,
+            "sha256": "6318a9e1e9bf1dd92fccd2cda271cb10879b312746126d1df365b4845851c45f"
+        },
+        "study_program_review_records": {
+            "rows": 4053,
+            "file": "study_program_review_records.jsonl.gz",
+            "bytes": 667522,
+            "sha256": "68f3ce915bc2f4c5eb890ea51215eb4a88f05ee128c12feb40eea9f37438e2b2"
+        }
+    },
+    "checks": {
+        "study_programs_by_status": {
+            "validated": 50693
+        },
+        "review_records_by_status": {
+            "pending": 4053
+        },
+        "duplicate_identity_hashes": 0,
+        "public_records_marked_for_review": 0
+    }
+}

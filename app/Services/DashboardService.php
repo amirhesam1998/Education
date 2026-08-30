@@ -8,6 +8,7 @@ use App\Enums\SlotStatus;
 use App\Models\Reservation;
 use App\Models\ReservationPayment;
 use App\Models\ReservationSlot;
+use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -113,6 +114,23 @@ class DashboardService
         return Reservation::query()
             ->whereIn('status', ReservationStatus::activeValues())
             ->count();
+    }
+
+    public function getCreatorPaymentSummary(User $user): array
+    {
+        $created = Reservation::query()->where('created_by', $user->id);
+
+        return [
+            'paid' => (clone $created)->whereHas('payment', fn ($query) => $query->where('status', PaymentStatus::Approved))->count(),
+            'unpaid' => (clone $created)->where('prepayment_required', true)->whereDoesntHave('payment', fn ($query) => $query->whereNotNull('receipt_image_path'))->count(),
+            'pending_payment' => (clone $created)->where('status', ReservationStatus::PendingPrepayment)->count(),
+            'pending_approval' => (clone $created)->whereHas('payment', fn ($query) => $query->where('status', PaymentStatus::PendingApproval))->count(),
+            'rejected' => (clone $created)->where(function ($query): void {
+                $query->where('status', ReservationStatus::PaymentRejected)
+                    ->orWhereHas('payment', fn ($payment) => $payment->where('status', PaymentStatus::Rejected));
+            })->count(),
+            'expired' => (clone $created)->where('status', ReservationStatus::Expired)->count(),
+        ];
     }
 
     private function countReservationsForDate(Carbon $date): int
