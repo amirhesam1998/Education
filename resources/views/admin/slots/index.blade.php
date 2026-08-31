@@ -24,7 +24,8 @@
     .date-card strong{ display:block; color:var(--ink-900); margin:.15rem 0; }
     .date-card small{ display:block; color:var(--ink-500); }
     .date-card.is-active{ border-color:var(--brand-500); background:var(--brand-50); box-shadow:0 0 0 3px rgba(47,143,131,.1); }
-    .time-chip-list{ display:flex; flex-wrap:wrap; gap:.55rem; min-height:46px; }
+    .time-chip-list{ display:flex; flex-wrap:wrap; gap:.75rem; min-height:46px; }
+    .time-chip-item{ display:inline-flex; align-items:center; gap:.3rem; flex-wrap:nowrap; }
     .time-chip{ border:1px solid var(--border); border-radius:999px; background:var(--surface); color:var(--ink-700); padding:.48rem .85rem; font-size:.83rem; text-decoration:none; display:inline-flex; align-items:center; gap:.4rem; }
     .time-chip:hover{ border-color:var(--brand-500); color:var(--brand-700); }
     .time-chip.is-free{ background:#e2f5ec; color:var(--success); border-color:#bfe8d3; }
@@ -32,6 +33,10 @@
     .time-chip.is-follow-up{ background:#e5eefb; color:var(--info); border-color:#c7dbf5; }
     .time-chip.is-disabled{ opacity:.55; cursor:not-allowed; text-decoration:line-through; }
     .chip-meta{ font-size:.72rem; opacity:.85; }
+    .slot-action-group{ display:inline-flex; align-items:center; gap:.2rem; }
+    .slot-delete-form{ display:inline-flex; margin:0; }
+    .slot-action-button{ width:31px; height:31px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:999px; }
+    @media (max-width:575.98px){ .time-chip-item{ width:100%; justify-content:space-between; } .time-chip{ flex:1; justify-content:center; } }
     .appointment-empty{ color:var(--warning); font-size:.86rem; padding:.75rem 0 0; }
     .empty-state{ text-align:center; padding:2.5rem 1rem; color:var(--ink-500); }
     .empty-state i{ font-size:2.2rem; color:var(--ink-300); margin-bottom:.5rem; display:block; }
@@ -136,49 +141,57 @@
                                     $chipClass = $interval['available']
                                         ? 'is-free'
                                         : ($interval['status'] === 'follow_up' ? 'is-follow-up' : 'is-occupied');
+                                    $slotHasActiveReservations = ($interval['slot_active_reservations_count'] ?? 0) > 0;
                                 @endphp
 
-                                @if($interval['available'])
-                                    @can('create_reservations')
-                                        <a
-                                            class="time-chip {{ $chipClass }}"
-                                            href="{{ route('admin.reservations.create', ['slot_id' => $interval['slot_id'], 'reservation_interval' => $interval['value']]) }}"
-                                            title="ایجاد رزرو برای این تایم"
-                                        >
-                                            <span class="ltr">{{ $interval['label'] }}</span>
-                                            <span class="chip-meta">{{ $interval['status_label'] }}</span>
-                                        </a>
+                                <div class="time-chip-item">
+                                    @if($interval['available'])
+                                        @can('create_reservations')
+                                            <a
+                                                class="time-chip {{ $chipClass }}"
+                                                href="{{ route('admin.reservations.create', ['slot_id' => $interval['slot_id'], 'reservation_interval' => $interval['value']]) }}"
+                                                title="ایجاد رزرو برای این تایم"
+                                            >
+                                                <span class="ltr">{{ $interval['label'] }}</span>
+                                                <span class="chip-meta">{{ $interval['status_label'] }}</span>
+                                            </a>
+                                        @else
+                                            <span class="time-chip {{ $chipClass }} is-disabled">
+                                                <span class="ltr">{{ $interval['label'] }}</span>
+                                                <span class="chip-meta">{{ $interval['status_label'] }}</span>
+                                            </span>
+                                        @endcan
+                                    @elseif($interval['reservation_id'])
+                                        @can('view_reservations')
+                                            <a
+                                                class="time-chip {{ $chipClass }}"
+                                                href="{{ route('admin.reservations.show', $interval['reservation_id']) }}"
+                                                title="مشاهده رزرو"
+                                            >
+                                                <span class="ltr">{{ $interval['label'] }}</span>
+                                                <span class="chip-meta">{{ $interval['status_label'] }}</span>
+                                                @if($interval['student_name'])
+                                                    <span class="chip-meta">{{ $interval['student_name'] }}</span>
+                                                @endif
+                                            </a>
+                                        @else
+                                            <span class="time-chip {{ $chipClass }} is-disabled">
+                                                <span class="ltr">{{ $interval['label'] }}</span>
+                                                <span class="chip-meta">{{ $interval['status_label'] }}</span>
+                                            </span>
+                                        @endcan
                                     @else
-                                        <span class="time-chip {{ $chipClass }} is-disabled">
+                                        <span class="time-chip is-disabled">
                                             <span class="ltr">{{ $interval['label'] }}</span>
                                             <span class="chip-meta">{{ $interval['status_label'] }}</span>
                                         </span>
-                                    @endcan
-                                @elseif($interval['reservation_id'])
-                                    @can('view_reservations')
-                                        <a
-                                            class="time-chip {{ $chipClass }}"
-                                            href="{{ route('admin.reservations.show', $interval['reservation_id']) }}"
-                                            title="مشاهده رزرو"
-                                        >
-                                            <span class="ltr">{{ $interval['label'] }}</span>
-                                            <span class="chip-meta">{{ $interval['status_label'] }}</span>
-                                            @if($interval['student_name'])
-                                                <span class="chip-meta">{{ $interval['student_name'] }}</span>
-                                            @endif
-                                        </a>
-                                    @else
-                                        <span class="time-chip {{ $chipClass }} is-disabled">
-                                            <span class="ltr">{{ $interval['label'] }}</span>
-                                            <span class="chip-meta">{{ $interval['status_label'] }}</span>
-                                        </span>
-                                    @endcan
-                                @else
-                                    <span class="time-chip is-disabled">
-                                        <span class="ltr">{{ $interval['label'] }}</span>
-                                        <span class="chip-meta">{{ $interval['status_label'] }}</span>
-                                    </span>
-                                @endif
+                                    @endif
+
+                                    @include('admin.slots._slot-actions', [
+                                        'slotId' => $interval['slot_id'],
+                                        'canDelete' => ! $slotHasActiveReservations,
+                                    ])
+                                </div>
                             @empty
                                 <div class="appointment-empty">برای این تاریخ نوبتی تعریف نشده است.</div>
                             @endforelse

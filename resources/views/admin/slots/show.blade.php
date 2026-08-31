@@ -3,6 +3,28 @@
 @section('title', 'جزئیات تایم')
 
 @section('actions')
+    @can('update_slots')
+        <a class="btn btn-outline-primary" href="{{ route('admin.slots.edit', $slot) }}">
+            <i class="ri-edit-line align-middle"></i> ویرایش تایم
+        </a>
+    @endcan
+
+    @can('delete_slots')
+        @if($activeReservationsCount > 0)
+            <button class="btn btn-outline-danger" type="button" disabled title="این تایم رزرو فعال دارد و قابل حذف نیست.">
+                <i class="ri-delete-bin-line align-middle"></i> حذف تایم
+            </button>
+        @else
+            <form method="post" action="{{ route('admin.slots.destroy', $slot) }}" class="d-inline" onsubmit="return confirm('این تایم حذف شود؟ اگر اشتباه ایجاد شده و رزرو فعالی ندارد، قابل حذف است.');">
+                @csrf
+                @method('delete')
+                <button class="btn btn-outline-danger" type="submit">
+                    <i class="ri-delete-bin-line align-middle"></i> حذف تایم
+                </button>
+            </form>
+        @endif
+    @endcan
+
     <a class="btn btn-outline-secondary" href="{{ route('admin.slots.index') }}">
         <i class="ri-arrow-right-line align-middle"></i> بازگشت
     </a>
@@ -82,6 +104,11 @@
         color: var(--ink-500);
     }
     .empty-state i{ font-size: 2.2rem; color: var(--ink-300); margin-bottom: .5rem; display: block; }
+
+    .slot-row-actions{ display:flex; align-items:center; gap:.35rem; flex-wrap:nowrap; }
+    .slot-action-group{ display:inline-flex; align-items:center; gap:.2rem; }
+    .slot-delete-form{ display:inline-flex; margin:0; }
+    .slot-action-button{ width:31px; height:31px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:999px; }
 
     @media (max-width: 991.98px){
         .info-grid{ grid-template-columns: repeat(2, 1fr); }
@@ -245,17 +272,20 @@
                         <td>{{ $row['payment_status'] }}</td>
                         <td>{{ \App\Support\PersianDate::number($row['remaining_capacity']) }}</td>
                         <td>
-                            @if($row['reservation'])
-                                @can('view_reservations')
-                                    <a class="btn btn-sm btn-outline-primary" href="{{ route('admin.reservations.show', $row['reservation']) }}">
-                                        <i class="ri-eye-line align-middle"></i> مشاهده رزرو
-                                    </a>
-                                @else
-                                    <span class="text-muted">-</span>
-                                @endcan
-                            @else
-                                <span class="text-muted">-</span>
-                            @endif
+                            <div class="slot-row-actions">
+                                @if($row['reservation'])
+                                    @can('view_reservations')
+                                        <a class="btn btn-sm btn-outline-primary" href="{{ route('admin.reservations.show', $row['reservation']) }}">
+                                            <i class="ri-eye-line align-middle"></i> مشاهده رزرو
+                                        </a>
+                                    @endcan
+                                @endif
+
+                                @include('admin.slots._slot-actions', [
+                                    'slotId' => $row['slot']->id,
+                                    'canDelete' => ($row['active_reservations_count'] ?? 0) === 0,
+                                ])
+                            </div>
                         </td>
                     </tr>
                 @empty

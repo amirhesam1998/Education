@@ -81,10 +81,11 @@ class SlotController extends Controller
             ->with('success', "تعداد {$created} تایم با موفقیت ثبت شد.");
     }
 
-    public function edit(ReservationSlot $slot): View
+    public function edit(ReservationSlot $slot, SlotAvailabilityService $availability): View
     {
         return view('admin.slots.edit', [
             'slot' => $slot,
+            'activeReservationsCount' => $availability->countActiveReservations($slot),
             'advisors' => $this->consultantOptions($slot),
             'statuses' => SlotStatus::options(),
         ]);

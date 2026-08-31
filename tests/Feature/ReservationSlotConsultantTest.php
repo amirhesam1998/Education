@@ -7,6 +7,7 @@ use App\Enums\SlotStatus;
 use App\Models\Advisor;
 use App\Models\Reservation;
 use App\Models\ReservationSlot;
+use App\Models\Student;
 use App\Models\User;
 use App\Services\SlotAvailabilityService;
 use Database\Seeders\PermissionRoleSeeder;
@@ -107,6 +108,71 @@ class ReservationSlotConsultantTest extends TestCase
             ->get(route('admin.slots.index', ['advisor_id' => $advisor->id]))
             ->assertOk()
             ->assertSee($consultant->name);
+    }
+
+    #[Test]
+    public function slot_index_exposes_edit_and_delete_actions(): void
+    {
+        $admin = $this->admin();
+        [, $advisor] = $this->consultant(['name' => 'Editable Consultant']);
+        $slot = ReservationSlot::factory()->create([
+            'advisor_id' => $advisor->id,
+            'date' => $this->slotDate(),
+            'start_time' => '10:00',
+            'end_time' => '10:15',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.slots.index', ['date' => $this->slotDate()]))
+            ->assertOk()
+            ->assertSee(route('admin.slots.show', $slot), false)
+            ->assertSee(route('admin.slots.edit', $slot), false)
+            ->assertSee(route('admin.slots.destroy', $slot), false)
+            ->assertSee('ویرایش تایم')
+            ->assertSee('حذف تایم');
+    }
+
+    #[Test]
+    public function slot_without_active_reservations_can_be_deleted(): void
+    {
+        $admin = $this->admin();
+        [, $advisor] = $this->consultant(['name' => 'Delete Consultant']);
+        $slot = ReservationSlot::factory()->create(['advisor_id' => $advisor->id]);
+
+        $this->actingAs($admin)
+            ->delete(route('admin.slots.destroy', $slot))
+            ->assertRedirect(route('admin.slots.index'))
+            ->assertSessionHas('success', 'تایم حذف شد.');
+
+        $this->assertModelMissing($slot);
+    }
+
+    #[Test]
+    public function slot_with_active_reservation_cannot_be_deleted(): void
+    {
+        $admin = $this->admin();
+        [, $advisor] = $this->consultant(['name' => 'Locked Consultant']);
+        $slot = ReservationSlot::factory()->create([
+            'advisor_id' => $advisor->id,
+            'start_time' => '10:00',
+            'end_time' => '10:15',
+        ]);
+
+        Reservation::query()->create([
+            'student_id' => Student::factory()->create()->id,
+            'slot_id' => $slot->id,
+            'advisor_id' => $advisor->id,
+            'reserved_start_time' => '10:00',
+            'reserved_end_time' => '10:15',
+            'status' => ReservationStatus::PendingCompletion,
+            'prepayment_required' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->delete(route('admin.slots.destroy', $slot))
+            ->assertSessionHasErrors('slot');
+
+        $this->assertModelExists($slot);
     }
 
     #[Test]

@@ -35,11 +35,21 @@
         font-size:1.35rem;
     }
 
+    .slot-edit-header .header-actions{
+        display:flex;
+        align-items:center;
+        justify-content:flex-end;
+        gap:.5rem;
+        flex-wrap:wrap;
+    }
+
     .slot-edit-header .back-btn{
         display:flex;
         align-items:center;
         gap:.4rem;
     }
+
+    .slot-delete-form{ display:inline-flex; margin:0; }
 
     .slot-form-container{
         background:transparent;
@@ -55,7 +65,12 @@
             align-items:flex-start;
         }
 
-        .slot-edit-header .back-btn{
+        .slot-edit-header .header-actions{
+            width:100%;
+        }
+
+        .slot-edit-header .header-actions > *,
+        .slot-edit-header .header-actions .btn{
             width:100%;
             justify-content:center;
         }
@@ -74,10 +89,30 @@
             ویرایش تایم مشاور
         </div>
 
-        <a href="{{ route('admin.slots.index') }}" class="btn btn-outline-secondary back-btn">
-            <i class="ri-arrow-right-line"></i>
-            بازگشت به لیست
-        </a>
+        <div class="header-actions">
+            @can('delete_slots')
+                @if($activeReservationsCount > 0)
+                    <button class="btn btn-outline-danger" type="button" disabled title="این تایم رزرو فعال دارد و قابل حذف نیست.">
+                        <i class="ri-delete-bin-line align-middle"></i>
+                        حذف تایم
+                    </button>
+                @else
+                    <form method="post" action="{{ route('admin.slots.destroy', $slot) }}" class="slot-delete-form" onsubmit="return confirm('این تایم حذف شود؟ اگر اشتباه ایجاد شده و رزرو فعالی ندارد، قابل حذف است.');">
+                        @csrf
+                        @method('delete')
+                        <button class="btn btn-outline-danger" type="submit">
+                            <i class="ri-delete-bin-line align-middle"></i>
+                            حذف تایم
+                        </button>
+                    </form>
+                @endif
+            @endcan
+
+            <a href="{{ route('admin.slots.index') }}" class="btn btn-outline-secondary back-btn">
+                <i class="ri-arrow-right-line"></i>
+                بازگشت به لیست
+            </a>
+        </div>
     </div>
 
 

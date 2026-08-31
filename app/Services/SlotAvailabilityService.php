@@ -94,25 +94,30 @@ class SlotAvailabilityService
             ->map(function (Collection $dateSlots, string $date) use ($durationMinutes, $ignoreReservation, $ignoreFollowUp): array {
                 $intervals = $dateSlots
                     ->sortBy('start_time')
-                    ->flatMap(fn (ReservationSlot $slot) => $this
-                        ->generateIntervalsForSlot($slot, $durationMinutes, $ignoreReservation, $ignoreFollowUp)
-                        ->map(fn (array $interval) => [
-                            'slot_id' => $slot->id,
-                            'start_time' => $interval['start_time'],
-                            'end_time' => $interval['end_time'],
-                            'value' => $interval['value'],
-                            'label' => PersianDate::time($interval['start_time']).' تا '.PersianDate::time($interval['end_time']),
-                            'slot_range' => PersianDate::time($slot->start_time).' تا '.PersianDate::time($slot->end_time),
-                            'advisor_name' => $slot->advisor?->name,
-                            'duration_minutes' => $interval['duration_minutes'],
-                            'status' => $interval['status_key'],
-                            'status_label' => $interval['status_label'],
-                            'available' => $interval['available'],
-                            'is_available' => $interval['available'],
-                            'reservation_id' => $interval['reservation_id'],
-                            'student_name' => $interval['student_name'],
-                            'action' => $interval['action'],
-                        ]))
+                    ->flatMap(function (ReservationSlot $slot) use ($durationMinutes, $ignoreReservation, $ignoreFollowUp): Collection {
+                        $activeReservationsCount = $this->countActiveReservations($slot);
+
+                        return $this
+                            ->generateIntervalsForSlot($slot, $durationMinutes, $ignoreReservation, $ignoreFollowUp)
+                            ->map(fn (array $interval) => [
+                                'slot_id' => $slot->id,
+                                'slot_active_reservations_count' => $activeReservationsCount,
+                                'start_time' => $interval['start_time'],
+                                'end_time' => $interval['end_time'],
+                                'value' => $interval['value'],
+                                'label' => PersianDate::time($interval['start_time']).' تا '.PersianDate::time($interval['end_time']),
+                                'slot_range' => PersianDate::time($slot->start_time).' تا '.PersianDate::time($slot->end_time),
+                                'advisor_name' => $slot->advisor?->name,
+                                'duration_minutes' => $interval['duration_minutes'],
+                                'status' => $interval['status_key'],
+                                'status_label' => $interval['status_label'],
+                                'available' => $interval['available'],
+                                'is_available' => $interval['available'],
+                                'reservation_id' => $interval['reservation_id'],
+                                'student_name' => $interval['student_name'],
+                                'action' => $interval['action'],
+                            ]);
+                    })
                     ->values();
 
                 $dateCarbon = Carbon::parse($date);
