@@ -38,8 +38,8 @@ class FieldSelectionController extends Controller
         $this->ensureViewer($request->user(), $reservation);
         $plan = $request->filled('plan')
             ? FieldSelectionPlan::query()->where('reservation_id', $reservation->id)->findOrFail($request->integer('plan'))
-            : ($reservation->fieldSelectionPlans()->where('status', FieldSelectionPlan::STATUS_DRAFT)->first()
-                ?: $reservation->fieldSelectionPlans()->where('status', FieldSelectionPlan::STATUS_PUBLISHED)->first());
+            : ($reservation->fieldSelectionPlans()->where('status', FieldSelectionPlan::STATUS_DRAFT)->latest('version')->first()
+                ?: $reservation->fieldSelectionPlans()->where('status', FieldSelectionPlan::STATUS_PUBLISHED)->latest('version')->first());
 
         abort_unless($plan, 404);
         $plan->load(['items', 'creator', 'updater', 'reservation.student.phones', 'reservation.slot.advisor', 'reservation.advisor']);
@@ -86,7 +86,7 @@ class FieldSelectionController extends Controller
         $fieldSelections->updateItem($item, $request->validated(), $request->user());
 
         if ($request->expectsJson()) {
-            return response()->json(['success' => true, 'message' => 'تغییرات با موفقیت ذخیره شد.', 'item' => $item->fresh()]);
+            return $this->itemJsonResponse($item, 'تغییرات با موفقیت ذخیره شد.');
         }
 
         return back()->with('success', 'رشته موردنظر ویرایش شد.');
@@ -127,7 +127,10 @@ class FieldSelectionController extends Controller
                 $search = trim($request->string('q')->toString());
                 $query->where(function ($nested) use ($search): void {
                     $nested->where('code', 'like', '%'.$search.'%')
-                        ->orWhereHas('academicField', fn ($field) => $field->where('name', 'like', '%'.$search.'%'));
+                        ->orWhere('description', 'like', '%'.$search.'%')
+                        ->orWhere('raw_data', 'like', '%'.$search.'%')
+                        ->orWhereHas('academicField', fn ($field) => $field->where('name', 'like', '%'.$search.'%'))
+                        ->orWhereHas('institution', fn ($institution) => $institution->where('name', 'like', '%'.$search.'%'));
                 });
             });
 
@@ -204,7 +207,7 @@ class FieldSelectionController extends Controller
         return response()->json([
             'success' => true,
             'message' => $message,
-            'item' => $item->only(['id', 'priority_order', 'field_code', 'field_name', 'city']),
+            'item' => $item->only(['id', 'priority_order', 'field_code', 'field_name', 'field_description', 'city', 'university_name', 'university_type', 'university_description']),
             'count' => $item->plan->items()->count(),
             'html' => view('admin.field-selection._item', ['item' => $item, 'editable' => true])->render(),
         ]);

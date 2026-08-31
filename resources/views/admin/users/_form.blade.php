@@ -150,13 +150,12 @@
                 <input name="name" value="{{ old('name', $user->name) }}" class="form-control" required>
             </div>
             <div class="col-md-6">
-                <label class="form-label">ایمیل</label>
-                <input type="email" name="email" value="{{ old('email', $user->email) }}" class="form-control ltr"
-                    required>
+                <label class="form-label">شماره تماس</label>
+                <input type="tel" name="phone" value="{{ old('phone', $user->phone) }}" class="form-control ltr" required inputmode="tel" autocomplete="tel">
             </div>
             <div class="col-md-6">
-                <label class="form-label">شماره تماس</label>
-                <input name="phone" value="{{ old('phone', $user->phone) }}" class="form-control ltr">
+                <label class="form-label">ایمیل <span class="text-muted small">(اختیاری)</span></label>
+                <input type="email" name="email" value="{{ old('email', $user->email) }}" class="form-control ltr" autocomplete="email">
             </div>
             <div class="col-md-6">
                 <label class="form-label">وضعیت</label>

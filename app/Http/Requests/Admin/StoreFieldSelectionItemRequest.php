@@ -16,7 +16,11 @@ class StoreFieldSelectionItemRequest extends FormRequest
         return [
             'field_code' => ['required', 'string', 'max:100'],
             'field_name' => ['required', 'string', 'max:255'],
+            'field_description' => ['nullable', 'string', 'max:5000'],
             'city' => ['required', 'string', 'max:255'],
+            'university_name' => ['nullable', 'string', 'max:255'],
+            'university_type' => ['nullable', 'string', 'max:255'],
+            'university_description' => ['nullable', 'string', 'max:5000'],
         ];
     }
 

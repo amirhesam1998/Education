@@ -198,7 +198,7 @@ class ReservationService
                 || ! $this->slotAvailability->isIntervalAvailable($lockedSlot, $startTime, $endTime, $reservation)
             ) {
                 $interval = $this->slotAvailability
-                    ->generateIntervalsForSlot($lockedSlot, $this->settings->reservationDurationMinutes(), $reservation)
+                    ->generateIntervalsForSlot($lockedSlot, null, $reservation)
                     ->firstWhere('available', true);
 
                 if (! $interval) {

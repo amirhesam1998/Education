@@ -11,12 +11,20 @@ class StoreUserRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'email' => blank($this->input('email')) ? null : trim((string) $this->input('email')),
+            'phone' => trim((string) $this->input('phone')),
+        ]);
+    }
+
     public function rules(): array
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'phone' => ['nullable', 'string', 'max:30'],
+            'phone' => ['required', 'string', 'max:30', 'unique:users,phone'],
+            'email' => ['nullable', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'status' => ['required', 'in:active,inactive'],
             'roles' => ['array'],
@@ -28,11 +36,11 @@ class StoreUserRequest extends FormRequest
     {
         return [
             'name' => 'نام',
-            'email' => 'ایمیل',
             'phone' => 'شماره تماس',
+            'email' => 'ایمیل',
             'password' => 'رمز عبور',
             'status' => 'وضعیت',
-            'roles' => 'نقشها',
+            'roles' => 'نقش‌ها',
         ];
     }
 }

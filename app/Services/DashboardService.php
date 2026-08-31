@@ -16,7 +16,6 @@ class DashboardService
 {
     public function __construct(
         private readonly SlotAvailabilityService $availability,
-        private readonly SettingsService $settings,
     ) {
     }
 
@@ -142,15 +141,13 @@ class DashboardService
 
     private function countAvailableIntervalsBetween(Carbon $from, Carbon $to): int
     {
-        $duration = $this->settings->reservationDurationMinutes();
-
         return ReservationSlot::query()
             ->with('advisor')
             ->where('status', SlotStatus::Active)
             ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
             ->get()
             ->sum(fn (ReservationSlot $slot) => $this->availability
-                ->generateIntervalsForSlot($slot, $duration)
+                ->generateIntervalsForSlot($slot)
                 ->where('available', true)
                 ->count());
     }

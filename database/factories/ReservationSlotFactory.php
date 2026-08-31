@@ -22,6 +22,7 @@ class ReservationSlotFactory extends Factory
             'date' => substr($start, 0, 10),
             'start_time' => '10:00',
             'end_time' => '11:00',
+            'duration_minutes' => 15,
             'capacity' => 1,
             'status' => SlotStatus::Active,
             'created_by' => User::factory(),

@@ -4,9 +4,12 @@
     @if($editable)
         <td><input form="bulk-update-form" name="items[{{ $item->id }}][field_code]" value="{{ $item->field_code }}" class="form-control selection-input" data-item-input data-catalog-input data-field="field_code" required></td>
         <td><input form="bulk-update-form" name="items[{{ $item->id }}][field_name]" value="{{ $item->field_name }}" class="form-control selection-input" data-item-input data-catalog-input data-field="field_name" required></td>
+        <td><textarea form="bulk-update-form" name="items[{{ $item->id }}][field_description]" class="form-control selection-input selection-textarea" data-item-input data-field="field_description" rows="1" placeholder="توضیحات رشته">{{ $item->field_description ?: $item->university_description }}</textarea></td>
+        <td><input form="bulk-update-form" name="items[{{ $item->id }}][university_name]" value="{{ $item->university_name }}" class="form-control selection-input" data-item-input data-field="university_name" placeholder="نام دانشگاه"></td>
         <td><input form="bulk-update-form" name="items[{{ $item->id }}][city]" value="{{ $item->city }}" class="form-control selection-input" data-item-input data-field="city" required></td>
+        <td><input form="bulk-update-form" name="items[{{ $item->id }}][university_type]" value="{{ $item->university_type }}" class="form-control selection-input" data-item-input data-field="university_type" placeholder="نوع دانشگاه"></td>
         <td><div class="selection-actions"><button class="btn btn-sm btn-outline-primary" type="submit" form="bulk-update-form" title="ذخیره تغییرات"><i class="ri-save-line"></i></button><button class="btn btn-sm btn-outline-danger" type="button" data-delete-item data-delete-url="{{ route('admin.field-selection-items.destroy', $item) }}" title="حذف"><i class="ri-delete-bin-line"></i></button></div></td>
     @else
-        <td>{{ $item->field_code }}</td><td>{{ $item->field_name }}</td><td>{{ $item->city }}</td>
+        <td>{{ $item->field_code }}</td><td>{{ $item->field_name }}</td><td>{{ $item->field_description ?: $item->university_description ?: '-' }}</td><td>{{ $item->university_name ?: '-' }}</td><td>{{ $item->city }}</td><td>{{ $item->university_type ?: '-' }}</td>
     @endif
 </tr>

@@ -11,13 +11,20 @@ class LoginRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'phone' => trim((string) $this->input('phone')),
+        ]);
+    }
+
     /**
      * @return array<string, mixed>
      */
     public function rules(): array
     {
         return [
-            'email' => ['required', 'email'],
+            'phone' => ['required', 'string', 'max:30'],
             'password' => ['required', 'string'],
         ];
     }
@@ -28,7 +35,7 @@ class LoginRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'email' => 'ایمیل',
+            'phone' => 'شماره تماس',
             'password' => 'رمز عبور',
         ];
     }

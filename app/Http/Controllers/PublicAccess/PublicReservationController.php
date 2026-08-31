@@ -27,7 +27,13 @@ class PublicReservationController extends Controller
         $this->expireIfOverdue($reservation, $links, $reservations);
         $reservation->refresh()->load(['student.phones', 'slot.advisor', 'advisor', 'payment', 'paymentCard', 'reportCards']);
 
-        if (! $links->isAccessible($reservation)) {
+        $publishedFieldSelectionPlan = FieldSelectionPlan::query()
+            ->where('reservation_id', $reservation->id)
+            ->where('status', FieldSelectionPlan::STATUS_PUBLISHED)
+            ->latest('version')
+            ->first();
+
+        if (! $links->isAccessible($reservation) && ! $this->canViewPublishedFieldSelection($reservation, $publishedFieldSelectionPlan)) {
             return view('public.reservation.blocked', ['message' => $links->getBlockedReasonMessage($reservation)]);
         }
 
@@ -40,11 +46,7 @@ class PublicReservationController extends Controller
             'showPaymentWarning' => $flow->shouldShowPaymentWarning($reservation),
             'isLinkExpired' => $links->isExpired($reservation),
             'canUploadReportCard' => $this->canUploadReportCard($reservation, $links),
-            'publishedFieldSelectionPlan' => FieldSelectionPlan::query()
-                ->where('reservation_id', $reservation->id)
-                ->where('status', FieldSelectionPlan::STATUS_PUBLISHED)
-                ->latest('version')
-                ->first(),
+            'publishedFieldSelectionPlan' => $publishedFieldSelectionPlan,
         ]);
     }
 
@@ -122,16 +124,16 @@ class PublicReservationController extends Controller
         $this->expireIfOverdue($reservation, $links, $reservations);
         $reservation->refresh()->load(['student.phones', 'slot.advisor', 'advisor']);
 
-        if (! $links->isAccessible($reservation)) {
-            return view('public.reservation.blocked', ['message' => $links->getBlockedReasonMessage($reservation)]);
-        }
-
         $plan = FieldSelectionPlan::query()
             ->with('items')
             ->where('reservation_id', $reservation->id)
             ->where('status', FieldSelectionPlan::STATUS_PUBLISHED)
             ->latest('version')
             ->first();
+
+        if (! $links->isAccessible($reservation) && ! $this->canViewPublishedFieldSelection($reservation, $plan)) {
+            return view('public.reservation.blocked', ['message' => $links->getBlockedReasonMessage($reservation)]);
+        }
 
         return view('public.field-selection.show', compact('reservation', 'plan'));
     }
@@ -141,18 +143,31 @@ class PublicReservationController extends Controller
         $reservation = $links->validateToken($token);
         $this->expireIfOverdue($reservation, $links, $reservations);
 
-        if (! $links->isAccessible($reservation)) {
-            return view('public.reservation.blocked', ['message' => $links->getBlockedReasonMessage($reservation)]);
-        }
-
         $plan = FieldSelectionPlan::query()
             ->with(['items', 'student', 'reservation.slot.advisor', 'reservation.advisor'])
             ->where('reservation_id', $reservation->id)
             ->where('status', FieldSelectionPlan::STATUS_PUBLISHED)
             ->latest('version')
-            ->firstOrFail();
+            ->first();
+
+        if (! $links->isAccessible($reservation) && ! $this->canViewPublishedFieldSelection($reservation, $plan)) {
+            return view('public.reservation.blocked', ['message' => $links->getBlockedReasonMessage($reservation)]);
+        }
+
+        abort_unless($plan, 404);
 
         return view('field-selection.print', compact('plan'));
+    }
+
+    private function canViewPublishedFieldSelection($reservation, ?FieldSelectionPlan $plan): bool
+    {
+        return $plan !== null
+            && ! $reservation->public_link_disabled_at
+            && $reservation->status instanceof ReservationStatus
+            && ! in_array($reservation->status, [
+                ReservationStatus::Cancelled,
+                ReservationStatus::NoShow,
+            ], true);
     }
 
     private function canUsePublicForm($reservation, PublicReservationLinkService $links): bool

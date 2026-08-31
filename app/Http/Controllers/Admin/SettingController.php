@@ -27,7 +27,6 @@ class SettingController extends Controller
         $settings->set('contact_phone', $data['contact_phone']);
         $settings->set('default_payment_deadline_hours', $data['default_payment_deadline_hours'], 'integer');
         $settings->set('default_public_link_expiration_hours', $data['default_public_link_expiration_hours'], 'integer');
-        $settings->set('reservation_duration_minutes', $data['reservation_duration_minutes'], 'integer');
         $settings->set('default_prepayment_amount', $data['default_prepayment_amount'] ?? null, 'integer');
         $settings->set('prepayment_amount_presets', $this->prepaymentPresets($data['prepayment_presets'] ?? []), 'json');
         $settings->set('max_receipt_image_size_kb', $data['max_receipt_image_size_kb'], 'integer');
@@ -38,7 +37,6 @@ class SettingController extends Controller
         $settings->set('majors', preg_split('/\r\n|\r|\n/', $data['majors'] ?? '') ?: [], 'array');
         $settings->set('expired_message', $data['expired_message']);
         $settings->set('cancelled_message', $data['cancelled_message']);
-        $settings->set('release_slot_after_payment_rejection', $data['release_slot_after_payment_rejection'] ?? false, 'boolean');
         $this->syncPaymentCards($data['payment_cards'] ?? []);
 
         return back()->with('success', 'تنظیمات ذخیره شد.');

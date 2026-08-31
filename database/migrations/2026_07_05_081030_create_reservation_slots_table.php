@@ -14,6 +14,7 @@ return new class extends Migration
             $table->date('date')->index();
             $table->time('start_time');
             $table->time('end_time');
+            $table->unsignedSmallInteger('duration_minutes')->default(15);
             $table->unsignedInteger('capacity')->default(1);
             $table->string('status')->default('active')->index();
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();

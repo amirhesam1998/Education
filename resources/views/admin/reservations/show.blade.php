@@ -579,16 +579,19 @@
             </div>
 
             @if(in_array($reservation->status, [\App\Enums\ReservationStatus::Confirmed, \App\Enums\ReservationStatus::Completed], true))
-                @php($selectionPlans = $reservation->fieldSelectionPlans)
+                @php($selectionPlans = $reservation->fieldSelectionPlans->sortByDesc('version'))
                 @php($selectionPlan = $selectionPlans->firstWhere('status', \App\Models\FieldSelectionPlan::STATUS_DRAFT) ?: $selectionPlans->firstWhere('status', \App\Models\FieldSelectionPlan::STATUS_PUBLISHED))
                 <div class="card card-section">
                     <div class="card-header d-flex justify-content-between align-items-center"><span><i class="ri-list-ordered"></i> انتخاب رشته</span>
                         @can('manage_field_selection')
-                            @if($selectionPlan)
-                                <a class="btn btn-sm btn-primary" href="{{ route('admin.reservations.field-selection.show', [$reservation, 'plan' => $selectionPlan]) }}">مدیریت انتخاب رشته</a>
-                            @else
-                                <form method="post" action="{{ route('admin.reservations.field-selection.store', $reservation) }}">@csrf<button class="btn btn-sm btn-primary">مدیریت انتخاب رشته</button></form>
-                            @endif
+                            <div class="d-flex flex-wrap gap-2">
+                                @if($selectionPlan)
+                                    <a class="btn btn-sm btn-primary" href="{{ route('admin.reservations.field-selection.show', [$reservation, 'plan' => $selectionPlan]) }}">مدیریت انتخاب رشته</a>
+                                    <form method="post" action="{{ route('admin.reservations.field-selection.store', $reservation) }}">@csrf<button class="btn btn-sm btn-outline-primary">انتخاب رشته جدید</button></form>
+                                @else
+                                    <form method="post" action="{{ route('admin.reservations.field-selection.store', $reservation) }}">@csrf<button class="btn btn-sm btn-primary">مدیریت انتخاب رشته</button></form>
+                                @endif
+                            </div>
                         @endcan
                     </div>
                     <div class="card-body">

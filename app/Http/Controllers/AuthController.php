@@ -32,15 +32,15 @@ class AuthController extends Controller
     public function login(LoginRequest $request): RedirectResponse
     {
         $credentials = [
-            'email' => $request->validated('email'),
+            'phone' => $request->validated('phone'),
             'password' => $request->validated('password'),
             'status' => 'active',
         ];
 
         if (! Auth::attempt($credentials, $request->boolean('remember'))) {
             return back()
-                ->withErrors(['email' => 'ایمیل یا رمز عبور صحیح نیست یا حساب کاربری غیرفعال است.'])
-                ->onlyInput('email');
+                ->withErrors(['phone' => 'شماره تماس یا رمز عبور صحیح نیست یا حساب کاربری غیرفعال است.'])
+                ->onlyInput('phone');
         }
 
         $request->session()->regenerate();

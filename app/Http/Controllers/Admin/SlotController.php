@@ -44,7 +44,7 @@ class SlotController extends Controller
     public function create(): View
     {
         return view('admin.slots.create', [
-            'slot' => new ReservationSlot(['capacity' => 1, 'status' => SlotStatus::Active]),
+            'slot' => new ReservationSlot(['capacity' => 1, 'duration_minutes' => 15, 'status' => SlotStatus::Active]),
             'advisors' => $this->consultantOptions(),
             'statuses' => SlotStatus::options(),
         ]);
@@ -119,6 +119,7 @@ class SlotController extends Controller
             'date' => $data['date'],
             'start_time' => $data['start_time'],
             'end_time' => $data['end_time'],
+            'duration_minutes' => $data['duration_minutes'],
             'capacity' => $data['capacity'],
             'status' => $data['status'],
             'created_by' => auth()->id(),
@@ -152,6 +153,7 @@ class SlotController extends Controller
                     'date' => $date->toDateString(),
                     'start_time' => $cursor->format('H:i'),
                     'end_time' => $slotEnd->format('H:i'),
+                    'duration_minutes' => $data['duration_minutes'],
                     'capacity' => $data['capacity'],
                     'status' => $data['status'],
                     'created_by' => auth()->id(),

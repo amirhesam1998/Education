@@ -77,6 +77,14 @@
                 <input type="number" min="1" name="capacity" value="{{ old('capacity', $slot->capacity ?? 1) }}" class="form-control">
             </div>
             <div class="col-md-3">
+                <label class="form-label">مدت هر رزرو</label>
+                <div class="input-group">
+                    <input type="number" min="5" max="240" name="duration_minutes" value="{{ old('duration_minutes', $slot->duration_minutes ?? 15) }}" class="form-control">
+                    <span class="input-group-text">دقیقه</span>
+                </div>
+                <div class="form-hint">این مدت فقط برای همین تایم استفاده می‌شود و بازه‌های قابل رزرو را می‌سازد.</div>
+            </div>
+            <div class="col-md-3">
                 <label class="form-label">وضعیت</label>
                 <select name="status" class="form-select">
                     @foreach($statuses as $value => $label)

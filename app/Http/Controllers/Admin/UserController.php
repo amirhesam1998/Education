@@ -19,10 +19,13 @@ class UserController extends Controller
     {
         $users = User::query()
             ->with('roles')
-            ->when($request->filled('q'), fn ($query) => $query
-                ->where('name', 'like', '%'.$request->string('q').'%')
-                ->orWhere('email', 'like', '%'.$request->string('q').'%')
-                ->orWhere('phone', 'like', '%'.$request->string('q').'%'))
+            ->when($request->filled('q'), fn ($query) => $query->where(function ($searchQuery) use ($request): void {
+                $term = '%'.$request->string('q').'%';
+                $searchQuery
+                    ->where('name', 'like', $term)
+                    ->orWhere('phone', 'like', $term)
+                    ->orWhere('email', 'like', $term);
+            }))
             ->latest()
             ->paginate(20)
             ->withQueryString();

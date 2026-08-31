@@ -88,8 +88,6 @@ class SlotAvailabilityService
         ?ReservationFollowUp $ignoreFollowUp = null,
     ): Collection
     {
-        $durationMinutes ??= $this->settings->reservationDurationMinutes();
-
         return collect($slots)
             ->groupBy(fn (ReservationSlot $slot) => $slot->date->toDateString())
             ->sortKeys()
@@ -106,6 +104,7 @@ class SlotAvailabilityService
                             'label' => PersianDate::time($interval['start_time']).' تا '.PersianDate::time($interval['end_time']),
                             'slot_range' => PersianDate::time($slot->start_time).' تا '.PersianDate::time($slot->end_time),
                             'advisor_name' => $slot->advisor?->name,
+                            'duration_minutes' => $interval['duration_minutes'],
                             'status' => $interval['status_key'],
                             'status_label' => $interval['status_label'],
                             'available' => $interval['available'],
@@ -138,12 +137,12 @@ class SlotAvailabilityService
      */
     public function generateIntervalsForSlot(
         ReservationSlot $slot,
-        int $durationMinutes,
+        ?int $durationMinutes = null,
         ?Reservation $ignoreReservation = null,
         ?ReservationFollowUp $ignoreFollowUp = null,
     ): Collection
     {
-        $durationMinutes = max(1, $durationMinutes);
+        $durationMinutes = max(1, (int) ($durationMinutes ?? $slot->duration_minutes ?? $this->settings->defaultReservationDurationMinutes()));
         $date = $slot->date->toDateString();
         $cursor = Carbon::parse($date.' '.$this->normalizeTime($slot->start_time));
         $slotEnd = Carbon::parse($date.' '.$this->normalizeTime($slot->end_time));
@@ -163,6 +162,7 @@ class SlotAvailabilityService
                 'end_time' => $endTime,
                 'value' => $startTime.'|'.$endTime,
                 'label' => $startTime.' تا '.$endTime,
+                'duration_minutes' => $durationMinutes,
                 'available' => $available,
                 'status_key' => $available ? 'available' : ($overlappingFollowUp ? 'follow_up' : ($overlappingReservation?->status->value ?? 'locked')),
                 'status_label' => $available ? 'آزاد' : $this->intervalUnavailableLabel($overlappingReservation, $overlappingFollowUp),
@@ -272,14 +272,7 @@ class SlotAvailabilityService
      */
     public function activeReservationStatuses(): array
     {
-        return ReservationStatus::activeValues(
-            includePaymentRejected: ! $this->releaseSlotAfterPaymentRejection()
-        );
-    }
-
-    public function releaseSlotAfterPaymentRejection(): bool
-    {
-        return (bool) $this->settings->get('release_slot_after_payment_rejection', true);
+        return ReservationStatus::slotBlockingValues();
     }
 
     private function firstOverlappingActiveReservation(ReservationSlot $slot, string $startTime, string $endTime, ?Reservation $ignoreReservation = null): ?Reservation

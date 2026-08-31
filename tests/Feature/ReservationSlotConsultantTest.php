@@ -220,6 +220,7 @@ class ReservationSlotConsultantTest extends TestCase
             'date' => $this->slotDate(),
             'start_time' => '10:00',
             'end_time' => '11:00',
+            'duration_minutes' => 15,
             'capacity' => 1,
             'status' => SlotStatus::Active->value,
         ];

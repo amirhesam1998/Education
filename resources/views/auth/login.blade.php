@@ -619,11 +619,11 @@
                     <form method="post" action="{{ route('login.store') }}" id="loginForm">
                         @csrf
                         <div class="mb-3">
-                            <label class="form-label">ایمیل</label>
+                            <label class="form-label">شماره تماس</label>
                             <div class="input-group-modern">
-                                <input type="email" name="email" value="{{ old('email') }}" class="form-control ltr"
-                                    required autofocus placeholder="you@example.com">
-                                <i class="ri-mail-line field-icon"></i>
+                                <input type="tel" name="phone" value="{{ old('phone') }}" class="form-control ltr"
+                                    required autofocus placeholder="09120000000" inputmode="tel" autocomplete="tel">
+                                <i class="ri-phone-line field-icon"></i>
                             </div>
                         </div>
 

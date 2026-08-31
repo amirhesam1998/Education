@@ -18,7 +18,6 @@ class UpdateSettingsRequest extends FormRequest
             'contact_phone' => ['nullable', 'string', 'max:50'],
             'default_payment_deadline_hours' => ['required', 'integer', 'min:1', 'max:720'],
             'default_public_link_expiration_hours' => ['required', 'integer', 'min:1', 'max:720'],
-            'reservation_duration_minutes' => ['required', 'integer', 'min:5', 'max:240'],
             'default_prepayment_amount' => ['nullable', 'integer', 'min:0'],
             'prepayment_presets' => ['nullable', 'array'],
             'prepayment_presets.*.amount' => ['nullable', 'integer', 'min:0'],
@@ -39,14 +38,12 @@ class UpdateSettingsRequest extends FormRequest
             'majors' => ['nullable', 'string', 'max:5000'],
             'expired_message' => ['required', 'string', 'max:1000'],
             'cancelled_message' => ['required', 'string', 'max:1000'],
-            'release_slot_after_payment_rejection' => ['boolean'],
         ];
     }
 
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'release_slot_after_payment_rejection' => $this->boolean('release_slot_after_payment_rejection'),
             'prepayment_presets' => $this->booleanRows('prepayment_presets'),
             'payment_cards' => $this->booleanRows('payment_cards'),
         ]);

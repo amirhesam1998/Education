@@ -198,6 +198,7 @@
         const emptyState = document.querySelector('[data-appointment-empty]');
         const firstAvailableButton = document.querySelector('[data-first-available]');
         const advisorLabel = document.querySelector('[data-selected-advisor]');
+        const durationLabel = document.querySelector('[data-selected-duration]');
         const selectedInterval = intervalSelect?.dataset.selected || '';
 
         if (!dateGroups.length || !slotSelect || !intervalSelect || !summary || !chipList) {
@@ -207,6 +208,8 @@
         const groupsByDate = Object.fromEntries(dateGroups.map((group) => [group.date, group]));
         const selectedGroup = dateGroups.find((group) => group.intervals.some((interval) => String(interval.slot_id) === String(slotSelect.value)))
             || dateGroups[0];
+        const faNumber = (value) => String(value || '').replace(/\d/g, (digit) => '۰۱۲۳۴۵۶۷۸۹'[digit]);
+        const formatDuration = (minutes) => minutes ? `${faNumber(minutes)} دقیقه` : '-';
 
         function syncFields(interval) {
             intervalSelect.innerHTML = '';
@@ -221,6 +224,9 @@
             intervalSelect.value = interval.value;
             summary.querySelector('[data-general-range]').textContent = interval.slot_range || '-';
             summary.querySelector('[data-assigned-range]').textContent = interval.label || '-';
+            if (durationLabel) {
+                durationLabel.textContent = formatDuration(interval.duration_minutes);
+            }
         }
 
         function renderDate(dateKey) {
@@ -489,7 +495,7 @@
                     <i class="ri-user-star-line align-middle"></i>
                     <span data-selected-advisor>مشاور را از روی نوبت انتخاب کنید</span>
                 </div>
-                <span>{{ \App\Support\PersianDate::number($reservationDurationMinutes ?? 15) }} دقیقه</span>
+                <span data-selected-duration>-</span>
             </div>
 
             <div class="date-card-row" data-date-cards>
@@ -635,6 +641,7 @@
         const slotSelect = document.getElementById('slot_id');
         const intervalSelect = document.getElementById('reservation_interval');
         const summary = document.getElementById('reservation-interval-summary');
+        const durationLabel = document.querySelector('[data-selected-duration]');
         const selectedInterval = intervalSelect?.dataset.selected || '';
 
         if (!slotSelect || !intervalSelect || !summary || document.querySelector('[data-date-card]')) {
@@ -643,6 +650,7 @@
 
         const faNumber = (value) => String(value || '').replace(/\d/g, (digit) => '۰۱۲۳۴۵۶۷۸۹'[digit]);
         const formatRange = (range) => faNumber(String(range || '').replace('|', ' تا '));
+        const formatDuration = (minutes) => minutes ? `${faNumber(minutes)} دقیقه` : '-';
 
         function selectedSlotOption() {
             return slotSelect.tagName === 'SELECT'
@@ -704,8 +712,13 @@
 
         function updateSummary() {
             const slotId = slotSelect.value;
+            const intervals = slotIntervals[slotId] || [];
+            const current = intervals.find((interval) => interval.value === intervalSelect.value) || intervals[0];
             summary.querySelector('[data-general-range]').textContent = generalRange(slotId);
             summary.querySelector('[data-assigned-range]').textContent = intervalSelect.value ? formatRange(intervalSelect.value) : '-';
+            if (durationLabel) {
+                durationLabel.textContent = formatDuration(current?.duration_minutes);
+            }
         }
 
         slotSelect.addEventListener('change', renderIntervals);

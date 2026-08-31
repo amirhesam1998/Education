@@ -6,19 +6,30 @@ use App\Enums\ReservationStatus;
 use App\Models\FieldSelectionItem;
 use App\Models\FieldSelectionPlan;
 use App\Models\Reservation;
+use App\Models\StudyProgram;
 use App\Models\User;
 use App\Services\StudyPrograms\StudyProgramQuery;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class FieldSelectionService
 {
+    private const ITEM_FIELDS = [
+        'field_code',
+        'field_name',
+        'field_description',
+        'city',
+        'university_name',
+        'university_type',
+        'university_description',
+    ];
+
     public function __construct(
         private readonly ActivityLogService $activityLog,
         private readonly StudyProgramQuery $studyPrograms,
-    )
-    {
+    ) {
     }
 
     public function createPlanForReservation(Reservation $reservation, User $user): FieldSelectionPlan
@@ -26,20 +37,15 @@ class FieldSelectionService
         $this->assertEligible($reservation);
 
         return DB::transaction(function () use ($reservation, $user): FieldSelectionPlan {
-            $existing = FieldSelectionPlan::query()
+            $latestVersion = (int) FieldSelectionPlan::query()
                 ->where('reservation_id', $reservation->id)
-                ->where('status', FieldSelectionPlan::STATUS_DRAFT)
                 ->lockForUpdate()
-                ->first();
-
-            if ($existing) {
-                return $existing;
-            }
+                ->max('version');
 
             $plan = FieldSelectionPlan::query()->create([
                 'reservation_id' => $reservation->id,
                 'student_id' => $reservation->student_id,
-                'version' => ((int) FieldSelectionPlan::query()->where('reservation_id', $reservation->id)->max('version')) + 1,
+                'version' => $latestVersion + 1,
                 'status' => FieldSelectionPlan::STATUS_DRAFT,
                 'created_by' => $user->id,
                 'updated_by' => $user->id,
@@ -54,6 +60,7 @@ class FieldSelectionService
     public function addItem(FieldSelectionPlan $plan, array $data, User $user): FieldSelectionItem
     {
         $this->assertDraft($plan);
+        $data = $this->normalizeItemPayload($data);
 
         return DB::transaction(function () use ($plan, $data, $user): FieldSelectionItem {
             $count = FieldSelectionItem::query()->where('field_selection_plan_id', $plan->id)->lockForUpdate()->count();
@@ -80,6 +87,7 @@ class FieldSelectionService
     {
         $item->loadMissing('plan.reservation');
         $this->assertDraft($item->plan);
+        $data = $this->normalizeItemPayload($data);
 
         if ($item->field_code !== $data['field_code'] && FieldSelectionItem::query()
             ->where('field_selection_plan_id', $item->field_selection_plan_id)
@@ -88,10 +96,10 @@ class FieldSelectionService
             throw ValidationException::withMessages(['field_code' => 'این کد رشته قبلاً در لیست ثبت شده است.']);
         }
 
-        $old = $item->only(['field_code', 'field_name', 'city']);
+        $old = $item->only(self::ITEM_FIELDS);
         $item->update($data);
         $item->plan->forceFill(['updated_by' => $user->id])->save();
-        $this->activityLog->log('field_selection_item_updated', $item->plan->reservation, $user, $old, $item->only(['field_code', 'field_name', 'city']));
+        $this->activityLog->log('field_selection_item_updated', $item->plan->reservation, $user, $old, $item->only(self::ITEM_FIELDS));
 
         return $item;
     }
@@ -118,7 +126,7 @@ class FieldSelectionService
 
             foreach ($items as $data) {
                 $item = $existing->get((int) $data['id']);
-                $changes = collect($data)->only(['field_code', 'field_name', 'city'])->all();
+                $changes = $this->normalizeItemPayload($data);
 
                 if ($item->only(array_keys($changes)) === $changes) {
                     continue;
@@ -146,13 +154,16 @@ class FieldSelectionService
         return $this->addItem($plan, [
             'field_code' => $catalogItem->code,
             'field_name' => $catalogItem->academicField->name,
+            'field_description' => $this->programDescription($catalogItem),
             'city' => $catalogItem->city->name,
+            'university_name' => $this->programUniversityName($catalogItem),
+            'university_type' => $this->programUniversityType($catalogItem),
         ], $user);
     }
 
     /**
      * @param  array{q?:string|null, province_id?:int|string|null, city_id?:int|string|null, course_type_id?:int|string|null}  $filters
-     * @return Collection<int, array{id:int, field_code:string, field_name:string, city:string, province:?string, institution:?string, course_type:?string, exam_group:?string, capacity:?int}>
+     * @return Collection<int, array{id:int, field_code:string, field_name:string, field_description:?string, city:string, province:?string, institution:?string, university_name:?string, university_type:?string, university_description:?string, course_type:?string, exam_group:?string, booklet_source:?string, source_file:?string, booklet_page:?int, booklet_section:?string, capacity:?int}>
      */
     public function searchFieldCatalog(array $filters): Collection
     {
@@ -174,23 +185,39 @@ class FieldSelectionService
         return $this->studyPrograms->base(array_filter($programFilters, filled(...)))
             ->when($search !== '', fn ($query) => $query->where(function ($nested) use ($search): void {
                 $nested->where('code', 'like', '%'.$search.'%')
-                    ->orWhereHas('academicField', fn ($field) => $field->where('name', 'like', '%'.$search.'%'));
+                    ->orWhere('description', 'like', '%'.$search.'%')
+                    ->orWhere('raw_data', 'like', '%'.$search.'%')
+                    ->orWhereHas('academicField', fn ($field) => $field->where('name', 'like', '%'.$search.'%'))
+                    ->orWhereHas('institution', fn ($institution) => $institution->where('name', 'like', '%'.$search.'%'))
+                    ->orWhereHas('city', fn ($city) => $city->where('name', 'like', '%'.$search.'%'))
+                    ->orWhereHas('courseType', fn ($type) => $type->where('name', 'like', '%'.$search.'%'));
             }))
             ->orderBy('code')
             ->limit(30)
             ->get()
-            ->map(function ($program): array {
+            ->map(function (StudyProgram $program): array {
                 $capacity = ((int) ($program->first_semester_capacity ?? 0)) + ((int) ($program->second_semester_capacity ?? 0));
+                $universityType = $this->programUniversityType($program);
+                $description = $this->programDescription($program);
+                $universityName = $this->programUniversityName($program);
 
                 return [
                     'id' => $program->id,
                     'field_code' => $program->code,
                     'field_name' => $program->academicField?->name,
+                    'field_description' => $description,
                     'city' => $program->city?->name,
                     'province' => $program->province?->name,
                     'institution' => $program->institution?->name,
-                    'course_type' => $program->courseType?->name,
+                    'university_name' => $universityName,
+                    'university_type' => $universityType,
+                    'university_description' => $description,
+                    'course_type' => $universityType,
                     'exam_group' => $program->examGroup?->name,
+                    'booklet_source' => $this->bookletSource($program),
+                    'source_file' => $program->source_file,
+                    'booklet_page' => $program->booklet_page,
+                    'booklet_section' => $program->booklet_section,
                     'capacity' => $capacity > 0 ? $capacity : null,
                 ];
             })
@@ -255,6 +282,7 @@ class FieldSelectionService
             ])->save();
 
             $this->activityLog->log('field_selection_published', $plan->reservation, $user, null, ['plan_id' => $plan->id, 'version' => $plan->version]);
+            $this->keepPublicLinkAccessibleForPublishedSelection($plan->reservation);
 
             return $plan;
         });
@@ -273,20 +301,98 @@ class FieldSelectionService
             $newPlan = FieldSelectionPlan::query()->create([
                 'reservation_id' => $plan->reservation_id,
                 'student_id' => $plan->student_id,
-                'version' => $plan->version + 1,
+                'version' => ((int) FieldSelectionPlan::query()->where('reservation_id', $plan->reservation_id)->max('version')) + 1,
                 'status' => FieldSelectionPlan::STATUS_DRAFT,
                 'created_by' => $user->id,
                 'updated_by' => $user->id,
             ]);
 
             foreach ($plan->items as $item) {
-                $newPlan->items()->create($item->only(['priority_order', 'field_code', 'field_name', 'city']));
+                $newPlan->items()->create($item->only(['priority_order', ...self::ITEM_FIELDS]));
             }
 
             $this->activityLog->log('field_selection_new_version_created', $plan->reservation, $user, null, ['plan_id' => $newPlan->id, 'version' => $newPlan->version]);
 
             return $newPlan;
         });
+    }
+
+    private function normalizeItemPayload(array $data): array
+    {
+        return collect($data)
+            ->only(self::ITEM_FIELDS)
+            ->map(fn ($value) => is_string($value) ? trim($value) : $value)
+            ->map(fn ($value) => $value === '' ? null : $value)
+            ->all();
+    }
+
+    private function programUniversityType(StudyProgram $program): ?string
+    {
+        return $program->courseType?->name ?: $program->original_course_type;
+    }
+
+    private function programUniversityName(StudyProgram $program): ?string
+    {
+        $name = trim((string) ($program->institution?->name ?? ''));
+        $campus = trim((string) ($program->institutionCampus?->name ?? ''));
+
+        if ($name !== '' && $campus !== '' && $campus !== $name) {
+            return $name.' - '.$campus;
+        }
+
+        return $name !== '' ? $name : ($campus !== '' ? $campus : null);
+    }
+
+    private function bookletSource(StudyProgram $program): ?string
+    {
+        if ($program->examGroup?->name) {
+            return 'دفترچه '.$program->examGroup->name;
+        }
+
+        return filled($program->source_file) ? basename((string) $program->source_file) : null;
+    }
+
+    private function programDescription(StudyProgram $program): ?string
+    {
+        if (filled($program->description)) {
+            return trim((string) $program->description);
+        }
+
+        $raw = is_array($program->raw_data) ? $program->raw_data : [];
+        foreach (['field_description', 'program_description', 'university_description', 'description', 'توضیحات رشته', 'توضیحات کدرشته', 'توضیحات دانشگاه', 'توضیحات', 'توضيحات', 'شرح'] as $key) {
+            if (filled($raw[$key] ?? null)) {
+                return trim((string) $raw[$key]);
+            }
+        }
+
+        return null;
+    }
+
+    private function keepPublicLinkAccessibleForPublishedSelection(Reservation $reservation): void
+    {
+        $expiresAt = now()->addDays(30);
+        $updates = [];
+
+        if (! $reservation->public_token) {
+            $updates['public_token'] = $this->newPublicToken();
+        }
+
+        if (! $reservation->public_token_expires_at || $reservation->public_token_expires_at->lessThan($expiresAt)) {
+            $updates['public_token_expires_at'] = $expiresAt;
+        }
+
+        if ($updates !== []) {
+            $reservation->forceFill($updates)->save();
+        }
+    }
+
+    private function newPublicToken(): string
+    {
+        do {
+            $token = Str::random(80);
+        } while (Reservation::query()->where('public_token', $token)->exists());
+
+        return $token;
     }
 
     private function assertEligible(Reservation $reservation): void

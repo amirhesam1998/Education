@@ -45,6 +45,7 @@ class StoreSlotRequest extends FormRequest
             'daily_start_time' => ['required_if:mode,repeat', 'nullable', 'date_format:H:i'],
             'daily_end_time' => ['required_if:mode,repeat', 'nullable', 'date_format:H:i', 'after:daily_start_time'],
             'interval_minutes' => ['required_if:mode,repeat', 'nullable', 'integer', 'min:15', 'max:240'],
+            'duration_minutes' => ['required', 'integer', 'min:5', 'max:240'],
             'capacity' => ['required', 'integer', 'min:1', 'max:50'],
             'status' => ['required', Rule::in(array_keys(SlotStatus::options()))],
         ];
@@ -60,6 +61,16 @@ class StoreSlotRequest extends FormRequest
             if ($this->input('mode') === 'repeat') {
                 $this->validateRepeatedSlotConflicts($validator);
 
+                return;
+            }
+
+            $this->validateDurationFits(
+                $validator,
+                (string) $this->input('start_time'),
+                (string) $this->input('end_time'),
+            );
+
+            if ($validator->errors()->isNotEmpty()) {
                 return;
             }
 
@@ -86,6 +97,7 @@ class StoreSlotRequest extends FormRequest
             'daily_start_time' => 'شروع روزانه',
             'daily_end_time' => 'پایان روزانه',
             'interval_minutes' => 'فاصله زمانی',
+            'duration_minutes' => 'مدت هر رزرو',
             'capacity' => 'ظرفیت',
             'status' => 'وضعیت',
         ];
@@ -112,6 +124,12 @@ class StoreSlotRequest extends FormRequest
             while ($cursor->copy()->addMinutes((int) $this->input('interval_minutes'))->lte($dayEnd)) {
                 $slotEnd = $cursor->copy()->addMinutes((int) $this->input('interval_minutes'));
 
+                $this->validateDurationFits($validator, $cursor->format('H:i'), $slotEnd->format('H:i'));
+
+                if ($validator->errors()->isNotEmpty()) {
+                    return;
+                }
+
                 if ($this->hasSlotOverlap(
                     (int) $this->input('advisor_id'),
                     $date->toDateString(),
@@ -127,6 +145,16 @@ class StoreSlotRequest extends FormRequest
             }
 
             $date->addDay();
+        }
+    }
+
+    private function validateDurationFits(Validator $validator, string $startTime, string $endTime): void
+    {
+        $start = Carbon::parse('2000-01-01 '.$startTime);
+        $end = Carbon::parse('2000-01-01 '.$endTime);
+
+        if ($start->diffInMinutes($end) < (int) $this->input('duration_minutes')) {
+            $validator->errors()->add('duration_minutes', 'مدت هر رزرو نباید از طول بازه تایم بیشتر باشد.');
         }
     }
 

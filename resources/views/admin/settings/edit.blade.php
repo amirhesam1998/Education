@@ -144,28 +144,10 @@
                         </div>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label">مدت هر رزرو</label>
-                        <div class="unit-suffix">
-                            <input type="number" name="reservation_duration_minutes" value="{{ old('reservation_duration_minutes', $settings->reservationDurationMinutes()) }}" class="form-control time-input-ms">
-                            <span>دقیقه</span>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
                         <label class="form-label">مبلغ پیش پرداخت پیشفرض</label>
                         <div class="unit-suffix">
                             <input type="number" name="default_prepayment_amount" value="{{ old('default_prepayment_amount', $settings->get('default_prepayment_amount', 0)) }}" class="form-control time-input-ms">
                             <span>تومان</span>
-                        </div>
-                    </div>
-
-                    <div class="col-12">
-                        <div class="switch-option form-switch">
-                            <div>
-                                <div class="switch-option-text">بعد از رد فیش، تایم آزاد شود</div>
-                                <div class="switch-option-hint">در صورت فعال بودن، پس از رد فیش پرداخت دانش‌آموز، تایم مجدداً برای رزرو در دسترس قرار می‌گیرد.</div>
-                            </div>
-                            <input type="checkbox" name="release_slot_after_payment_rejection" value="1" class="form-check-input" role="switch"
-                                @checked(old('release_slot_after_payment_rejection', $settings->get('release_slot_after_payment_rejection', true)))>
                         </div>
                     </div>
                 </div>

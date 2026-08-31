@@ -48,9 +48,14 @@ class SettingsService
         return max(1, (int) $this->get('report_card_max_upload_size_mb', 10)) * 1024;
     }
 
+    public function defaultReservationDurationMinutes(): int
+    {
+        return 15;
+    }
+
     public function reservationDurationMinutes(): int
     {
-        return max(1, (int) $this->get('reservation_duration_minutes', 15));
+        return $this->defaultReservationDurationMinutes();
     }
 
     public function minimumPrepaymentAmount(): int

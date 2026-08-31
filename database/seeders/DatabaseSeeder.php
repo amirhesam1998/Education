@@ -22,10 +22,10 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $admin = User::query()->updateOrCreate(
-            ['email' => 'admin@example.com'],
+            ['phone' => '09120000000'],
             [
                 'name' => 'مدیر کل',
-                'phone' => '09120000000',
+                'email' => 'admin@example.com',
                 'password' => 'password',
                 'status' => 'active',
             ],

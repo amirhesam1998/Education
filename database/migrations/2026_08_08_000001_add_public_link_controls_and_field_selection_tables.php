@@ -50,7 +50,11 @@ return new class extends Migration
                 $table->unsignedSmallInteger('priority_order');
                 $table->string('field_code', 100);
                 $table->string('field_name');
+                $table->text('field_description')->nullable();
                 $table->string('city');
+                $table->string('university_name')->nullable();
+                $table->string('university_type')->nullable();
+                $table->text('university_description')->nullable();
                 $table->timestamps();
 
                 $table->unique(['field_selection_plan_id', 'priority_order'], 'fs_items_plan_priority_unique');

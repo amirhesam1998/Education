@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['advisor_id', 'date', 'start_time', 'end_time', 'capacity', 'status', 'created_by'])]
+#[Fillable(['advisor_id', 'date', 'start_time', 'end_time', 'duration_minutes', 'capacity', 'status', 'created_by'])]
 class ReservationSlot extends Model
 {
     /** @use HasFactory<ReservationSlotFactory> */
@@ -40,6 +40,7 @@ class ReservationSlot extends Model
     {
         return [
             'date' => 'date',
+            'duration_minutes' => 'integer',
             'capacity' => 'integer',
             'status' => SlotStatus::class,
         ];

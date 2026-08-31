@@ -140,8 +140,8 @@
                 <thead>
                 <tr>
                     <th>نام</th>
-                    <th>ایمیل</th>
                     <th>شماره تماس</th>
+                    <th>ایمیل</th>
                     <th>وضعیت</th>
                     <th>نقشها</th>
                     <th>عملیات</th>
@@ -156,8 +156,8 @@
                                 <span class="user-name">{{ $user->name }}</span>
                             </div>
                         </td>
-                        <td class="ltr">{{ $user->email }}</td>
                         <td class="ltr">{{ $user->phone }}</td>
+                        <td class="ltr">{{ $user->email ?: '-' }}</td>
                         <td>
                             <span class="status-dot {{ $user->status === 'active' ? 'is-active' : 'is-inactive' }}">
                                 {{ $user->status === 'active' ? 'فعال' : 'غیرفعال' }}

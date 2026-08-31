@@ -12,7 +12,6 @@ class SlotTimelineService
 {
     public function __construct(
         private readonly SlotAvailabilityService $availability,
-        private readonly SettingsService $settings,
     ) {
     }
 
@@ -65,7 +64,7 @@ class SlotTimelineService
      */
     private function rowsForSlot(ReservationSlot $slot, ReservationSlot $selectedSlot): Collection
     {
-        $intervals = $this->availability->generateIntervalsForSlot($slot, $this->settings->reservationDurationMinutes());
+        $intervals = $this->availability->generateIntervalsForSlot($slot);
 
         if ($intervals->isEmpty()) {
             return collect([$this->makeRow($slot, null, $selectedSlot, [

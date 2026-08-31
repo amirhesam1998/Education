@@ -53,6 +53,32 @@ enum ReservationStatus: string
     }
 
     /**
+     * Statuses that must keep their reserved interval closed.
+     * Cancelled reservations are intentionally excluded so their interval can be booked again.
+     *
+     * @return array<int, string>
+     */
+    public static function slotBlockingValues(bool $includePaymentRejected = true): array
+    {
+        $values = [
+            self::Draft->value,
+            self::PendingCompletion->value,
+            self::PendingPrepayment->value,
+            self::PendingPaymentApproval->value,
+            self::Confirmed->value,
+            self::Expired->value,
+            self::Completed->value,
+            self::NoShow->value,
+        ];
+
+        if ($includePaymentRejected) {
+            $values[] = self::PaymentRejected->value;
+        }
+
+        return $values;
+    }
+
+    /**
      * @return array<int, string>
      */
     public static function pendingValues(): array

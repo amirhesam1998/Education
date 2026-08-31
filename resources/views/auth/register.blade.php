@@ -111,13 +111,13 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">ایمیل</label>
-                        <input type="email" name="email" value="{{ old('email') }}" class="form-control ltr" required>
+                        <label class="form-label">شماره تماس</label>
+                        <input type="tel" name="phone" value="{{ old('phone') }}" class="form-control ltr" required inputmode="tel" autocomplete="tel">
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">شماره تماس</label>
-                        <input type="text" name="phone" value="{{ old('phone') }}" class="form-control ltr">
+                        <label class="form-label">ایمیل <span class="text-muted small">(اختیاری)</span></label>
+                        <input type="email" name="email" value="{{ old('email') }}" class="form-control ltr" autocomplete="email">
                     </div>
 
                     <div class="mb-3">

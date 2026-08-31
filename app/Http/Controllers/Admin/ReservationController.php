@@ -65,15 +65,14 @@ class ReservationController extends Controller
         return view('admin.reservations.create', [
             'reservation' => new Reservation(['slot_id' => $request->integer('slot_id') ?: null]),
             'availableSlots' => $slots,
-            'slotIntervals' => $this->slotIntervals($slots, $availability, $settings->reservationDurationMinutes()),
-            'slotDateGroups' => $availability->groupedIntervalsForSlots($slots, $settings->reservationDurationMinutes()),
+            'slotIntervals' => $this->slotIntervals($slots, $availability),
+            'slotDateGroups' => $availability->groupedIntervalsForSlots($slots),
             'examTypes' => $settings->get('exam_types', []),
             'majors' => $settings->get('majors', []),
             'defaultPrepaymentAmount' => $settings->get('default_prepayment_amount', null),
             'prepaymentPresets' => $settings->activePrepaymentAmountPresets(),
             'paymentCards' => PaymentCard::query()->where('is_active', true)->orderBy('bank_name')->get(),
             'defaultDeadlineHours' => $settings->get('default_payment_deadline_hours', 24),
-            'reservationDurationMinutes' => $settings->reservationDurationMinutes(),
         ]);
     }
 
@@ -92,16 +91,14 @@ class ReservationController extends Controller
         $slots = $this->bookableSlots($reservation->slot);
         $followUp = $reservation->activeFollowUp;
         $followUpSlots = $this->bookableSlots($followUp?->slot);
-        $duration = app(SettingsService::class)->reservationDurationMinutes();
 
         return view('admin.reservations.show', [
             'reservation' => $reservation,
             'activeFollowUp' => $followUp,
             'availableSlots' => $slots,
-            'slotIntervals' => $this->slotIntervals($slots, $availability, $duration, $reservation),
-            'slotDateGroups' => $availability->groupedIntervalsForSlots($slots, $duration, $reservation),
-            'followUpSlotDateGroups' => $availability->groupedIntervalsForSlots($followUpSlots, $duration, null, $followUp),
-            'reservationDurationMinutes' => $duration,
+            'slotIntervals' => $this->slotIntervals($slots, $availability, $reservation),
+            'slotDateGroups' => $availability->groupedIntervalsForSlots($slots, null, $reservation),
+            'followUpSlotDateGroups' => $availability->groupedIntervalsForSlots($followUpSlots, null, null, $followUp),
             'publicUrl' => route('public.reservations.show', $reservation->public_token),
         ]);
     }
@@ -116,8 +113,8 @@ class ReservationController extends Controller
             'availableSlots' => $slots,
             'examTypes' => $settings->get('exam_types', []),
             'majors' => $settings->get('majors', []),
-            'slotIntervals' => $this->slotIntervals($slots, $availability, $settings->reservationDurationMinutes(), $reservation),
-            'slotDateGroups' => $availability->groupedIntervalsForSlots($slots, $settings->reservationDurationMinutes(), $reservation),
+            'slotIntervals' => $this->slotIntervals($slots, $availability, $reservation),
+            'slotDateGroups' => $availability->groupedIntervalsForSlots($slots, null, $reservation),
             'prepaymentPresets' => $settings->activePrepaymentAmountPresets(),
             'paymentCards' => PaymentCard::query()
                 ->where(function ($query) use ($reservation): void {
@@ -129,7 +126,6 @@ class ReservationController extends Controller
                 })
                 ->orderBy('bank_name')
                 ->get(),
-            'reservationDurationMinutes' => $settings->reservationDurationMinutes(),
         ]);
     }
 
@@ -235,14 +231,15 @@ class ReservationController extends Controller
         return back()->with('success', 'تایم مراجعه بعدی حذف شد.');
     }
 
-    private function slotIntervals($slots, SlotAvailabilityService $availability, int $durationMinutes, ?Reservation $ignoreReservation = null, ?ReservationFollowUp $ignoreFollowUp = null): array
+    private function slotIntervals($slots, SlotAvailabilityService $availability, ?Reservation $ignoreReservation = null, ?ReservationFollowUp $ignoreFollowUp = null): array
     {
         return $slots
             ->mapWithKeys(fn (ReservationSlot $slot) => [
-                $slot->id => $availability->generateIntervalsForSlot($slot, $durationMinutes, $ignoreReservation, $ignoreFollowUp)
+                $slot->id => $availability->generateIntervalsForSlot($slot, null, $ignoreReservation, $ignoreFollowUp)
                     ->map(fn (array $interval) => [
                         'value' => $interval['value'],
                         'label' => $interval['label'],
+                        'duration_minutes' => $interval['duration_minutes'],
                         'available' => $interval['available'],
                         'status_label' => $interval['status_label'],
                         'start_time' => $interval['start_time'],
