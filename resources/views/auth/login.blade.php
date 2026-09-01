@@ -4,43 +4,38 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>ورود به پنل مدیریت</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" rel="stylesheet">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&display=swap"
-        rel="stylesheet">
+    <title>ورود به بهروزان</title>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         :root {
-            --brand-50: #f1f7f6;
-            --brand-100: #dcece9;
-            --brand-200: #b3d9d3;
-            --brand-500: #2f8f83;
-            --brand-600: #26786e;
-            --brand-700: #1f6058;
+            /* Behrozan palette */
+            --brand-500: #8CC63F;
+            /* primary lime green */
+            --brand-600: #6BBF3A;
+            /* secondary fresh green */
+            --brand-700: #2E4E24;
+            /* deep green — outline / shadow */
 
-            --ink-900: #1c2430;
-            --ink-700: #4b5563;
-            --ink-500: #7b8794;
-            --ink-300: #cbd3da;
-            --ink-100: #eef1f4;
+            --icon-green: #4CAF50;
+            --icon-gray: #8A8A8A;
+            --placeholder: #8A8F98;
 
-            --bg: #f6f8f8;
+            --ink-900: #2B2B2B;
+            /* charcoal text */
+            --ink-500: #8A8F98;
+
+            --bg: #FAF8F2;
+            /* warm off-white */
             --surface: #ffffff;
-            --border: #e7ebee;
+            --border: #E6E8EC;
+            --glow: #E8F5D8;
+            /* soft glow green */
 
-            --success: #1f9d6e;
-            --warning: #d99a2b;
             --danger: #e0574c;
-            --info: #3a7bd5;
+            --success: #1f9d6e;
 
-            --radius-sm: 10px;
-            --radius-md: 14px;
-            --radius-lg: 20px;
-
-            --shadow-sm: 0 1px 2px rgba(20, 30, 40, .04);
-            --shadow-md: 0 8px 24px -8px rgba(20, 30, 40, .12);
-            --shadow-lg: 0 30px 70px -20px rgba(31, 96, 88, .28);
+            --radius-md: 16px;
+            --shadow-btn: 0 8px 24px rgba(76, 175, 80, .28);
         }
 
         * {
@@ -56,6 +51,7 @@
             background: var(--bg);
             color: var(--ink-900);
             font-family: 'Vazirmatn', Tahoma, Arial, sans-serif;
+            font-weight: 500;
             font-size: .95rem;
             -webkit-font-smoothing: antialiased;
             margin: 0;
@@ -67,7 +63,7 @@
         }
 
         ::selection {
-            background: var(--brand-200);
+            background: var(--glow);
             color: var(--brand-700);
         }
 
@@ -81,108 +77,30 @@
         }
 
         ::-webkit-scrollbar-thumb {
-            background: var(--ink-300);
+            background: #ddd8c8;
             border-radius: 10px;
         }
 
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--ink-500);
-        }
-
         /* ===========================================================
-           Decorative animated backdrop — built entirely from
-           pseudo-elements on the page wrapper, no extra markup.
+           Backdrop — Behrozan background texture
         =========================================================== */
         .auth-page {
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 2rem 1rem;
+            padding: 2rem 1rem 2rem;
             position: relative;
-            isolation: isolate;
             overflow: hidden;
-            background:
-                radial-gradient(900px 480px at 15% -10%, rgba(47, 143, 131, .14), transparent),
-                radial-gradient(700px 420px at 105% 8%, rgba(58, 123, 213, .10), transparent);
-        }
-
-        .auth-page::before,
-        .auth-page::after {
-            content: "";
-            position: absolute;
-            border-radius: 50%;
-            z-index: -1;
-            filter: blur(2px);
-            opacity: .55;
-        }
-
-        .auth-page::before {
-            width: 420px;
-            height: 420px;
-            background: radial-gradient(circle at 35% 30%, var(--brand-200), transparent 70%);
-            top: -140px;
-            right: -120px;
-            animation: drift-a 16s ease-in-out infinite;
-        }
-
-        .auth-page::after {
-            width: 340px;
-            height: 340px;
-            background: radial-gradient(circle at 60% 40%, #cfe3fb, transparent 70%);
-            bottom: -120px;
-            left: -100px;
-            animation: drift-b 18s ease-in-out infinite;
-        }
-
-        @keyframes drift-a {
-
-            0%,
-            100% {
-                transform: translate(0, 0) scale(1);
-            }
-
-            50% {
-                transform: translate(-24px, 26px) scale(1.06);
-            }
-        }
-
-        @keyframes drift-b {
-
-            0%,
-            100% {
-                transform: translate(0, 0) scale(1);
-            }
-
-            50% {
-                transform: translate(20px, -18px) scale(1.08);
-            }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-
-            .auth-page::before,
-            .auth-page::after {
-                animation: none;
-            }
-        }
-
-        /* Fine grain dot texture, subtle */
-        .auth-page .grain {
-            position: absolute;
-            inset: 0;
-            z-index: -1;
-            background-image: radial-gradient(rgba(28, 36, 48, .045) 1px, transparent 1px);
-            background-size: 22px 22px;
-            mask-image: radial-gradient(700px 500px at 50% 20%, #000, transparent 75%);
+            background: var(--bg) url('{{ asset('images/behrozan-bg-texture.webp') }}') center top / cover no-repeat;
         }
 
         /* ===========================================================
-           Login card
+           Brand — logo + greeting
         =========================================================== */
         .login-wrap {
             width: 100%;
-            max-width: 420px;
+            max-width: 400px;
             position: relative;
             z-index: 1;
         }
@@ -192,155 +110,27 @@
             flex-direction: column;
             align-items: center;
             gap: .6rem;
-            margin-bottom: 1.5rem;
+            margin-bottom: 2.75rem;
             text-align: center;
             animation: fade-drop .55s ease both;
         }
 
-        .brand-mark {
-            width: 56px;
-            height: 56px;
-            border-radius: 16px;
-            background: linear-gradient(150deg, var(--brand-500), var(--brand-700));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #fff;
-            font-size: 1.6rem;
-            box-shadow: 0 12px 26px -10px rgba(31, 96, 88, .55);
-            position: relative;
+        .brand-logo-img {
+            width: min(310px, 78vw);
+            height: auto;
+            display: block;
         }
 
-        .brand-mark::after {
-            content: "";
-            position: absolute;
-            inset: -6px;
-            border-radius: 20px;
-            border: 1.5px solid var(--brand-200);
-            opacity: .6;
-            animation: pulse-ring 2.6s ease-out infinite;
-        }
-
-        @keyframes pulse-ring {
-            0% {
-                transform: scale(.92);
-                opacity: .55;
-            }
-
-            70% {
-                transform: scale(1.14);
-                opacity: 0;
-            }
-
-            100% {
-                transform: scale(1.14);
-                opacity: 0;
-            }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            .brand-mark::after {
-                animation: none;
-                display: none;
-            }
-        }
-
-        .brand-title {
+        .brand-greeting {
             font-size: 1.05rem;
-            font-weight: 700;
+            font-weight: 500;
             color: var(--ink-900);
         }
 
-        .brand-subtitle {
-            font-size: .82rem;
-            color: var(--ink-500);
-        }
-
-        .login-card {
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            background: var(--surface);
-            box-shadow: var(--shadow-lg);
-            overflow: hidden;
-            position: relative;
-            animation: card-in .55s cubic-bezier(.2, .8, .2, 1) .08s both;
-        }
-
-        /* top accent hairline on the card */
-        .login-card::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            right: 0;
-            left: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--brand-500), var(--info), var(--brand-500));
-            background-size: 200% 100%;
-            animation: sheen 6s linear infinite;
-        }
-
         @media (prefers-reduced-motion: reduce) {
-            .login-card::before {
-                animation: none;
-            }
-        }
-
-        @keyframes sheen {
-            0% {
-                background-position: 0% 0;
-            }
-
-            100% {
-                background-position: 200% 0;
-            }
-        }
-
-        @keyframes card-in {
-            from {
-                opacity: 0;
-                transform: translateY(18px) scale(.98);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
-        }
-
-        @keyframes fade-drop {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-
-            .login-card,
             .brand-block {
                 animation: none;
             }
-        }
-
-        .login-card .card-body {
-            padding: 2rem 1.85rem;
-        }
-
-        .login-title {
-            font-size: 1.1rem;
-            font-weight: 700;
-            margin-bottom: .25rem;
-        }
-
-        .login-hint {
-            font-size: .82rem;
-            color: var(--ink-500);
-            margin-bottom: 1.5rem;
         }
 
         /* ===========================================================
@@ -348,7 +138,7 @@
         =========================================================== */
         .alert {
             border: none;
-            border-radius: var(--radius-md);
+            border-radius: 14px;
             padding: .85rem 1rem;
             font-size: .84rem;
             background: #fcecea;
@@ -390,13 +180,28 @@
         }
 
         /* ===========================================================
-           Form
+           Form — inputs
         =========================================================== */
-        .form-label {
-            font-size: .82rem;
-            font-weight: 600;
-            color: var(--ink-700);
-            margin-bottom: .4rem;
+        form {
+            animation: fade-drop .55s ease .08s both;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            form {
+                animation: none;
+            }
+        }
+
+        @keyframes fade-drop {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .input-group-modern {
@@ -406,62 +211,73 @@
         .input-group-modern .field-icon {
             position: absolute;
             top: 50%;
-            right: .95rem;
+            right: 1.1rem;
             transform: translateY(-50%);
-            color: var(--ink-300);
-            font-size: 1.05rem;
-            transition: color .15s ease;
+            height: 22px;
+            width: auto;
             pointer-events: none;
         }
 
         .form-control {
-            border-radius: var(--radius-sm);
-            border: 1.5px solid var(--border);
-            font-size: .9rem;
-            padding: .75rem 2.6rem .75rem .95rem;
-            background: var(--bg);
+            width: 100%;
+            height: 56px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            background: var(--surface);
             color: var(--ink-900);
-            transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+            font-size: .95rem;
+            font-family: inherit;
+            padding: 0 3.2rem 0 1.1rem;
+            transition: border-color .15s ease, box-shadow .15s ease;
+        }
+
+        .form-control::placeholder {
+            color: var(--placeholder);
         }
 
         .form-control:focus {
+            outline: none;
             border-color: var(--brand-500);
-            background: var(--surface);
-            box-shadow: 0 0 0 .2rem rgba(47, 143, 131, .14);
+            box-shadow: 0 0 0 .2rem rgba(140, 198, 63, .18);
         }
 
-        .form-control:focus~.field-icon {
-            color: var(--brand-500);
+        .form-control.has-toggle {
+            padding-left: 3rem;
         }
 
         .password-toggle {
             position: absolute;
             top: 50%;
-            right: .65rem;
+            left: .55rem;
             transform: translateY(-50%);
             background: none;
             border: none;
-            color: var(--ink-500);
-            font-size: 1.1rem;
             padding: .35rem;
             line-height: 1;
             cursor: pointer;
             border-radius: 8px;
-            transition: color .15s ease, background .15s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: background .15s ease, opacity .15s ease;
+        }
+
+        .password-toggle img {
+            height: 20px;
+            width: auto;
+        }
+
+        .password-toggle[aria-pressed="true"] img {
+            opacity: .6;
         }
 
         .password-toggle:hover {
-            color: var(--brand-600);
-            background: var(--brand-50);
+            background: var(--glow);
         }
 
         .password-toggle:focus-visible {
             outline: 2px solid var(--brand-500);
             outline-offset: 2px;
-        }
-
-        .form-control.has-toggle {
-            padding-inline-end: 2.7rem;
         }
 
         .form-check {
@@ -473,7 +289,8 @@
         .form-check-input {
             width: 1.1rem;
             height: 1.1rem;
-            border: 1.5px solid var(--ink-300);
+            border: 1.5px solid var(--border);
+            accent-color: var(--brand-500);
         }
 
         .form-check-input:checked {
@@ -482,52 +299,38 @@
         }
 
         .form-check-input:focus {
-            box-shadow: 0 0 0 .2rem rgba(47, 143, 131, .14);
+            box-shadow: 0 0 0 .2rem rgba(140, 198, 63, .18);
         }
 
         .form-check-label {
             font-size: .85rem;
-            color: var(--ink-700);
-        }
-
-        .ltr {
-            direction: ltr;
-            text-align: left;
+            color: var(--ink-900);
         }
 
         /* ===========================================================
-           Button
+           Primary button
         =========================================================== */
         .btn-primary {
-            background: linear-gradient(135deg, var(--brand-500), var(--brand-700));
+            width: 100%;
+            height: 56px;
+            background: linear-gradient(135deg, var(--brand-500), var(--brand-600));
             border: none;
-            border-radius: var(--radius-sm);
-            font-weight: 600;
-            font-size: .92rem;
-            padding: .8rem 1rem;
-            box-shadow: 0 10px 22px -10px rgba(31, 96, 88, .55);
+            border-radius: var(--radius-md);
+            color: #fff;
+            font-weight: 700;
+            font-size: .98rem;
+            box-shadow: var(--shadow-btn);
             transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn-primary::after {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(120deg, transparent, rgba(255, 255, 255, .28), transparent);
-            transform: translateX(-120%);
-            transition: transform .5s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: .5rem;
+            cursor: pointer;
         }
 
         .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 16px 28px -10px rgba(31, 96, 88, .6);
             filter: brightness(1.03);
-        }
-
-        .btn-primary:hover::after {
-            transform: translateX(120%);
         }
 
         .btn-primary:active {
@@ -558,121 +361,116 @@
             opacity: .85;
         }
 
-        .login-footer {
+        /* ===========================================================
+           Terms / privacy helper text (currently disabled, see markup)
+        =========================================================== */
+        .login-terms {
             text-align: center;
-            font-size: .76rem;
-            color: var(--ink-500);
-            margin-top: 1.5rem;
-            animation: fade-drop .6s ease .15s both;
+            font-size: 13px;
+            color: var(--placeholder);
+            margin-top: 1.25rem;
         }
 
-        @media (max-width: 420px) {
-            .login-card .card-body {
-                padding: 1.6rem 1.3rem;
-            }
+        .login-terms a {
+            color: var(--icon-green);
+            font-weight: 600;
+        }
 
-            .brand-mark {
-                width: 50px;
-                height: 50px;
-                font-size: 1.4rem;
+        @media (max-width: 380px) {
+            .brand-block {
+                margin-bottom: 1.5rem;
             }
+        }
+
+        .direction-rtl {
+            direction: rtl;
+            text-align: right;
         }
     </style>
 </head>
 
 <body>
     <div class="auth-page">
-        <div class="grain"></div>
-
         <div class="login-wrap">
             <div class="brand-block">
-                <span class="brand-mark"><i class="ri-heart-pulse-line"></i></span>
-                <div>
-                    <div class="brand-title">سامانه رزرو مشاوره</div>
-                    <div class="brand-subtitle">پنل مدیریت آموزشگاه</div>
-                </div>
+                <img src="{{ asset('images/behrozan-logo.webp') }}" alt="بهروزان" class="brand-logo-img">
+                <div class="brand-greeting">    پنل مدیریت اموزشگاه بهروزان </div>
             </div>
 
-            <div class="card login-card">
-                <div class="card-body">
-                    <h1 class="login-title">ورود به پنل مدیریت</h1>
-                    <div class="login-hint">برای دسترسی به پنل، اطلاعات حساب خود را وارد کنید.</div>
-
-                    @if($errors->any())
-                        <div class="alert mb-3">
-                            <i class="ri-error-warning-line mt-1"></i>
-                            <div>
-                                @foreach($errors->all() as $error)
-                                    <div>{{ $error }}</div>
-                                @endforeach
-                            </div>
-                        </div>
-                    @endif
-
-                    @if(session('success'))
-                        <div class="alert mb-3" style="background:#edf8f4;color:var(--success);">
-                            <i class="ri-checkbox-circle-line mt-1"></i>
-                            <div>{{ session('success') }}</div>
-                        </div>
-                    @endif
-
-                    <form method="post" action="{{ route('login.store') }}" id="loginForm">
-                        @csrf
-                        <div class="mb-3">
-                            <label class="form-label">شماره تماس</label>
-                            <div class="input-group-modern">
-                                <input type="tel" name="phone" value="{{ old('phone') }}" class="form-control ltr"
-                                    required autofocus placeholder="09120000000" inputmode="tel" autocomplete="tel">
-                                <i class="ri-phone-line field-icon"></i>
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">رمز عبور</label>
-                            <div class="input-group-modern">
-                                <input type="password" name="password" id="passwordField"
-                                    class="form-control ltr has-toggle" required placeholder="••••••••">
-                                <button type="button" class="password-toggle" id="togglePassword"
-                                    aria-label="نمایش یا مخفی کردن رمز عبور" aria-pressed="false">
-                                    <i class="ri-eye-line" id="togglePasswordIcon"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="form-check mb-4">
-                            <input class="form-check-input" type="checkbox" name="remember" value="1" id="remember">
-                            <label class="form-check-label" for="remember">مرا به خاطر بسپار</label>
-                        </div>
-
-                        <button class="btn btn-primary w-100" type="submit" id="loginSubmit">
-                            <span class="btn-spinner"></span>
-                            <span class="btn-label">ورود</span>
-                        </button>
-                    </form>
-
-                    <div class="text-center mt-3 small">
-                        <a href="{{ route('register') }}">ثبت‌نام حساب جدید</a>
+            @if($errors->any())
+                <div class="alert mb-3">
+                    <i class="ri-error-warning-line mt-1"></i>
+                    <div>
+                        @foreach($errors->all() as $error)
+                            <div>{{ $error }}</div>
+                        @endforeach
                     </div>
                 </div>
-            </div>
+            @endif
 
-            <div class="login-footer">
-                &copy; {{ date('Y') }} سامانه رزرو مشاوره — تمامی حقوق محفوظ است.
+            @if(session('success'))
+                <div class="alert mb-3" style="background:#edf8f4;color:var(--success);">
+                    <i class="ri-checkbox-circle-line mt-1"></i>
+                    <div>{{ session('success') }}</div>
+                </div>
+            @endif
+
+            <form method="post" action="{{ route('login.store') }}" id="loginForm">
+                @csrf
+                <div class="mb-3">
+                    <div class="input-group-modern">
+                        <input type="tel" name="phone" value="{{ old('phone') }}" class="form-control direction-rtl"
+                            required autofocus placeholder="شماره تلفن" inputmode="tel" autocomplete="tel">
+                        <img src="{{ asset('images/icon-phone.webp') }}" alt="" class="field-icon">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <div class="input-group-modern">
+                        <input type="password" name="password" id="passwordField" class="form-control has-toggle"
+                            required placeholder="رمز عبور" autocomplete="current-password">
+                        <button type="button" class="password-toggle" id="togglePassword"
+                            aria-label="نمایش یا مخفی کردن رمز عبور" aria-pressed="false">
+                            <img src="{{ asset('images/icon-eye.webp') }}" alt="">
+                        </button>
+                        <img src="{{ asset('images/icon-lock.webp') }}" alt="" class="field-icon">
+                    </div>
+                </div>
+
+                {{-- <div class="form-check mb-4">
+                    <input class="form-check-input" type="checkbox" name="remember" value="1" id="remember">
+                    <label class="form-check-label" for="remember">مرا به خاطر بسپار</label>
+                </div>--}}
+
+                <button class="btn-primary" type="submit" id="loginSubmit">
+                    <span class="btn-spinner"></span>
+                    <span class="btn-label">ورود</span>
+                </button>
+            </form>
+
+            {{-- ثبت‌نام حساب جدید — فعلاً غیرفعال است، عمداً کامنت شده
+            <div class="text-center mt-3 small">
+                <a href="{{ route('register') }}">ثبت‌نام حساب جدید</a>
             </div>
+            --}}
+
+            {{-- متن قوانین و حریم خصوصی — فعلاً غیرفعال است، عمداً کامنت شده
+            <div class="login-terms">
+                ورود شما به معنی پذیرش <a href="#">قوانین</a> و <a href="#">حریم خصوصی</a> است
+            </div>
+            --}}
         </div>
     </div>
 
     <script>
         (function () {
             const toggleBtn = document.getElementById('togglePassword');
-            const toggleIcon = document.getElementById('togglePasswordIcon');
             const passwordField = document.getElementById('passwordField');
 
             toggleBtn?.addEventListener('click', function () {
                 const isHidden = passwordField.type === 'password';
                 passwordField.type = isHidden ? 'text' : 'password';
                 toggleBtn.setAttribute('aria-pressed', String(isHidden));
-                toggleIcon.className = isHidden ? 'ri-eye-off-line' : 'ri-eye-line';
             });
 
             const form = document.getElementById('loginForm');

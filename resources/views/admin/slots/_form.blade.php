@@ -106,11 +106,24 @@
             </div>
             <div class="col-md-4">
                 <label class="form-label">زمان شروع</label>
-                <input type="time" name="start_time" value="{{ old('start_time', $slot->start_time ? substr($slot->start_time, 0, 5) : '') }}" class="form-control">
+                {{-- Custom 24h time input — create-only experiment, see _form.blade.php notes --}}
+                @if($mode === 'create')
+                    <input type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="HH:MM"
+                        name="start_time" value="{{ old('start_time', $slot->start_time ? substr($slot->start_time, 0, 5) : '') }}"
+                        class="form-control ltr" data-time-24h>
+                @else
+                    <input type="time" name="start_time" value="{{ old('start_time', $slot->start_time ? substr($slot->start_time, 0, 5) : '') }}" class="form-control">
+                @endif
             </div>
             <div class="col-md-4">
                 <label class="form-label">زمان پایان</label>
-                <input type="time" name="end_time" value="{{ old('end_time', $slot->end_time ? substr($slot->end_time, 0, 5) : '') }}" class="form-control">
+                @if($mode === 'create')
+                    <input type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="HH:MM"
+                        name="end_time" value="{{ old('end_time', $slot->end_time ? substr($slot->end_time, 0, 5) : '') }}"
+                        class="form-control ltr" data-time-24h>
+                @else
+                    <input type="time" name="end_time" value="{{ old('end_time', $slot->end_time ? substr($slot->end_time, 0, 5) : '') }}" class="form-control">
+                @endif
             </div>
         </div>
     </div>
@@ -131,11 +144,15 @@
                 </div>
                 <div class="col-md-2 col-sm-6">
                     <label class="form-label">شروع روزانه</label>
-                    <input type="time" name="daily_start_time" value="{{ old('daily_start_time', '08:00') }}" class="form-control">
+                    <input type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="HH:MM"
+                        name="daily_start_time" value="{{ old('daily_start_time', '08:00') }}"
+                        class="form-control ltr" data-time-24h>
                 </div>
                 <div class="col-md-2 col-sm-6">
                     <label class="form-label">پایان روزانه</label>
-                    <input type="time" name="daily_end_time" value="{{ old('daily_end_time', '18:00') }}" class="form-control">
+                    <input type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="HH:MM"
+                        name="daily_end_time" value="{{ old('daily_end_time', '18:00') }}"
+                        class="form-control ltr" data-time-24h>
                 </div>
                 <div class="col-md-2 col-sm-6">
                     <label class="form-label">فاصله دقیقه</label>
@@ -168,6 +185,41 @@
 
             modeSelect?.addEventListener('change', syncRepeatVisibility);
             syncRepeatVisibility();
+
+            // ---- Custom 24h time inputs (create-only experiment) ------------------
+            // To revert: remove this block and change the data-time-24h inputs above
+            // back to <input type="time">.
+            function toAsciiDigits(str) {
+                return str
+                    .replace(/[۰-۹]/g, function (d) { return String(d.charCodeAt(0) - 1776); })
+                    .replace(/[٠-٩]/g, function (d) { return String(d.charCodeAt(0) - 1632); });
+            }
+
+            function formatWhileTyping(digits) {
+                if (digits.length <= 2) return digits;
+                return digits.slice(0, 2) + ':' + digits.slice(2, 4);
+            }
+
+            function clampOnBlur(digits) {
+                digits = digits.padEnd(4, '0').slice(0, 4);
+                let h = parseInt(digits.slice(0, 2), 10);
+                let m = parseInt(digits.slice(2, 4), 10);
+                if (isNaN(h) || h > 23) h = 23;
+                if (isNaN(m) || m > 59) m = 59;
+                return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+            }
+
+            document.querySelectorAll('[data-time-24h]').forEach(function (input) {
+                input.addEventListener('input', function () {
+                    const digits = toAsciiDigits(input.value).replace(/\D/g, '').slice(0, 4);
+                    input.value = formatWhileTyping(digits);
+                });
+
+                input.addEventListener('blur', function () {
+                    const digits = toAsciiDigits(input.value).replace(/\D/g, '');
+                    input.value = digits.length ? clampOnBlur(digits) : '';
+                });
+            });
         });
     </script>
     @endpush
