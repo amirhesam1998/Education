@@ -15,27 +15,26 @@ use App\Services\ReservationDocumentService;
 use App\Services\ReservationFlowService;
 use App\Services\ReservationService;
 use App\Services\SettingsService;
+use App\Services\FieldSelectionService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class PublicReservationController extends Controller
 {
-    public function show(string $token, PublicReservationLinkService $links, ReservationService $reservations, SettingsService $settings, ReservationFlowService $flow): View
+    public function show(string $token, PublicReservationLinkService $links, ReservationService $reservations, SettingsService $settings, ReservationFlowService $flow, FieldSelectionService $fieldSelections): View
     {
         $reservation = $links->validateToken($token);
         $this->expireIfOverdue($reservation, $links, $reservations);
         $reservation->refresh()->load(['student.phones', 'slot.advisor', 'advisor', 'payment', 'paymentCard', 'reportCards']);
 
-        $publishedFieldSelectionPlan = FieldSelectionPlan::query()
-            ->where('reservation_id', $reservation->id)
-            ->where('status', FieldSelectionPlan::STATUS_PUBLISHED)
-            ->latest('version')
-            ->first();
-
-        if (! $links->isAccessible($reservation) && ! $this->canViewPublishedFieldSelection($reservation, $publishedFieldSelectionPlan)) {
+        if (! $links->isAccessible($reservation)) {
             return view('public.reservation.blocked', ['message' => $links->getBlockedReasonMessage($reservation)]);
         }
+
+        $visibleFieldSelectionPlans = $fieldSelections->getStudentVisiblePlans($reservation);
+        $publishedFieldSelectionPlan = $visibleFieldSelectionPlans->first();
 
         return view('public.reservation.show', [
             'reservation' => $reservation,
@@ -47,6 +46,7 @@ class PublicReservationController extends Controller
             'isLinkExpired' => $links->isExpired($reservation),
             'canUploadReportCard' => $this->canUploadReportCard($reservation, $links),
             'publishedFieldSelectionPlan' => $publishedFieldSelectionPlan,
+            'visibleFieldSelectionPlans' => $visibleFieldSelectionPlans,
         ]);
     }
 
@@ -118,56 +118,77 @@ class PublicReservationController extends Controller
         return Storage::disk('local')->download($document->file_path, $document->original_name);
     }
 
-    public function fieldSelection(string $token, PublicReservationLinkService $links, ReservationService $reservations): View
+    public function fieldSelection(string $token, Request $request, PublicReservationLinkService $links, ReservationService $reservations, FieldSelectionService $fieldSelections): View
     {
         $reservation = $links->validateToken($token);
         $this->expireIfOverdue($reservation, $links, $reservations);
         $reservation->refresh()->load(['student.phones', 'slot.advisor', 'advisor']);
 
-        $plan = FieldSelectionPlan::query()
-            ->with('items')
-            ->where('reservation_id', $reservation->id)
-            ->where('status', FieldSelectionPlan::STATUS_PUBLISHED)
-            ->latest('version')
-            ->first();
-
-        if (! $links->isAccessible($reservation) && ! $this->canViewPublishedFieldSelection($reservation, $plan)) {
+        if (! $links->isAccessible($reservation)) {
             return view('public.reservation.blocked', ['message' => $links->getBlockedReasonMessage($reservation)]);
         }
 
-        return view('public.field-selection.show', compact('reservation', 'plan'));
+        $visiblePlans = $fieldSelections->getStudentVisiblePlans($reservation);
+        $plan = $request->filled('plan')
+            ? $fieldSelections->getStudentVisiblePlanOrFail($reservation, FieldSelectionPlan::query()->findOrFail($request->integer('plan')))
+            : $visiblePlans->first();
+        $plan?->load('items');
+
+        return view('public.field-selection.show', compact('reservation', 'plan', 'visiblePlans'));
     }
 
-    public function fieldSelectionPrint(string $token, PublicReservationLinkService $links, ReservationService $reservations): View
+    public function showFieldSelection(string $token, FieldSelectionPlan $plan, PublicReservationLinkService $links, ReservationService $reservations, FieldSelectionService $fieldSelections): View
     {
         $reservation = $links->validateToken($token);
         $this->expireIfOverdue($reservation, $links, $reservations);
 
-        $plan = FieldSelectionPlan::query()
-            ->with(['items', 'student', 'reservation.slot.advisor', 'reservation.advisor'])
-            ->where('reservation_id', $reservation->id)
-            ->where('status', FieldSelectionPlan::STATUS_PUBLISHED)
-            ->latest('version')
-            ->first();
-
-        if (! $links->isAccessible($reservation) && ! $this->canViewPublishedFieldSelection($reservation, $plan)) {
+        if (! $links->isAccessible($reservation)) {
             return view('public.reservation.blocked', ['message' => $links->getBlockedReasonMessage($reservation)]);
         }
 
-        abort_unless($plan, 404);
+        $plan = $fieldSelections->getStudentVisiblePlanOrFail($reservation, $plan);
+        $plan->load('items');
+        $visiblePlans = $fieldSelections->getStudentVisiblePlans($reservation);
 
-        return view('field-selection.print', compact('plan'));
+        return view('public.field-selection.show', compact('reservation', 'plan', 'visiblePlans'));
     }
 
-    private function canViewPublishedFieldSelection($reservation, ?FieldSelectionPlan $plan): bool
+    public function printFieldSelection(string $token, FieldSelectionPlan $plan, PublicReservationLinkService $links, ReservationService $reservations, FieldSelectionService $fieldSelections): View
     {
-        return $plan !== null
-            && ! $reservation->public_link_disabled_at
-            && $reservation->status instanceof ReservationStatus
-            && ! in_array($reservation->status, [
-                ReservationStatus::Cancelled,
-                ReservationStatus::NoShow,
-            ], true);
+        $reservation = $links->validateToken($token);
+        $this->expireIfOverdue($reservation, $links, $reservations);
+
+        if (! $links->isAccessible($reservation)) {
+            return view('public.reservation.blocked', ['message' => $links->getBlockedReasonMessage($reservation)]);
+        }
+
+        $plan = $fieldSelections->getStudentVisiblePlanOrFail($reservation, $plan);
+        $plan->load(['items', 'student', 'reservation.slot.advisor', 'reservation.advisor']);
+        $canViewStudentPersonalInfo = true;
+
+        return view('field-selection.print', compact('plan', 'canViewStudentPersonalInfo'));
+    }
+
+    public function fieldSelectionPrint(string $token, Request $request, PublicReservationLinkService $links, ReservationService $reservations, FieldSelectionService $fieldSelections): View
+    {
+        $reservation = $links->validateToken($token);
+        $this->expireIfOverdue($reservation, $links, $reservations);
+
+        if (! $links->isAccessible($reservation)) {
+            return view('public.reservation.blocked', ['message' => $links->getBlockedReasonMessage($reservation)]);
+        }
+
+        $visiblePlans = $fieldSelections->getStudentVisiblePlans($reservation);
+        $plan = $request->filled('plan')
+            ? $fieldSelections->getStudentVisiblePlanOrFail($reservation, FieldSelectionPlan::query()->findOrFail($request->integer('plan')))
+            : $visiblePlans->first();
+
+        $plan?->load(['items', 'student', 'reservation.slot.advisor', 'reservation.advisor']);
+        $canViewStudentPersonalInfo = true;
+
+        abort_unless($plan, 404);
+
+        return view('field-selection.print', compact('plan', 'canViewStudentPersonalInfo'));
     }
 
     private function canUsePublicForm($reservation, PublicReservationLinkService $links): bool
@@ -192,9 +213,12 @@ class PublicReservationController extends Controller
     private function expireIfOverdue($reservation, PublicReservationLinkService $links, ReservationService $reservations): void
     {
         if (
-            $links->isExpired($reservation)
+            $reservation->payment_deadline_at
+            && $reservation->payment_deadline_at->isPast()
+            && $reservation->prepayment_required
             && $reservation->status instanceof ReservationStatus
-            && in_array($reservation->status->value, ReservationStatus::pendingValues(), true)
+            && in_array($reservation->status, [ReservationStatus::PendingCompletion, ReservationStatus::PendingPrepayment], true)
+            && $reservation->payment?->status !== \App\Enums\PaymentStatus::Approved
         ) {
             $reservations->expire($reservation);
         }

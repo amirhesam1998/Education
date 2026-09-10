@@ -3,6 +3,7 @@
 namespace App\Http\Requests\PublicAccess;
 
 use App\Models\Reservation;
+use App\Models\Student;
 use App\Services\SettingsService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -33,6 +34,7 @@ class CompleteReservationRequest extends FormRequest
         return [
             'full_name' => [in_array('full_name', $missing, true) ? 'required' : 'nullable', 'string', 'max:255'],
             'major' => array_filter([in_array('major', $missing, true) ? 'required' : 'nullable', 'string', 'max:255', $majors ? Rule::in($majors) : null]),
+            'region' => [in_array('region', $missing, true) ? 'required' : 'nullable', 'string', Rule::in(Student::regionOptions())],
             'score' => [in_array('score', $missing, true) ? 'required' : 'nullable', 'string', 'max:255'],
             'exam_type' => [in_array('exam_type', $missing, true) ? 'required' : 'nullable', 'array'],
             'exam_type.*' => array_filter(['string', 'max:255', $examTypes ? Rule::in($examTypes) : null]),
@@ -47,6 +49,7 @@ class CompleteReservationRequest extends FormRequest
         return [
             'full_name' => 'نام و نام خانوادگی',
             'major' => 'رشته',
+            'region' => 'منطقه',
             'score' => 'تراز',
             'exam_type' => 'نوع کنکور',
             'phone_one' => 'شماره تماس اول',

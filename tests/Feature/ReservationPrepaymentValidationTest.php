@@ -143,6 +143,50 @@ class ReservationPrepaymentValidationTest extends TestCase
     }
 
     #[Test]
+    public function prepayment_deadline_defaults_when_the_admin_does_not_set_one(): void
+    {
+        $card = $this->paymentCard();
+
+        $reservation = $this->createReservation([
+            'prepayment_required' => '1',
+            'prepayment_amount' => app(SettingsService::class)->minimumPrepaymentAmount(),
+            'payment_card_id' => $card->id,
+            'payment_deadline_at' => '',
+        ]);
+
+        $this->assertTrue($reservation->prepayment_required);
+        $this->assertNotNull($reservation->payment_deadline_at);
+        $this->assertTrue($reservation->payment_deadline_at->between(now()->addMinutes(1439), now()->addMinutes(1441)));
+        $this->assertSame(ReservationStatus::PendingPrepayment, $reservation->status);
+    }
+
+    #[Test]
+    public function overdue_unpaid_prepayment_reservation_expires_and_releases_its_slot(): void
+    {
+        $slot = ReservationSlot::factory()->create(['capacity' => 1]);
+        $student = \App\Models\Student::factory()->create();
+        $reservation = Reservation::query()->create([
+            'student_id' => $student->id,
+            'slot_id' => $slot->id,
+            'advisor_id' => $slot->advisor_id,
+            'reserved_start_time' => '10:00',
+            'reserved_end_time' => '10:15',
+            'status' => ReservationStatus::PendingPrepayment,
+            'prepayment_required' => true,
+            'prepayment_amount' => app(SettingsService::class)->minimumPrepaymentAmount(),
+            'payment_deadline_at' => now()->subMinute(),
+            'public_token' => str()->random(80),
+            'public_token_expires_at' => now()->addDay(),
+        ]);
+
+        $this->assertFalse(app(\App\Services\SlotAvailabilityService::class)->isIntervalAvailable($slot, '10:00', '10:15'));
+        $this->assertSame(1, app(\App\Services\ReservationExpirationService::class)->expireOverdueReservations());
+
+        $this->assertSame(ReservationStatus::Expired, $reservation->refresh()->status);
+        $this->assertTrue(app(\App\Services\SlotAvailabilityService::class)->isIntervalAvailable($slot, '10:00', '10:15'));
+    }
+
+    #[Test]
     public function the_student_receipt_upload_section_only_appears_for_prepayment_reservations(): void
     {
         $disabled = $this->createReservation();
@@ -267,6 +311,7 @@ class ReservationPrepaymentValidationTest extends TestCase
         return array_replace([
             'full_name' => 'Test Student',
             'major' => $settings->get('majors', [])[0] ?? 'General',
+            'region' => \App\Models\Student::REGION_ONE,
             'score' => '12000',
             'exam_type' => [$settings->get('exam_types', [])[0] ?? 'General'],
             'phone_one' => '09120000000',

@@ -428,6 +428,8 @@
     $selectedSlotId = old('slot_id', request('slot_id', $reservation->slot_id));
     $selectedInterval = old('reservation_interval', request('reservation_interval', ($reservation->assignedStartTime() && $reservation->assignedEndTime()) ? substr($reservation->assignedStartTime(), 0, 5).'|'.substr($reservation->assignedEndTime(), 0, 5) : ''));
     $selectedExamTypes = old('exam_type', is_array($student?->exam_type) ? $student->exam_type : array_filter([(string) $student?->exam_type]));
+    $regionOptions = $regionOptions ?? \App\Models\Student::regionOptions();
+    $paymentDeadlineDefault = $reservation->exists ? $reservation->payment_deadline_at : now()->addHours($defaultDeadlineHours ?? 24);
     $closeUrl = $reservation->exists ? route('admin.reservations.show', $reservation) : route('admin.reservations.index');
     $weekdays = ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه'];
 @endphp
@@ -459,6 +461,15 @@
                     <option value="">انتخاب کنید</option>
                     @foreach($majors as $major)
                         <option value="{{ $major }}" @selected(old('major', $student?->major) === $major)>{{ $major }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">منطقه</label>
+                <select name="region" class="form-select">
+                    <option value="">انتخاب کنید</option>
+                    @foreach($regionOptions as $region)
+                        <option value="{{ $region }}" @selected(old('region', $student?->region) === $region)>{{ $region }}</option>
                     @endforeach
                 </select>
             </div>
@@ -608,8 +619,9 @@
                 @endif
             </div>
             <div class="col-md-4" data-prepayment-field>
-                <label class="form-label">مهلت پرداخت</label>
-                <input type="text" name="payment_deadline_at" value="{{ \App\Support\PersianDate::inputDateTime(old('payment_deadline_at', $reservation->payment_deadline_at ?? now()->addHours($defaultDeadlineHours ?? 24))) }}" data-default-value="{{ \App\Support\PersianDate::inputDateTime($reservation->payment_deadline_at ?? now()->addHours($defaultDeadlineHours ?? 24)) }}" class="form-control jalali-datetime-picker" autocomplete="off">
+                <label class="form-label">مهلت پرداخت <span class="text-muted">(اختیاری)</span></label>
+                <input type="text" name="payment_deadline_at" value="{{ \App\Support\PersianDate::inputDateTime(old('payment_deadline_at', $paymentDeadlineDefault)) }}" data-default-value="{{ \App\Support\PersianDate::inputDateTime($paymentDeadlineDefault ?? now()->addHours($defaultDeadlineHours ?? 24)) }}" class="form-control jalali-datetime-picker" autocomplete="off">
+                <div class="form-hint">اگر خالی بماند، رزرو به‌صورت خودکار به‌خاطر عدم پرداخت آزاد نمی‌شود.</div>
             </div>
         </div>
     </div>

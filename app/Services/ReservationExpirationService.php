@@ -12,6 +12,7 @@ class ReservationExpirationService
     public function __construct(
         private readonly ReservationService $reservationService,
         private readonly ActivityLogService $activityLog,
+        private readonly SettingsService $settings,
     ) {
     }
 
@@ -20,15 +21,8 @@ class ReservationExpirationService
         $count = 0;
 
         Reservation::query()
-            ->whereIn('status', ReservationStatus::pendingValues())
-            ->where(function ($query): void {
-                $query->where(fn ($inner) => $inner
-                    ->whereNotNull('payment_deadline_at')
-                    ->where('payment_deadline_at', '<', now()))
-                    ->orWhere(fn ($inner) => $inner
-                        ->whereNotNull('public_token_expires_at')
-                        ->where('public_token_expires_at', '<', now()));
-            })
+            ->whereIn('status', [ReservationStatus::PendingCompletion, ReservationStatus::PendingPrepayment])
+            ->where('prepayment_required', true)
             ->select('id')
             ->chunkById(100, function ($reservations) use (&$count): void {
                 foreach ($reservations as $row) {
@@ -39,7 +33,11 @@ class ReservationExpirationService
                             ->lockForUpdate()
                             ->first();
 
-                        if (! $reservation || ! in_array($reservation->status->value, ReservationStatus::pendingValues(), true)) {
+                        if (! $reservation || ! in_array($reservation->status, [ReservationStatus::PendingCompletion, ReservationStatus::PendingPrepayment], true)) {
+                            return;
+                        }
+
+                        if ($reservation->payment?->status === PaymentStatus::Approved || ! $this->deadline($reservation)->isPast()) {
                             return;
                         }
 
@@ -48,6 +46,8 @@ class ReservationExpirationService
                         if ($reservation->payment && $reservation->payment->status !== PaymentStatus::Expired) {
                             $reservation->payment->forceFill(['status' => PaymentStatus::Expired])->save();
                         }
+
+                        $this->activityLog->log('reservation_expired_payment_deadline', $reservation, null, null, ['deadline' => $this->deadline($reservation)->toDateTimeString()]);
 
                         $count++;
                     });
@@ -61,5 +61,11 @@ class ReservationExpirationService
     {
         // Slot availability is derived from reservation status; expired reservations no longer lock slots.
         return 0;
+    }
+
+    private function deadline(Reservation $reservation): \Illuminate\Support\Carbon
+    {
+        return $reservation->payment_deadline_at
+            ?: $reservation->created_at->copy()->addMinutes($this->settings->defaultPaymentDeadlineMinutes());
     }
 }

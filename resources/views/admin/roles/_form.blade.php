@@ -125,6 +125,8 @@
 
 @csrf
 
+@php($privacyPermissions = ['view_reservation_sensitive_info', 'view_student_personal_data', 'view_reservation_payment_info', 'view_prepayment_receipts', 'view_student_public_link'])
+
 <div class="card form-card">
     <div class="card-header"><i class="ri-price-tag-3-line"></i> نام نقش</div>
     <div class="card-body">
@@ -151,8 +153,19 @@
             <span class="permission-count"><strong id="permissionSelectedCount">0</strong> از {{ count($permissions) }} انتخاب شده</span>
         </div>
 
+        <h6 class="mb-3">حریم خصوصی و اطلاعات حساس</h6>
         <div class="permission-grid" id="permissionGrid">
-            @foreach($permissions as $permission)
+            @foreach($permissions->whereIn('name', $privacyPermissions) as $permission)
+                <label class="permission-option">
+                    <input type="checkbox" name="permissions[]" value="{{ $permission->name }}" class="form-check-input"
+                        @checked(in_array($permission->name, old('permissions', $role->permissions?->pluck('name')->all() ?? []), true))>
+                    <span class="form-check-label">{{ \App\Support\PermissionLabels::permission($permission->name) }}</span>
+                </label>
+            @endforeach
+        </div>
+        <hr class="my-4">
+        <div class="permission-grid">
+            @foreach($permissions->reject(fn ($permission) => in_array($permission->name, $privacyPermissions, true)) as $permission)
                 <label class="permission-option">
                     <input type="checkbox" name="permissions[]" value="{{ $permission->name }}" class="form-check-input"
                         @checked(in_array($permission->name, old('permissions', $role->permissions?->pluck('name')->all() ?? []), true))>
@@ -180,13 +193,15 @@
 
         if (!grid || !counter) return;
 
-        const checkboxes = () => Array.from(grid.querySelectorAll('input[type="checkbox"]'));
+        const checkboxes = () => Array.from(document.querySelectorAll('input[name="permissions[]"]'));
 
         function updateCount () {
             counter.textContent = checkboxes().filter((cb) => cb.checked).length;
         }
 
-        grid.addEventListener('change', updateCount);
+        document.addEventListener('change', function (event) {
+            if (event.target.matches('input[name="permissions[]"]')) updateCount();
+        });
 
         selectAllBtn?.addEventListener('click', function () {
             checkboxes().forEach((cb) => { cb.checked = true; });

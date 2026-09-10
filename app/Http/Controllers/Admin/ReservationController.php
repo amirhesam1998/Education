@@ -16,6 +16,7 @@ use App\Models\Advisor;
 use App\Models\PaymentCard;
 use App\Models\Reservation;
 use App\Models\ReservationDocument;
+use App\Models\Student;
 use App\Models\ReservationFollowUp;
 use App\Models\ReservationSlot;
 use App\Services\PaymentApprovalService;
@@ -25,6 +26,7 @@ use App\Services\ReservationDocumentService;
 use App\Services\ReservationFollowUpService;
 use App\Services\SettingsService;
 use App\Services\SlotAvailabilityService;
+use App\Services\StudentPrivacyService;
 use App\Support\PersianDate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -36,17 +38,26 @@ class ReservationController extends Controller
 {
     public function index(Request $request): View
     {
+        $privacy = app(StudentPrivacyService::class);
+        $canViewPersonalData = $privacy->canViewPersonalData($request->user());
+        $canViewPaymentInfo = $privacy->canViewPaymentInfo($request->user());
+
         $dateFilter = $request->filled('date')
             ? PersianDate::toGregorianDate($request->input('date'))
             : null;
 
         $reservations = Reservation::query()
-            ->with(['student.phones', 'slot.advisor', 'payment', 'paymentCard'])
+            ->with(array_filter([
+                'student',
+                $canViewPersonalData ? 'student.phones' : null,
+                'slot.advisor',
+                $canViewPaymentInfo ? 'payment' : null,
+            ]))
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
             ->when($request->filled('advisor_id'), fn ($query) => $query->where('advisor_id', $request->integer('advisor_id')))
             ->when($dateFilter, fn ($query) => $query->whereHas('slot', fn ($slot) => $slot->whereDate('date', $dateFilter)))
-            ->when($request->filled('student_name'), fn ($query) => $query->whereHas('student', fn ($student) => $student->where('full_name', 'like', '%'.$request->string('student_name').'%')))
-            ->when($request->filled('phone'), fn ($query) => $query->whereHas('student.phones', fn ($phone) => $phone->where('phone', 'like', '%'.$request->string('phone').'%')))
+            ->when($canViewPersonalData && $request->filled('student_name'), fn ($query) => $query->whereHas('student', fn ($student) => $student->where('full_name', 'like', '%'.$request->string('student_name').'%')))
+            ->when($canViewPersonalData && $request->filled('phone'), fn ($query) => $query->whereHas('student.phones', fn ($phone) => $phone->where('phone', 'like', '%'.$request->string('phone').'%')))
             ->latest()
             ->paginate(20)
             ->withQueryString();
@@ -55,6 +66,8 @@ class ReservationController extends Controller
             'reservations' => $reservations,
             'advisors' => Advisor::query()->selectableConsultants()->get(),
             'statuses' => ReservationStatus::options(),
+            'canViewPersonalData' => $canViewPersonalData,
+            'canViewPaymentInfo' => $canViewPaymentInfo,
         ]);
     }
 
@@ -69,6 +82,7 @@ class ReservationController extends Controller
             'slotDateGroups' => $availability->groupedIntervalsForSlots($slots),
             'examTypes' => $settings->get('exam_types', []),
             'majors' => $settings->get('majors', []),
+            'regionOptions' => Student::regionOptions(),
             'defaultPrepaymentAmount' => $settings->get('default_prepayment_amount', null),
             'prepaymentPresets' => $settings->activePrepaymentAmountPresets(),
             'paymentCards' => PaymentCard::query()->where('is_active', true)->orderBy('bank_name')->get(),
@@ -85,9 +99,28 @@ class ReservationController extends Controller
             ->with('success', 'رزرو با موفقیت ثبت شد و لینک امن ساخته شد.');
     }
 
-    public function show(Reservation $reservation, SlotAvailabilityService $availability): View
+    public function show(Reservation $reservation, SlotAvailabilityService $availability, StudentPrivacyService $privacy): View
     {
-        $reservation->load(['student.phones', 'slot.advisor', 'payment.approver', 'paymentCard', 'reportCards', 'activeFollowUp.slot.advisor', 'activityLogs.user', 'fieldSelectionPlans.items', 'fieldSelectionPlans.creator']);
+        $user = request()->user();
+        $canViewReservationSensitiveInfo = $privacy->canViewReservationSensitiveInfo($user);
+        $canViewPersonalData = $privacy->canViewPersonalData($user);
+        $canViewPaymentInfo = $privacy->canViewPaymentInfo($user);
+        $canViewReceipt = $privacy->canViewReceipt($user);
+        $canViewStudentPublicLink = $privacy->canViewStudentPublicLink($user);
+        $canViewReservationDocuments = $user->can('view_reservation_documents');
+
+        $reservation->load(array_filter([
+            'student',
+            $canViewPersonalData ? 'student.phones' : null,
+            'slot.advisor',
+            ($canViewPaymentInfo || $canViewReceipt) ? 'payment.approver' : null,
+            $canViewPaymentInfo ? 'paymentCard' : null,
+            $canViewReservationDocuments ? 'reportCards' : null,
+            'activeFollowUp.slot.advisor',
+            $canViewReservationSensitiveInfo ? 'activityLogs.user' : null,
+            'fieldSelectionPlans.items',
+            'fieldSelectionPlans.creator',
+        ]));
         $slots = $this->bookableSlots($reservation->slot);
         $followUp = $reservation->activeFollowUp;
         $followUpSlots = $this->bookableSlots($followUp?->slot);
@@ -99,7 +132,14 @@ class ReservationController extends Controller
             'slotIntervals' => $this->slotIntervals($slots, $availability, $reservation),
             'slotDateGroups' => $availability->groupedIntervalsForSlots($slots, null, $reservation),
             'followUpSlotDateGroups' => $availability->groupedIntervalsForSlots($followUpSlots, null, null, $followUp),
-            'publicUrl' => route('public.reservations.show', $reservation->public_token),
+            'canViewReservationSensitiveInfo' => $canViewReservationSensitiveInfo,
+            'canViewPersonalData' => $canViewPersonalData,
+            'canViewPaymentInfo' => $canViewPaymentInfo,
+            'canViewReceipt' => $canViewReceipt,
+            'canViewStudentPublicLink' => $canViewStudentPublicLink,
+            'canViewReservationDocuments' => $canViewReservationDocuments,
+            'educationalSummary' => $privacy->educationalSummary($reservation, $user),
+            'publicUrl' => $canViewStudentPublicLink ? route('public.reservations.show', $reservation->public_token) : null,
         ]);
     }
 
@@ -113,6 +153,7 @@ class ReservationController extends Controller
             'availableSlots' => $slots,
             'examTypes' => $settings->get('exam_types', []),
             'majors' => $settings->get('majors', []),
+            'regionOptions' => Student::regionOptions(),
             'slotIntervals' => $this->slotIntervals($slots, $availability, $reservation),
             'slotDateGroups' => $availability->groupedIntervalsForSlots($slots, null, $reservation),
             'prepaymentPresets' => $settings->activePrepaymentAmountPresets(),
@@ -160,6 +201,7 @@ class ReservationController extends Controller
 
     public function regenerateLink(Reservation $reservation, PublicReservationLinkService $links): RedirectResponse
     {
+        abort_unless(app(StudentPrivacyService::class)->canViewStudentPublicLink(request()->user()), 403);
         $links->regenerate($reservation);
 
         return back()->with('success', 'لینک جدید ساخته شد.');
@@ -167,6 +209,7 @@ class ReservationController extends Controller
 
     public function disablePublicLink(DisablePublicLinkRequest $request, Reservation $reservation, PublicReservationLinkService $links): RedirectResponse
     {
+        abort_unless(app(StudentPrivacyService::class)->canViewStudentPublicLink($request->user()), 403);
         $links->disable($reservation, $request->user(), $request->validated('reason'));
 
         return back()->with('success', 'لینک عمومی رزرو موقتاً غیرفعال شد.');
@@ -174,6 +217,7 @@ class ReservationController extends Controller
 
     public function enablePublicLink(Reservation $reservation, PublicReservationLinkService $links): RedirectResponse
     {
+        abort_unless(app(StudentPrivacyService::class)->canViewStudentPublicLink(request()->user()), 403);
         $links->enable($reservation, request()->user());
 
         return back()->with('success', 'لینک عمومی رزرو فعال شد.');
@@ -195,6 +239,7 @@ class ReservationController extends Controller
 
     public function receipt(Reservation $reservation, PaymentApprovalService $payments)
     {
+        abort_unless(app(StudentPrivacyService::class)->canViewReceipt(request()->user()), 403);
         abort_unless($reservation->payment, 404);
 
         return $payments->receiptResponse($reservation->payment);
@@ -209,6 +254,7 @@ class ReservationController extends Controller
 
     public function document(Reservation $reservation, ReservationDocument $document)
     {
+        abort_unless(request()->user()->can('view_reservation_documents'), 403);
         abort_unless((int) $document->reservation_id === (int) $reservation->id, 404);
         abort_unless(Storage::disk('local')->exists($document->file_path), 404);
 

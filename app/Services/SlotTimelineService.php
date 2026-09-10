@@ -6,6 +6,7 @@ use App\Enums\ReservationStatus;
 use App\Enums\SlotStatus;
 use App\Models\Reservation;
 use App\Models\ReservationSlot;
+use App\Models\User;
 use Illuminate\Support\Collection;
 
 class SlotTimelineService
@@ -19,8 +20,12 @@ class SlotTimelineService
      * @param  array{advisor_id?:int|null, status?:string|null, availability?:string|null}  $filters
      * @return Collection<int, array<string, mixed>>
      */
-    public function rowsForDate(ReservationSlot $selectedSlot, array $filters = []): Collection
+    public function rowsForDate(ReservationSlot $selectedSlot, array $filters = [], ?User $user = null): Collection
     {
+        $privacy = app(StudentPrivacyService::class);
+        $canViewPersonalData = $user ? $privacy->canViewPersonalData($user) : true;
+        $canViewPaymentInfo = $user ? $privacy->canViewPaymentInfo($user) : true;
+
         $slots = ReservationSlot::query()
             ->with([
                 'advisor',
@@ -33,7 +38,7 @@ class SlotTimelineService
             ->get();
 
         return $slots
-            ->flatMap(fn (ReservationSlot $slot) => $this->rowsForSlot($slot, $selectedSlot))
+            ->flatMap(fn (ReservationSlot $slot) => $this->rowsForSlot($slot, $selectedSlot, $canViewPersonalData, $canViewPaymentInfo))
             ->filter(fn (array $row) => $this->passesFilters($row, $filters))
             ->values();
     }
@@ -62,7 +67,7 @@ class SlotTimelineService
     /**
      * @return Collection<int, array<string, mixed>>
      */
-    private function rowsForSlot(ReservationSlot $slot, ReservationSlot $selectedSlot): Collection
+    private function rowsForSlot(ReservationSlot $slot, ReservationSlot $selectedSlot, bool $canViewPersonalData, bool $canViewPaymentInfo): Collection
     {
         $intervals = $this->availability->generateIntervalsForSlot($slot);
 
@@ -70,21 +75,21 @@ class SlotTimelineService
             return collect([$this->makeRow($slot, null, $selectedSlot, [
                 'start_time' => substr($slot->start_time, 0, 5),
                 'end_time' => substr($slot->end_time, 0, 5),
-            ])]);
+            ], $canViewPersonalData, $canViewPaymentInfo)]);
         }
 
         return $intervals->map(function (array $interval) use ($slot, $selectedSlot): array {
             $reservation = $this->firstReservationForInterval($slot, $interval['start_time'], $interval['end_time'])
                 ?? $interval['reservation'];
 
-            return $this->makeRow($slot, $reservation, $selectedSlot, $interval);
+            return $this->makeRow($slot, $reservation, $selectedSlot, $interval, $canViewPersonalData, $canViewPaymentInfo);
         });
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function makeRow(ReservationSlot $slot, ?Reservation $reservation, ReservationSlot $selectedSlot, array $interval): array
+    private function makeRow(ReservationSlot $slot, ?Reservation $reservation, ReservationSlot $selectedSlot, array $interval, bool $canViewPersonalData, bool $canViewPaymentInfo): array
     {
         $activeCount = $this->availability->countLoadedActiveReservations($slot);
         $remainingCapacity = $this->availability->remainingCapacity($slot);
@@ -100,13 +105,13 @@ class SlotTimelineService
             'time_start' => $startTime,
             'time_end' => $endTime,
             'advisor_name' => $slot->advisor?->name ?? '-',
-            'student_name' => $reservation?->student?->full_name ?: '-',
-            'student_phone' => $reservation?->student?->phones?->firstWhere('is_primary', true)?->phone
+            'student_name' => $canViewPersonalData ? ($reservation?->student?->full_name ?: '-') : ($reservation ? 'رزرو #'.$reservation->id : '-'),
+            'student_phone' => $canViewPersonalData ? ($reservation?->student?->phones?->firstWhere('is_primary', true)?->phone
                 ?? $reservation?->student?->phones?->first()?->phone
-                ?? '-',
+                ?? '-') : '-',
             'slot_status' => $this->slotStatusMeta($slot, $isAvailable, $intervalActiveCount),
             'reservation_status' => $reservationStatus,
-            'payment_status' => $reservation?->payment?->status?->label() ?? '-',
+            'payment_status' => $canViewPaymentInfo ? ($reservation?->payment?->status?->label() ?? '-') : '-',
             'active_reservations_count' => $activeCount,
             'remaining_capacity' => $remainingCapacity,
             'is_available' => $isAvailable,

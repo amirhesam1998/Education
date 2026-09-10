@@ -347,12 +347,13 @@
 @section('content')
     <div class="row g-3">
         <div class="col-lg-8">
-            @php($payment = $reservation->payment)
+            @php($payment = ($canViewPaymentInfo || $canViewReceipt) ? $reservation->payment : null)
 
             {{-- Reservation info --}}
             <div class="card card-section">
                 <div class="card-header"><i class="ri-information-line"></i> اطلاعات رزرو</div>
                 <div class="card-body">
+                    @if($canViewReservationSensitiveInfo)
                     <div class="info-grid">
                         <div class="info-item">
                             <div class="info-label">وضعیت</div>
@@ -411,6 +412,19 @@
                             <div class="info-value">{{ $reservation->payment?->status?->label() ?: '-' }}</div>
                         </div>
                     </div>
+                    @else
+                    <div class="info-grid">
+                        <div class="info-item"><div class="info-label">کد رزرو</div><div class="info-value">{{ $educationalSummary['reservation_code'] }}</div></div>
+                        <div class="info-item"><div class="info-label">مشاور</div><div class="info-value">{{ $educationalSummary['advisor'] ?: '-' }}</div></div>
+                        <div class="info-item"><div class="info-label">تاریخ</div><div class="info-value">{{ $reservation->slot ? \App\Support\PersianDate::date($reservation->slot->date) : '-' }}</div></div>
+                        <div class="info-item"><div class="info-label">زمان رزرو</div><div class="info-value ltr">{{ $reservation->slot ? \App\Support\PersianDate::time($reservation->assignedStartTime()).' - '.\App\Support\PersianDate::time($reservation->assignedEndTime()) : '-' }}</div></div>
+                        <div class="info-item"><div class="info-label">وضعیت</div><div class="info-value"><span class="badge text-bg-light">{{ $reservation->status->label() }}</span></div></div>
+                        <div class="info-item"><div class="info-label">نوع کنکور</div><div class="info-value">{{ $educationalSummary['exam_type'] ?: '-' }}</div></div>
+                        <div class="info-item"><div class="info-label">رشته</div><div class="info-value">{{ $educationalSummary['major'] ?: '-' }}</div></div>
+                        <div class="info-item"><div class="info-label">منطقه</div><div class="info-value">{{ $educationalSummary['region'] ?: '-' }}</div></div>
+                        <div class="info-item"><div class="info-label">تراز</div><div class="info-value">{{ $educationalSummary['score'] ?: '-' }}</div></div>
+                    </div>
+                    @endif
                 </div>
             </div>
 
@@ -418,6 +432,7 @@
             <div class="card card-section">
                 <div class="card-header"><i class="ri-bank-card-line"></i> پرداخت و فیش پیش پرداخت</div>
                 <div class="card-body">
+                    @if($canViewPaymentInfo)
                     @if($reservation->prepayment_required)
                         <div class="info-grid mb-3">
                             <div class="info-item">
@@ -465,6 +480,7 @@
                         @endif
 
                         @if($payment?->receipt_image_path)
+                            @if($canViewReceipt)
                             <div class="receipt-frame mb-3">
                                 <img src="{{ route('admin.reservations.receipt', $reservation) }}" alt="فیش پیش پرداخت">
                             </div>
@@ -492,6 +508,9 @@
                                     </div>
                                 @endcan
                             </div>
+                            @else
+                                <div class="empty-state">شما دسترسی مشاهده فیش پیش‌پرداخت را ندارید.</div>
+                            @endif
                         @else
                             <div class="empty-state">
                                 <i class="ri-image-line d-block mb-1" style="font-size:1.6rem;color:var(--ink-300)"></i>
@@ -504,6 +523,9 @@
                             برای این رزرو پیش پرداخت لازم نیست
                         </div>
                     @endif
+                    @else
+                        <div class="empty-state">شما دسترسی مشاهده اطلاعات پرداخت را ندارید.</div>
+                    @endif
                 </div>
             </div>
 
@@ -511,6 +533,7 @@
             <div class="card card-section">
                 <div class="card-header"><i class="ri-file-upload-line"></i> کارنامه دانش‌آموز</div>
                 <div class="card-body">
+                    @if($canViewReservationDocuments)
                     @forelse($reservation->reportCards as $document)
                         <div class="info-grid mb-3">
                             <div class="info-item">
@@ -546,6 +569,9 @@
                             </button>
                         </form>
                     @endcan
+                    @else
+                        <div class="empty-state">شما دسترسی مشاهده مدارک رزرو را ندارید.</div>
+                    @endif
                 </div>
             </div>
 
@@ -554,6 +580,7 @@
                 <div class="card-header"><i class="ri-graduation-cap-line"></i> دانش آموز</div>
                 <div class="card-body">
                     <div class="info-grid">
+                        @if($canViewPersonalData)
                         <div class="info-item">
                             <div class="info-label">نام و نام خانوادگی</div>
                             <div class="info-value">{{ $reservation->student?->full_name ?: '-' }}</div>
@@ -561,6 +588,10 @@
                         <div class="info-item">
                             <div class="info-label">رشته</div>
                             <div class="info-value">{{ $reservation->student?->major ?: '-' }}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">منطقه</div>
+                            <div class="info-value">{{ $reservation->student?->region ?: '-' }}</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">تراز</div>
@@ -574,7 +605,11 @@
                             <div class="info-label">شمارهها</div>
                             <div class="info-value ltr">{{ $reservation->student?->phones->pluck('phone')->implode(' / ') }}</div>
                         </div>
+                        @endif
                     </div>
+                    @unless($canViewPersonalData)
+                        <div class="empty-state">شما دسترسی مشاهده اطلاعات شخصی دانش‌آموز را ندارید.</div>
+                    @endunless
                 </div>
             </div>
 
@@ -606,6 +641,7 @@
             @endif
 
             {{-- Activity log --}}
+            @if($canViewReservationSensitiveInfo)
             <div class="card card-section mb-0">
                 <div class="card-header"><i class="ri-history-line"></i> تاریخچه فعالیت</div>
                 <div class="table-responsive">
@@ -626,6 +662,7 @@
                     </table>
                 </div>
             </div>
+            @endif
         </div>
 
         <div class="col-lg-4">
@@ -633,11 +670,12 @@
             <div class="card side-card card-section">
                 <div class="card-body">
                     <h2><i class="ri-links-line"></i> لینک دانش آموز</h2>
+                    @if($canViewStudentPublicLink)
                     <input class="form-control ltr mb-2" id="public-link" value="{{ $publicUrl }}" readonly>
                     <button class="btn btn-outline-primary w-100" type="button" onclick="navigator.clipboard.writeText(document.getElementById('public-link').value)">
                         <i class="ri-file-copy-line align-middle"></i> کپی لینک
                     </button>
-                    @can('update_reservations')
+                    @can('view_student_public_link')
                         <form method="post" action="{{ route('admin.reservations.regenerate-link', $reservation) }}" class="mt-2">
                             @csrf
                             <button class="btn btn-outline-secondary w-100">
@@ -650,6 +688,9 @@
                             <form method="post" action="{{ route('admin.reservations.disable-public-link', $reservation) }}" class="mt-2">@csrf<textarea name="reason" rows="2" class="form-control mb-2" placeholder="دلیل غیرفعال‌سازی (اختیاری)"></textarea><button class="btn btn-outline-danger w-100"><i class="ri-forbid-2-line align-middle"></i> غیرفعال کردن موقت لینک</button></form>
                         @endif
                     @endcan
+                    @else
+                        <div class="empty-state py-3">شما دسترسی مشاهده لینک دانش‌آموز را ندارید.</div>
+                    @endif
                 </div>
             </div>
 

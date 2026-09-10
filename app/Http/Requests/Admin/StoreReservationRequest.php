@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\Student;
 use App\Support\PersianDate;
 use App\Services\SettingsService;
 use Illuminate\Foundation\Http\FormRequest;
@@ -36,6 +37,7 @@ class StoreReservationRequest extends FormRequest
         return [
             'full_name' => ['nullable', 'string', 'max:255'],
             'major' => array_filter(['nullable', 'string', 'max:255', $majors ? Rule::in($majors) : null]),
+            'region' => ['nullable', 'string', Rule::in(Student::regionOptions())],
             'score' => ['nullable', 'string', 'max:255'],
             'exam_type' => ['nullable', 'array'],
             'exam_type.*' => array_filter(['string', 'max:255', $examTypes ? Rule::in($examTypes) : null]),
@@ -48,7 +50,7 @@ class StoreReservationRequest extends FormRequest
             'prepayment_required' => ['boolean'],
             'prepayment_amount' => [Rule::excludeIf(! $prepaymentRequired), Rule::requiredIf($prepaymentRequired), 'nullable', 'integer', 'min:'.$settings->minimumPrepaymentAmount()],
             'payment_card_id' => [Rule::excludeIf(! $prepaymentRequired), Rule::requiredIf($prepaymentRequired), 'nullable', 'exists:payment_cards,id'],
-            'payment_deadline_at' => [Rule::excludeIf(! $prepaymentRequired), Rule::requiredIf($prepaymentRequired), 'nullable', 'date', 'after:now'],
+            'payment_deadline_at' => [Rule::excludeIf(! $prepaymentRequired), 'nullable', 'date', 'after:now'],
             'admin_note' => ['nullable', 'string', 'max:5000'],
         ];
     }
@@ -58,6 +60,7 @@ class StoreReservationRequest extends FormRequest
         return [
             'full_name' => 'نام و نام خانوادگی',
             'major' => 'رشته',
+            'region' => 'منطقه',
             'score' => 'تراز',
             'exam_type' => 'نوع کنکور',
             'phone_one' => 'شماره تماس اول',

@@ -34,6 +34,7 @@ class ReservationService
             $student = Student::query()->create(Arr::only($data, [
                 'full_name',
                 'major',
+                'region',
                 'score',
                 'exam_type',
             ]));
@@ -52,7 +53,7 @@ class ReservationService
                 'prepayment_required' => $prepaymentRequired,
                 'prepayment_amount' => $prepaymentRequired ? $data['prepayment_amount'] : null,
                 'payment_card_id' => $prepaymentRequired ? ($data['payment_card_id'] ?? null) : null,
-                'payment_deadline_at' => $prepaymentRequired ? $data['payment_deadline_at'] : null,
+                'payment_deadline_at' => $prepaymentRequired ? $this->paymentDeadline($data['payment_deadline_at'] ?? null) : null,
                 'created_by' => $user?->id,
                 'updated_by' => $user?->id,
                 'admin_note' => $data['admin_note'] ?? null,
@@ -80,13 +81,19 @@ class ReservationService
                 ->firstOrFail();
 
             $old = $reservation->getOriginal();
+            $oldStudentRegion = $reservation->student->region;
 
             $reservation->student->update(Arr::only($data, [
                 'full_name',
                 'major',
+                'region',
                 'score',
                 'exam_type',
             ]));
+
+            if ($oldStudentRegion !== $reservation->student->region) {
+                $this->activityLog->log('student_region_updated', $reservation, $user, ['region' => $oldStudentRegion], ['region' => $reservation->student->region]);
+            }
 
             $this->syncPhones($reservation->student, $data);
             $slot = ReservationSlot::query()->whereKey($data['slot_id'] ?? $reservation->slot_id)->lockForUpdate()->firstOrFail();
@@ -101,7 +108,7 @@ class ReservationService
                 'prepayment_required' => $prepaymentRequired,
                 'prepayment_amount' => $prepaymentRequired ? ($data['prepayment_amount'] ?? null) : null,
                 'payment_card_id' => $prepaymentRequired ? ($data['payment_card_id'] ?? null) : null,
-                'payment_deadline_at' => $prepaymentRequired ? ($data['payment_deadline_at'] ?? null) : null,
+                'payment_deadline_at' => $prepaymentRequired ? $this->paymentDeadline($data['payment_deadline_at'] ?? null) : null,
                 'updated_by' => $user?->id,
                 'admin_note' => $data['admin_note'] ?? null,
             ])->save();
@@ -127,13 +134,18 @@ class ReservationService
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            foreach (['full_name', 'major', 'score', 'exam_type'] as $field) {
+            $oldRegion = $reservation->student->region;
+            foreach (['full_name', 'major', 'region', 'score', 'exam_type'] as $field) {
                 if (blank($reservation->student->{$field}) && array_key_exists($field, $data)) {
                     $reservation->student->{$field} = $data[$field];
                 }
             }
 
             $reservation->student->save();
+
+            if ($oldRegion !== $reservation->student->region) {
+                $this->activityLog->log('student_region_updated', $reservation, null, ['region' => $oldRegion], ['region' => $reservation->student->region]);
+            }
 
             if (! $reservation->student->phones()->exists() && filled($data['phone_one'] ?? null)) {
                 $reservation->student->phones()->create([
@@ -367,6 +379,13 @@ class ReservationService
     private function prepaymentRequired(mixed $value): bool
     {
         return filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false;
+    }
+
+    private function paymentDeadline(mixed $deadline): mixed
+    {
+        return filled($deadline)
+            ? $deadline
+            : now()->addMinutes($this->settings->defaultPaymentDeadlineMinutes());
     }
 
     private function advanceStatus(Reservation $reservation): void

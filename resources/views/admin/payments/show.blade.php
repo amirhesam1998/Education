@@ -155,15 +155,17 @@
             <div class="card card-section mb-0">
                 <div class="card-header"><i class="ri-image-line"></i> تصویر فیش</div>
                 <div class="card-body">
-                    @if($payment->receipt_image_path)
+                    @if($canViewReceipt && $payment->receipt_image_path)
                         <div class="receipt-frame">
                             <img src="{{ route('admin.payments.receipt', $payment) }}" alt="فیش پرداخت">
                         </div>
-                    @else
+                    @elseif($canViewReceipt)
                         <div class="empty-state">
                             <i class="ri-image-line"></i>
                             تصویری ثبت نشده است
                         </div>
+                    @else
+                        <div class="empty-state">شما دسترسی مشاهده فیش پیش‌پرداخت را ندارید.</div>
                     @endif
                 </div>
             </div>
@@ -201,11 +203,15 @@
                 <div class="card-body">
                     <h2><i class="ri-file-list-3-line"></i> رزرو</h2>
                     <div class="info-list mb-3">
-                        <div class="info-row"><span class="info-key">دانش آموز</span><span
-                                class="info-val">{{ $payment->reservation?->student?->full_name ?: '-' }}</span></div>
-                        <div class="info-row"><span class="info-key">شماره</span><span
-                                class="info-val ltr">{{ $payment->reservation?->student?->phones->pluck('phone')->implode(' / ') }}</span>
-                        </div>
+                        @if($canViewPersonalData)
+                            <div class="info-row"><span class="info-key">دانش آموز</span><span
+                                    class="info-val">{{ $payment->reservation?->student?->full_name ?: '-' }}</span></div>
+                            <div class="info-row"><span class="info-key">شماره</span><span
+                                    class="info-val ltr">{{ $payment->reservation?->student?->phones->pluck('phone')->implode(' / ') }}</span>
+                            </div>
+                        @else
+                            <div class="info-row"><span class="info-key">رزرو</span><span class="info-val">#{{ $payment->reservation_id }}</span></div>
+                        @endif
                         <div class="info-row"><span class="info-key">مشاور</span><span
                                 class="info-val">{{ $payment->reservation?->advisor?->name ?: $payment->reservation?->slot?->advisor?->name }}</span>
                         </div>
@@ -227,6 +233,7 @@
             <div class="card side-card card-section mb-0">
                 <div class="card-body">
                     <h2><i class="ri-tools-line"></i> عملیات</h2>
+                    @if($canViewReceipt)
                     @can('approve_payments')
                         <form method="post" action="{{ route('admin.payments.approve', $payment) }}" class="mb-2">
                             @csrf
@@ -245,6 +252,7 @@
                             </button>
                         </form>
                     @endcan
+                    @endif
                 </div>
             </div>
         </div>

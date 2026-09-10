@@ -15,6 +15,7 @@ class StudentFactory extends Factory
         return [
             'full_name' => fake()->name(),
             'major' => fake()->randomElement(['ریاضی', 'تجربی', 'انسانی']),
+            'region' => fake()->randomElement(Student::regionOptions()),
             'score' => (string) fake()->numberBetween(5000, 12000),
             'exam_type' => fake()->randomElement(['سراسری', 'آزاد', 'تجربی']),
         ];

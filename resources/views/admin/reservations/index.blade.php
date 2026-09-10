@@ -141,6 +141,7 @@
                     @endforeach
                 </select>
             </div>
+            @if($canViewPersonalData)
             <div class="col-md-4 col-sm-6">
                 <label class="form-label"><i class="ri-graduation-cap-line align-middle"></i> نام دانش آموز</label>
                 <input name="student_name" value="{{ request('student_name') }}" class="form-control">
@@ -149,6 +150,7 @@
                 <label class="form-label"><i class="ri-phone-line align-middle"></i> شماره تماس</label>
                 <input name="phone" value="{{ request('phone') }}" class="form-control ltr">
             </div>
+            @endif
             <div class="col-12 d-flex align-items-end gap-2">
                 <button class="btn btn-primary flex-grow-1">
                     <i class="ri-filter-3-line align-middle"></i> فیلتر
@@ -171,7 +173,7 @@
                     <th>تایم</th>
                     <th>مشاور</th>
                     <th>وضعیت رزرو</th>
-                    <th>پرداخت</th>
+                    @if($canViewPaymentInfo)<th>پرداخت</th>@endif
                     <th>عملیات</th>
                 </tr>
             </thead>
@@ -179,8 +181,12 @@
                 @forelse($reservations as $reservation)
                 <tr>
                     <td class="student-cell">
+                        @if($canViewPersonalData)
                         <div class="student-name">{{ $reservation->student?->full_name ?: 'نامشخص' }}</div>
                         <div class="student-phone">{{ $reservation->student?->phones->pluck('phone')->implode(' / ') }}</div>
+                        @else
+                        <div class="student-name">رزرو #{{ $reservation->id }}</div>
+                        @endif
                         <div class="student-phone">{{ $reservation->student?->examTypeLabel() }}</div>
                     </td>
                     <td class="slot-cell">
@@ -197,7 +203,7 @@
                     </td>
                     <td>{{ $reservation->advisor?->name ?: $reservation->slot?->advisor?->name }}</td>
                     <td><span class="badge text-bg-light">{{ $reservation->status->label() }}</span></td>
-                    <td>{{ $reservation->payment?->status?->label() ?: '-' }}</td>
+                    @if($canViewPaymentInfo)<td>{{ $reservation->payment?->status?->label() ?: '-' }}</td>@endif
                     <td>
                         <div class="row-actions">
                             <a class="btn btn-sm btn-outline-info"
@@ -215,7 +221,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="6">
+                    <td colspan="{{ $canViewPaymentInfo ? 6 : 5 }}">
                         <div class="empty-state">
                             <i class="ri-file-list-3-line"></i>
                             رزروی یافت نشد

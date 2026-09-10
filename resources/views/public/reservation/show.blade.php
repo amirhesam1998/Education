@@ -2158,6 +2158,12 @@
 
         @endif
 
+        @if($publishedFieldSelectionPlan)
+            <div class="text-center mt-3 text-success fw-semibold">انتخاب رشته شما آماده است.</div>
+        @else
+            <div class="text-center mt-3 text-muted">انتخاب رشته شما هنوز توسط آموزشگاه منتشر نشده است.</div>
+        @endif
+
     </section>
 
 
@@ -2304,6 +2310,8 @@
 
 
                     @if($reservation->payment_deadline_at)
+
+                        <div class="mt-1">در صورت عدم پرداخت پیش‌پرداخت در زمان مقرر، رزرو شما باطل خواهد شد.</div>
 
                         <div>
                             مهلت پرداخت:
@@ -2605,6 +2613,28 @@
 
                         <span class="reservation-info-row__value">
                             {{ $reservation->student?->major ?: '-' }}
+                        </span>
+
+                    </div>
+
+                </div>
+
+
+
+                <div class="reservation-info-row">
+
+                    <div class="reservation-info-row__icon">
+                        <i class="ri-map-pin-line"></i>
+                    </div>
+
+                    <div class="reservation-info-row__content">
+
+                        <span class="reservation-info-row__label">
+                            منطقه
+                        </span>
+
+                        <span class="reservation-info-row__value">
+                            {{ $reservation->student?->region ?: '-' }}
                         </span>
 
                     </div>
@@ -3062,6 +3092,44 @@
                                             @selected(old('major') === $major)
                                         >
                                             {{ $major }}
+                                        </option>
+
+                                    @endforeach
+
+                                </select>
+
+                            </div>
+
+                        @endif
+
+
+
+                        @if(in_array('region', $missing, true))
+
+                            <div class="student-field">
+
+                                <label class="student-field__label">
+                                    منطقه
+                                </label>
+
+                                <select
+                                    name="region"
+                                    class="student-select"
+                                    required
+                                >
+
+                                    <option value="">
+                                        انتخاب کنید
+                                    </option>
+
+
+                                    @foreach(\App\Models\Student::regionOptions() as $region)
+
+                                        <option
+                                            value="{{ $region }}"
+                                            @selected(old('region') === $region)
+                                        >
+                                            {{ $region }}
                                         </option>
 
                                     @endforeach

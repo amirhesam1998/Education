@@ -53,6 +53,15 @@ class SettingsService
         return 15;
     }
 
+    public function defaultPaymentDeadlineMinutes(): int
+    {
+        $minutes = (int) $this->get('default_payment_deadline_minutes', 0);
+
+        return $minutes > 0
+            ? $minutes
+            : max(1, (int) $this->get('default_payment_deadline_hours', 24)) * 60;
+    }
+
     public function reservationDurationMinutes(): int
     {
         return $this->defaultReservationDurationMinutes();

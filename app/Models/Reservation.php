@@ -128,6 +128,7 @@ class Reservation extends Model
 
         return filled($student?->full_name)
             && filled($student?->major)
+            && filled($student?->region)
             && filled($student?->score)
             && filled($student?->exam_type)
             && $student?->phones()->exists();
@@ -141,7 +142,7 @@ class Reservation extends Model
         $student = $this->student;
         $missing = [];
 
-        foreach (['full_name', 'major', 'score', 'exam_type'] as $field) {
+        foreach (['full_name', 'major', 'region', 'score', 'exam_type'] as $field) {
             if (blank($student?->{$field})) {
                 $missing[] = $field;
             }

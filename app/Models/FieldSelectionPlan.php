@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['reservation_id', 'student_id', 'version', 'status', 'created_by', 'updated_by', 'published_at'])]
+#[Fillable(['reservation_id', 'student_id', 'version', 'status', 'is_public_visible', 'student_visible_at', 'student_hidden_at', 'visibility_changed_by', 'visibility_note', 'created_by', 'updated_by', 'published_at'])]
 class FieldSelectionPlan extends Model
 {
     public const STATUS_DRAFT = 'draft';
@@ -39,6 +39,11 @@ class FieldSelectionPlan extends Model
         return $this->belongsTo(User::class, 'updated_by');
     }
 
+    public function visibilityChanger(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'visibility_changed_by');
+    }
+
     public function isDraft(): bool
     {
         return $this->status === self::STATUS_DRAFT;
@@ -49,8 +54,18 @@ class FieldSelectionPlan extends Model
         return $this->status === self::STATUS_PUBLISHED;
     }
 
+    public function canBePubliclyVisible(): bool
+    {
+        return $this->isPublished();
+    }
+
     protected function casts(): array
     {
-        return ['published_at' => 'datetime'];
+        return [
+            'is_public_visible' => 'boolean',
+            'published_at' => 'datetime',
+            'student_visible_at' => 'datetime',
+            'student_hidden_at' => 'datetime',
+        ];
     }
 }

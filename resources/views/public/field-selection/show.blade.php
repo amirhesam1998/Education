@@ -1137,6 +1137,7 @@
                 </div>
 
                 <div class="field-empty__text">
+                    <strong>انتخاب رشته شما هنوز توسط آموزشگاه منتشر نشده است.</strong><br>
                     انتخاب رشته شما هنوز توسط آموزشگاه ثبت و منتشر نشده است.
                     پس از آماده شدن، اطلاعات کامل انتخاب‌های شما در همین صفحه نمایش داده خواهد شد.
                 </div>
@@ -1176,12 +1177,11 @@
 
                     <div class="field-hero__actions no-print">
 
-                        <button type="button" class="field-action field-action--primary" onclick="window.print()">
+                        <a class="field-action field-action--primary" target="_blank" href="{{ route('public.reservations.field-selection.plan.print', [$reservation->public_token, $plan]) }}">
                             <i class="ri-printer-line"></i>
 
                             چاپ انتخاب رشته
-                        </button>
-
+                        </a>
 
                         <button type="button" class="field-action field-action--soft" onclick="history.back()">
                             <i class="ri-arrow-right-line"></i>
@@ -1241,6 +1241,27 @@
                     <div class="field-info-item">
 
                         <div class="field-info-item__icon">
+                            <i class="ri-map-pin-line"></i>
+                        </div>
+
+                        <div class="field-info-item__content">
+
+                            <span class="field-info-item__label">
+                                منطقه
+                            </span>
+
+                            <span class="field-info-item__value">
+                                {{ $reservation->student?->region ?: '-' }}
+                            </span>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="field-info-item">
+
+                        <div class="field-info-item__icon">
                             <i class="ri-file-copy-2-line"></i>
                         </div>
 
@@ -1280,6 +1301,19 @@
                     </div>
 
                 </div>
+
+                @if(($visiblePlans ?? collect())->count() > 1)
+                    <div class="no-print" style="margin-top:16px;display:grid;gap:8px;">
+                        <span style="font-weight:700;color:var(--ink-700);">نسخه‌های قابل مشاهده:</span>
+                        @foreach($visiblePlans as $visiblePlan)
+                            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+                                <span>نسخه {{ \App\Support\PersianDate::number($visiblePlan->version) }} — {{ \App\Support\PersianDate::dateTime($visiblePlan->published_at) }}</span>
+                                <a href="{{ route('public.reservations.field-selection.plan.show', [$reservation->public_token, $visiblePlan]) }}" class="field-action {{ (int) $visiblePlan->id === (int) $plan->id ? 'field-action--primary' : 'field-action--soft' }}">مشاهده</a>
+                                <a target="_blank" href="{{ route('public.reservations.field-selection.plan.print', [$reservation->public_token, $visiblePlan]) }}" class="field-action field-action--soft">چاپ</a>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
 
             </section>
 

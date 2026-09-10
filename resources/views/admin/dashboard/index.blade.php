@@ -132,7 +132,7 @@
             <div class="stat-icon tone-brand"><i class="ri-calendar-check-line"></i></div>
         </div>
 
-        <div class="stat-card">
+        @if($canViewPaymentInfo)<div class="stat-card">
             <div>
                 <div class="stat-value">{{ \App\Support\PersianDate::number($stats['pending_payments']['value'] ?? 0) }}</div>
                 <div class="stat-label">{{ $stats['pending_payments']['label'] ?? 'فیش در انتظار تایید' }}</div>
@@ -142,7 +142,7 @@
                 </div>
             </div>
             <div class="stat-icon tone-warn"><i class="ri-bank-card-line"></i></div>
-        </div>
+        </div>@endif
 
         <div class="stat-card">
             <div>
@@ -169,7 +169,7 @@
         </div>
     </div>
 
-    <div class="card mb-4">
+    @if($canViewPaymentInfo)<div class="card mb-4">
         <div class="card-header"><i class="ri-bank-card-line align-middle text-muted me-1"></i> وضعیت پرداخت رزروهای ثبت‌شده توسط شما</div>
         <div class="card-body">
             <div class="stat-grid mb-0">
@@ -178,6 +178,11 @@
                 @endforeach
             </div>
         </div>
+    </div>@endif
+
+    <div class="card mb-4">
+        <div class="card-header"><i class="ri-bar-chart-grouped-line align-middle text-muted me-1"></i> آمار مشاوره‌های انجام‌شده</div>
+        <div class="table-responsive"><table class="table mb-0"><thead><tr><th>مشاور</th><th>تعداد مشاوره انجام‌شده</th></tr></thead><tbody>@forelse($completedConsultationStats as $stat)<tr><td>{{ $stat['advisor_name'] }}</td><td>{{ \App\Support\PersianDate::number($stat['completed_count']) }}</td></tr>@empty<tr><td colspan="2" class="text-center text-muted py-4">هنوز مشاوره انجام‌شده‌ای ثبت نشده است.</td></tr>@endforelse</tbody></table></div>
     </div>
 
     <div class="panel-row">
@@ -215,7 +220,7 @@
                             <tr>
                                 <td>
                                     <a href="{{ route('admin.reservations.show', $reservation) }}">
-                                        {{ $reservation->student?->full_name ?: '-' }}
+                                        {{ $canViewPersonalData ? ($reservation->student?->full_name ?: '-') : 'رزرو #'.$reservation->id }}
                                     </a>
                                 </td>
                                 <td>{{ $reservation->advisor?->name ?: $reservation->slot?->advisor?->name ?: '-' }}</td>
@@ -270,7 +275,7 @@
                         </div>
                         <div>
                             <div class="agenda-title">
-                                {{ $reservation->student?->full_name ?: '-' }}
+                                {{ $canViewPersonalData ? ($reservation->student?->full_name ?: '-') : 'رزرو #'.$reservation->id }}
                                 <span class="badge bg-{{ $statusColor }}">{{ $reservation->status->label() }}</span>
                             </div>
                             <div class="agenda-sub">{{ $reservation->advisor?->name ?: $reservation->slot?->advisor?->name ?: '-' }}</div>

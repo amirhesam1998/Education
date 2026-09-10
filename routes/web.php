@@ -54,13 +54,13 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function (): v
         ->middleware('permission:update_reservations')
         ->name('reservations.follow-up.destroy');
     Route::post('/reservations/{reservation}/regenerate-link', [ReservationController::class, 'regenerateLink'])
-        ->middleware('permission:update_reservations')
+        ->middleware('permission:view_student_public_link')
         ->name('reservations.regenerate-link');
     Route::post('/reservations/{reservation}/disable-public-link', [ReservationController::class, 'disablePublicLink'])
-        ->middleware('permission:update_reservations')
+        ->middleware('permission:view_student_public_link')
         ->name('reservations.disable-public-link');
     Route::post('/reservations/{reservation}/enable-public-link', [ReservationController::class, 'enablePublicLink'])
-        ->middleware('permission:update_reservations')
+        ->middleware('permission:view_student_public_link')
         ->name('reservations.enable-public-link');
     Route::post('/reservations/{reservation}/complete', [ReservationController::class, 'complete'])
         ->middleware('permission:confirm_reservations')
@@ -69,13 +69,13 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function (): v
         ->middleware('permission:confirm_reservations')
         ->name('reservations.no-show');
     Route::get('/reservations/{reservation}/receipt', [ReservationController::class, 'receipt'])
-        ->middleware('permission:view_reservations')
+        ->middleware('permission:view_prepayment_receipts')
         ->name('reservations.receipt');
     Route::post('/reservations/{reservation}/documents/report-card', [ReservationController::class, 'uploadReportCard'])
         ->middleware('permission:update_reservations')
         ->name('reservations.documents.report-card.store');
     Route::get('/reservations/{reservation}/documents/{document}', [ReservationController::class, 'document'])
-        ->middleware('permission:view_reservations')
+        ->middleware('permission:view_reservation_documents')
         ->name('reservations.documents.show');
 
     Route::post('/reservations/{reservation}/field-selection', [FieldSelectionController::class, 'createPlan'])
@@ -108,6 +108,15 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function (): v
     Route::post('/field-selection-plans/{plan}/new-version', [FieldSelectionController::class, 'newVersion'])
         ->middleware('permission:manage_field_selection')
         ->name('field-selection-plans.new-version');
+    Route::post('/field-selection-plans/{plan}/public-visibility', [FieldSelectionController::class, 'publicVisibility'])
+        ->middleware('permission:manage_field_selection')
+        ->name('field-selection-plans.public-visibility');
+    Route::post('/field-selection-plans/{plan}/show-to-student', [FieldSelectionController::class, 'showToStudent'])
+        ->middleware('permission:manage_field_selection')
+        ->name('field-selection-plans.show-to-student');
+    Route::post('/field-selection-plans/{plan}/hide-from-student', [FieldSelectionController::class, 'hideFromStudent'])
+        ->middleware('permission:manage_field_selection')
+        ->name('field-selection-plans.hide-from-student');
     Route::get('/field-selection-plans/{plan}/print', [FieldSelectionController::class, 'print'])
         ->middleware('permission:view_field_selection')
         ->name('field-selection-plans.print');
@@ -119,13 +128,13 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function (): v
         ->name('field-selection.filter-options.cities');
 
     Route::get('/payments', [PaymentController::class, 'index'])
-        ->middleware('permission:view_payments')
+        ->middleware('permission:view_reservation_payment_info')
         ->name('payments.index');
     Route::get('/payments/{payment}', [PaymentController::class, 'show'])
-        ->middleware('permission:view_payments')
+        ->middleware('permission:view_reservation_payment_info')
         ->name('payments.show');
     Route::get('/payments/{payment}/receipt', [PaymentController::class, 'receipt'])
-        ->middleware('permission:view_payments')
+        ->middleware('permission:view_prepayment_receipts')
         ->name('payments.receipt');
     Route::post('/payments/{payment}/approve', [PaymentController::class, 'approve'])
         ->middleware('permission:approve_payments')
@@ -184,6 +193,8 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function (): v
 Route::get('/reservation/access/{token}', [PublicReservationController::class, 'show'])->name('public.reservations.show');
 Route::get('/reservation/access/{token}/field-selection', [PublicReservationController::class, 'fieldSelection'])->name('public.reservations.field-selection.show');
 Route::get('/reservation/access/{token}/field-selection/print', [PublicReservationController::class, 'fieldSelectionPrint'])->name('public.reservations.field-selection.print');
+Route::get('/reservation/access/{token}/field-selection/{plan}/print', [PublicReservationController::class, 'printFieldSelection'])->name('public.reservations.field-selection.plan.print');
+Route::get('/reservation/access/{token}/field-selection/{plan}', [PublicReservationController::class, 'showFieldSelection'])->name('public.reservations.field-selection.plan.show');
 Route::post('/reservation/access/{token}/complete', [PublicReservationController::class, 'complete'])->name('public.reservations.complete');
 Route::post('/reservation/access/{token}/upload-receipt', [PublicReservationController::class, 'uploadReceipt'])->name('public.reservations.upload-receipt');
 Route::post('/reservation/access/{token}/report-card', [PublicReservationController::class, 'uploadReportCard'])->name('public.reservations.report-card.store');

@@ -132,6 +132,26 @@ class DashboardService
         ];
     }
 
+    /** @return array<int, array{advisor_id:int, advisor_name:string, completed_count:int}> */
+    public function getCompletedConsultationStatsForCreator(User $user): array
+    {
+        return Reservation::query()
+            ->selectRaw('advisor_id, count(*) as completed_count')
+            ->with('advisor:id,name')
+            ->where('status', ReservationStatus::Completed)
+            ->whereNotNull('advisor_id')
+            ->when(! $user->hasAnyRole(['Super Admin', 'Admin / Branch Manager']), fn ($query) => $query->where('created_by', $user->id))
+            ->groupBy('advisor_id')
+            ->orderByDesc('completed_count')
+            ->get()
+            ->map(fn (Reservation $reservation) => [
+                'advisor_id' => (int) $reservation->advisor_id,
+                'advisor_name' => $reservation->advisor?->name ?: '-',
+                'completed_count' => (int) $reservation->completed_count,
+            ])
+            ->all();
+    }
+
     private function countReservationsForDate(Carbon $date): int
     {
         return Reservation::query()

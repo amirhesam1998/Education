@@ -20,14 +20,12 @@ class PermissionLabels
         ][$name] ?? $name;
     }
 
-    /**
-     * @return array<string, string>
-     */
+    /** @return array<string, string> */
     private static function permissions(): array
     {
         return [
             'view_dashboard' => 'مشاهده داشبورد',
-            'view_slots' => 'مشاهده تایمها',
+            'view_slots' => 'مشاهده تایم‌ها',
             'create_slots' => 'ایجاد تایم',
             'update_slots' => 'ویرایش تایم',
             'delete_slots' => 'حذف تایم',
@@ -37,12 +35,21 @@ class PermissionLabels
             'cancel_reservations' => 'لغو رزرو',
             'change_reservation_slot' => 'تغییر تایم رزرو',
             'confirm_reservations' => 'نهایی کردن یا ثبت وضعیت جلسه',
-            'view_payments' => 'مشاهده پرداختها',
+            'view_payments' => 'مشاهده پرداخت‌ها',
             'approve_payments' => 'تأیید فیش',
             'reject_payments' => 'رد فیش',
-            'view_reports' => 'مشاهده گزارشها',
+            'manage_field_selection' => 'مدیریت انتخاب رشته',
+            'view_field_selection' => 'مشاهده انتخاب رشته',
+            'view_reservation_sensitive_info' => 'مشاهده اطلاعات حساس رزرو',
+            'view_student_personal_data' => 'مشاهده اطلاعات شخصی دانش‌آموز',
+            'view_reservation_payment_info' => 'مشاهده اطلاعات پرداخت رزرو',
+            'view_prepayment_receipts' => 'مشاهده فیش پیش‌پرداخت',
+            'view_student_public_link' => 'مشاهده لینک دانش‌آموز',
+            'view_reservation_documents' => 'مشاهده مدارک رزرو',
+            'view_consultant_stats' => 'مشاهده آمار مشاوران',
+            'view_reports' => 'مشاهده گزارش‌ها',
             'manage_users' => 'مدیریت کاربران',
-            'manage_roles' => 'مدیریت نقشها',
+            'manage_roles' => 'مدیریت نقش‌ها',
             'manage_settings' => 'مدیریت تنظیمات',
         ];
     }

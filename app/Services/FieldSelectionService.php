@@ -182,17 +182,12 @@ class FieldSelectionService
             'course_type_id' => $filters['course_type_id'] ?? null,
         ];
 
-        return $this->studyPrograms->base(array_filter($programFilters, filled(...)))
-            ->when($search !== '', fn ($query) => $query->where(function ($nested) use ($search): void {
-                $nested->where('code', 'like', '%'.$search.'%')
-                    ->orWhere('description', 'like', '%'.$search.'%')
-                    ->orWhere('raw_data', 'like', '%'.$search.'%')
-                    ->orWhereHas('academicField', fn ($field) => $field->where('name', 'like', '%'.$search.'%'))
-                    ->orWhereHas('institution', fn ($institution) => $institution->where('name', 'like', '%'.$search.'%'))
-                    ->orWhereHas('city', fn ($city) => $city->where('name', 'like', '%'.$search.'%'))
-                    ->orWhereHas('courseType', fn ($type) => $type->where('name', 'like', '%'.$search.'%'));
-            }))
-            ->orderBy('code')
+        $query = $this->studyPrograms->base(array_filter($programFilters, filled(...)));
+        if ($search !== '') {
+            $this->studyPrograms->applySearch($query, $search);
+        }
+
+        return $query
             ->limit(30)
             ->get()
             ->map(function (StudyProgram $program): array {
@@ -273,7 +268,10 @@ class FieldSelectionService
             FieldSelectionPlan::query()
                 ->where('reservation_id', $plan->reservation_id)
                 ->where('status', FieldSelectionPlan::STATUS_PUBLISHED)
-                ->update(['status' => FieldSelectionPlan::STATUS_ARCHIVED, 'updated_at' => now()]);
+                ->update([
+                    'status' => FieldSelectionPlan::STATUS_ARCHIVED,
+                    'updated_at' => now(),
+                ]);
 
             $plan->forceFill([
                 'status' => FieldSelectionPlan::STATUS_PUBLISHED,
@@ -286,6 +284,73 @@ class FieldSelectionService
 
             return $plan;
         });
+    }
+
+    public function setPublicVisibility(FieldSelectionPlan $plan, bool $visible, User $user): FieldSelectionPlan
+    {
+        if ($visible && ! $plan->canBePubliclyVisible()) {
+            throw ValidationException::withMessages(['plan' => 'فقط نسخه‌های منتشرشده برای دانش‌آموز قابل نمایش هستند.']);
+        }
+
+        $plan->forceFill([
+            'is_public_visible' => $visible,
+            'student_visible_at' => $visible ? now() : null,
+            'student_hidden_at' => $visible ? null : now(),
+            'visibility_changed_by' => $user->id,
+            'visibility_note' => null,
+            'updated_by' => $user->id,
+        ])->save();
+
+        $this->activityLog->log($visible ? 'field_selection_plan_shown_to_student' : 'field_selection_plan_hidden_from_student', $plan->reservation, $user, null, ['plan_id' => $plan->id, 'version' => $plan->version]);
+
+        if ($visible) {
+            $this->keepPublicLinkAccessibleForPublishedSelection($plan->reservation);
+        }
+
+        return $plan;
+    }
+
+    public function showToStudent(FieldSelectionPlan $plan, User $user, ?string $note = null): FieldSelectionPlan
+    {
+        $this->setPublicVisibility($plan, true, $user);
+        $plan->forceFill(['visibility_note' => $note])->save();
+
+        return $plan;
+    }
+
+    public function hideFromStudent(FieldSelectionPlan $plan, User $user, ?string $note = null): FieldSelectionPlan
+    {
+        $this->setPublicVisibility($plan, false, $user);
+        $plan->forceFill(['visibility_note' => $note])->save();
+
+        return $plan;
+    }
+
+    /** @return Collection<int, FieldSelectionPlan> */
+    public function getStudentVisiblePlans(Reservation $reservation): Collection
+    {
+        return FieldSelectionPlan::query()
+            ->where('reservation_id', $reservation->id)
+            ->where('status', FieldSelectionPlan::STATUS_PUBLISHED)
+            ->where('is_public_visible', true)
+            ->with('items')
+            ->orderByDesc('version')
+            ->get();
+    }
+
+    public function getStudentVisiblePlanOrFail(Reservation $reservation, FieldSelectionPlan $plan): FieldSelectionPlan
+    {
+        return FieldSelectionPlan::query()
+            ->whereKey($plan->id)
+            ->where('reservation_id', $reservation->id)
+            ->where('status', FieldSelectionPlan::STATUS_PUBLISHED)
+            ->where('is_public_visible', true)
+            ->firstOrFail();
+    }
+
+    public function assertPlanIsStudentVisible(FieldSelectionPlan $plan, Reservation $reservation): void
+    {
+        $this->getStudentVisiblePlanOrFail($reservation, $plan);
     }
 
     public function createNewVersionFromExisting(FieldSelectionPlan $plan, User $user): FieldSelectionPlan
@@ -366,6 +431,32 @@ class FieldSelectionService
         }
 
         return null;
+    }
+
+    private function normalizeDigits(string $value): string
+    {
+        return strtr($value, [
+            '۰' => '0',
+            '۱' => '1',
+            '۲' => '2',
+            '۳' => '3',
+            '۴' => '4',
+            '۵' => '5',
+            '۶' => '6',
+            '۷' => '7',
+            '۸' => '8',
+            '۹' => '9',
+            '٠' => '0',
+            '١' => '1',
+            '٢' => '2',
+            '٣' => '3',
+            '٤' => '4',
+            '٥' => '5',
+            '٦' => '6',
+            '٧' => '7',
+            '٨' => '8',
+            '٩' => '9',
+        ]);
     }
 
     private function keepPublicLinkAccessibleForPublishedSelection(Reservation $reservation): void

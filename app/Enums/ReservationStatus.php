@@ -54,7 +54,7 @@ enum ReservationStatus: string
 
     /**
      * Statuses that must keep their reserved interval closed.
-     * Cancelled reservations are intentionally excluded so their interval can be booked again.
+     * Expired and cancelled reservations are intentionally excluded so their interval can be booked again.
      *
      * @return array<int, string>
      */
@@ -66,7 +66,6 @@ enum ReservationStatus: string
             self::PendingPrepayment->value,
             self::PendingPaymentApproval->value,
             self::Confirmed->value,
-            self::Expired->value,
             self::Completed->value,
             self::NoShow->value,
         ];

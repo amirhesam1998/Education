@@ -10,6 +10,7 @@ use App\Models\Advisor;
 use App\Models\ReservationSlot;
 use App\Services\SlotAvailabilityService;
 use App\Services\SlotTimelineService;
+use App\Services\StudentPrivacyService;
 use App\Support\PersianDate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -50,9 +51,11 @@ class SlotController extends Controller
         ]);
     }
 
-    public function show(Request $request, ReservationSlot $slot, SlotAvailabilityService $availability, SlotTimelineService $timeline): View
+    public function show(Request $request, ReservationSlot $slot, SlotAvailabilityService $availability, SlotTimelineService $timeline, StudentPrivacyService $privacy): View
     {
-        $slot->load(['advisor', 'reservations.student.phones', 'reservations.payment']);
+        $canViewPersonalData = $privacy->canViewPersonalData($request->user());
+        $canViewPaymentInfo = $privacy->canViewPaymentInfo($request->user());
+        $slot->load(array_filter(['advisor', 'reservations.student', $canViewPersonalData ? 'reservations.student.phones' : null, $canViewPaymentInfo ? 'reservations.payment' : null]));
 
         $filters = [
             'advisor_id' => $request->filled('advisor_id') ? $request->integer('advisor_id') : null,
@@ -65,8 +68,10 @@ class SlotController extends Controller
             'advisors' => $this->consultantOptions($slot),
             'activeReservationsCount' => $availability->countLoadedActiveReservations($slot),
             'remainingCapacity' => $availability->remainingCapacity($slot),
-            'timelineRows' => $timeline->rowsForDate($slot, $filters),
+            'timelineRows' => $timeline->rowsForDate($slot, $filters, $request->user()),
             'statusOptions' => $timeline->statusOptions(),
+            'canViewPersonalData' => $canViewPersonalData,
+            'canViewPaymentInfo' => $canViewPaymentInfo,
         ]);
     }
 

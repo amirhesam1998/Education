@@ -18,6 +18,7 @@ use App\Models\Reservation;
 use App\Models\StudyProgram;
 use App\Models\User;
 use App\Services\FieldSelectionService;
+use App\Services\StudentPrivacyService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -42,12 +43,22 @@ class FieldSelectionController extends Controller
                 ?: $reservation->fieldSelectionPlans()->where('status', FieldSelectionPlan::STATUS_PUBLISHED)->latest('version')->first());
 
         abort_unless($plan, 404);
-        $plan->load(['items', 'creator', 'updater', 'reservation.student.phones', 'reservation.slot.advisor', 'reservation.advisor']);
+        $plan->load(['items', 'creator', 'updater', 'reservation.slot.advisor', 'reservation.advisor']);
+        $versions = $reservation->fieldSelectionPlans()->with('creator')->get();
 
         return view('admin.field-selection.show', [
             'plan' => $plan,
             'reservation' => $reservation,
-            'versions' => $reservation->fieldSelectionPlans()->with('creator')->get(),
+            'versions' => $versions,
+            'planVisibilityStats' => [
+                'total' => $versions->count(),
+                'published' => $versions->where('status', FieldSelectionPlan::STATUS_PUBLISHED)->count(),
+                'student_visible' => $versions
+                    ->where('status', FieldSelectionPlan::STATUS_PUBLISHED)
+                    ->where('is_public_visible', true)
+                    ->count(),
+            ],
+            'canViewStudentPersonalInfo' => $this->canViewStudentPersonalInfo($request->user()),
             'catalogProvinces' => Province::query()
                 ->whereIn('id', StudyProgram::query()->select('province_id')->whereNotNull('province_id')->where('validation_status', 'validated'))
                 ->orderBy('normalized_name')
@@ -122,17 +133,25 @@ class FieldSelectionController extends Controller
             ->whereNotNull('city_id')
             ->where('validation_status', 'validated')
             ->where('province_id', $provinceId)
-            ->when($request->integer('course_type_id'), fn ($query, $id) => $query->where('course_type_id', $id))
-            ->when(trim($request->string('q')->toString()) !== '', function ($query) use ($request): void {
-                $search = trim($request->string('q')->toString());
-                $query->where(function ($nested) use ($search): void {
-                    $nested->where('code', 'like', '%'.$search.'%')
+            ->when($request->integer('course_type_id'), fn ($query, $id) => $query->where('course_type_id', $id));
+
+        $search = trim($request->string('q')->toString());
+        $normalizedSearch = $this->normalizeDigits($search);
+
+        if ($search !== '' && preg_match('/^\d+$/', $normalizedSearch)) {
+            $programIds->where('code', $normalizedSearch);
+        } elseif ($search !== '') {
+            $fieldMatchQuery = (clone $programIds)
+                ->whereHas('academicField', fn ($field) => $field->where('name', 'like', '%'.$search.'%'));
+
+            $programIds = $fieldMatchQuery->exists()
+                ? $fieldMatchQuery
+                : $programIds->where(function ($nested) use ($search): void {
+                    $nested->whereHas('academicField', fn ($field) => $field->where('name', 'like', '%'.$search.'%'))
                         ->orWhere('description', 'like', '%'.$search.'%')
-                        ->orWhere('raw_data', 'like', '%'.$search.'%')
-                        ->orWhereHas('academicField', fn ($field) => $field->where('name', 'like', '%'.$search.'%'))
                         ->orWhereHas('institution', fn ($institution) => $institution->where('name', 'like', '%'.$search.'%'));
                 });
-            });
+        }
 
         return response()->json(City::query()
             ->where('province_id', $provinceId)
@@ -182,17 +201,73 @@ class FieldSelectionController extends Controller
         return redirect()->route('admin.reservations.field-selection.show', [$plan->reservation, 'plan' => $newPlan->id]);
     }
 
+    public function publicVisibility(Request $request, FieldSelectionPlan $plan, FieldSelectionService $fieldSelections): RedirectResponse
+    {
+        $this->ensureManager($request->user(), $plan->reservation);
+        $fieldSelections->setPublicVisibility($plan, $request->boolean('is_public_visible'), $request->user());
+
+        return back()->with('success', $request->boolean('is_public_visible') ? 'نسخه برای دانش‌آموز قابل مشاهده شد.' : 'نسخه از دید دانش‌آموز مخفی شد.');
+    }
+
+    public function showToStudent(Request $request, FieldSelectionPlan $plan, FieldSelectionService $fieldSelections): RedirectResponse
+    {
+        $this->ensureManager($request->user(), $plan->reservation);
+        $fieldSelections->showToStudent($plan, $request->user(), $request->validate(['visibility_note' => ['nullable', 'string', 'max:1000']])['visibility_note'] ?? null);
+
+        return back()->with('success', 'نسخه برای دانش‌آموز قابل مشاهده شد.');
+    }
+
+    public function hideFromStudent(Request $request, FieldSelectionPlan $plan, FieldSelectionService $fieldSelections): RedirectResponse
+    {
+        $this->ensureManager($request->user(), $plan->reservation);
+        $fieldSelections->hideFromStudent($plan, $request->user(), $request->validate(['visibility_note' => ['nullable', 'string', 'max:1000']])['visibility_note'] ?? null);
+
+        return back()->with('success', 'نسخه از دید دانش‌آموز مخفی شد.');
+    }
+
     public function print(Request $request, FieldSelectionPlan $plan): View
     {
         $plan->load(['items', 'student', 'reservation.slot.advisor', 'reservation.advisor']);
         $this->ensureViewer($request->user(), $plan->reservation);
+        $canViewStudentPersonalInfo = $this->canViewStudentPersonalInfo($request->user());
 
-        return view('field-selection.print', compact('plan'));
+        return view('field-selection.print', compact('plan', 'canViewStudentPersonalInfo'));
     }
 
     private function ensureViewer(User $user, Reservation $reservation): void
     {
         abort_unless(! $user->hasRole(User::ROLE_CONSULTANT) || $reservation->advisor?->user_id === $user->id, 403);
+    }
+
+    private function canViewStudentPersonalInfo(User $user): bool
+    {
+        return app(StudentPrivacyService::class)->canViewPersonalData($user);
+    }
+
+    private function normalizeDigits(string $value): string
+    {
+        return strtr($value, [
+            '۰' => '0',
+            '۱' => '1',
+            '۲' => '2',
+            '۳' => '3',
+            '۴' => '4',
+            '۵' => '5',
+            '۶' => '6',
+            '۷' => '7',
+            '۸' => '8',
+            '۹' => '9',
+            '٠' => '0',
+            '١' => '1',
+            '٢' => '2',
+            '٣' => '3',
+            '٤' => '4',
+            '٥' => '5',
+            '٦' => '6',
+            '٧' => '7',
+            '٨' => '8',
+            '٩' => '9',
+        ]);
     }
 
     private function ensureManager(User $user, Reservation $reservation): void

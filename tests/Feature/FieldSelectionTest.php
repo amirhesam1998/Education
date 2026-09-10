@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\ReservationStatus;
 use App\Models\AcademicField;
 use App\Models\AdmissionType;
+use App\Models\Advisor;
 use App\Models\City;
 use App\Models\CourseType;
 use App\Models\ExamGroup;
@@ -212,6 +213,7 @@ class FieldSelectionTest extends TestCase
             'university_type' => 'روزانه',
         ], $user);
         $service->publish($plan, $user);
+        $service->showToStudent($plan->refresh(), $user);
 
         $this->assertTrue($reservation->refresh()->public_token_expires_at->isFuture());
 
@@ -236,6 +238,116 @@ class FieldSelectionTest extends TestCase
             ->assertOk()
             ->assertSee('دانشگاه صنعتی شریف')
             ->assertSee('توضیحات رشته علوم کامپیوتر');
+    }
+
+    #[Test]
+    public function public_field_selection_uses_configured_visible_versions_instead_of_latest_only(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('Super Admin');
+        $reservation = $this->reservation();
+        $service = app(FieldSelectionService::class);
+
+        $first = $service->createPlanForReservation($reservation, $user);
+        $service->addItem($first, ['field_code' => '11111', 'field_name' => 'پرستاری', 'city' => 'رشت'], $user);
+        $service->publish($first, $user);
+        $service->showToStudent($first->refresh(), $user);
+
+        $second = $service->createNewVersionFromExisting($first->refresh(), $user);
+        $service->addItem($second, ['field_code' => '22222', 'field_name' => 'مامایی', 'city' => 'تهران'], $user);
+        $service->publish($second, $user);
+        $service->setPublicVisibility($second->refresh(), false, $user);
+
+        $this->get(route('public.reservations.field-selection.show', $reservation->public_token))
+            ->assertOk()
+            ->assertSee('انتخاب رشته شما هنوز توسط آموزشگاه منتشر نشده است.')
+            ->assertDontSee('11111')
+            ->assertDontSee('22222');
+
+        $this->get(route('public.reservations.field-selection.show', [$reservation->public_token, 'plan' => $second->id]))
+            ->assertNotFound();
+    }
+
+    #[Test]
+    public function numeric_catalog_search_prioritizes_exact_code_and_accepts_persian_digits(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('Super Admin');
+
+        $province = Province::query()->create(['name' => 'تهران', 'normalized_name' => 'تهران']);
+        $city = City::query()->create(['province_id' => $province->id, 'name' => 'تهران', 'normalized_name' => 'تهران']);
+        $courseType = CourseType::query()->create(['name' => 'روزانه', 'slug' => 'day']);
+        $nursing = AcademicField::query()->create(['name' => 'پرستاری', 'normalized_name' => 'پرستاری']);
+        $veterinary = AcademicField::query()->create(['name' => 'دامپزشکی', 'normalized_name' => 'دامپزشکی']);
+        $institution = Institution::query()->create(['name' => 'دانشگاه آزمایشی', 'normalized_name' => 'دانشگاه آزمایشی', 'province_id' => $province->id, 'city_id' => $city->id]);
+
+        $this->studyProgram('33673', $province, $city, $institution, $nursing, $courseType);
+        $this->studyProgram('336730', $province, $city, $institution, $veterinary, $courseType);
+
+        $this->actingAs($user)
+            ->getJson(route('admin.field-selection.search-fields', ['q' => '۳۳۶۷۳']))
+            ->assertOk()
+            ->assertJsonCount(2)
+            ->assertJsonPath('0.field_code', '33673')
+            ->assertJsonPath('1.field_code', '336730');
+    }
+
+    #[Test]
+    public function catalog_search_prefers_academic_field_matches_and_drops_unrelated_description_noise(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('Super Admin');
+
+        $province = Province::query()->create(['name' => 'گیلان', 'normalized_name' => 'گیلان']);
+        $city = City::query()->create(['province_id' => $province->id, 'name' => 'رشت', 'normalized_name' => 'رشت']);
+        $courseType = CourseType::query()->create(['name' => 'روزانه', 'slug' => 'day']);
+        $nursing = AcademicField::query()->create(['name' => 'پرستاری', 'normalized_name' => 'پرستاری']);
+        $veterinary = AcademicField::query()->create(['name' => 'دامپزشکی', 'normalized_name' => 'دامپزشکی']);
+        $institution = Institution::query()->create(['name' => 'دانشگاه آزمایشی', 'normalized_name' => 'دانشگاه آزمایشی', 'province_id' => $province->id, 'city_id' => $city->id]);
+
+        $this->studyProgram('33673', $province, $city, $institution, $nursing, $courseType);
+        $this->studyProgram('44990', $province, $city, $institution, $veterinary, $courseType, 'توضیح متفرقه شامل واژه پرستاری');
+
+        $this->actingAs($user)
+            ->getJson(route('admin.field-selection.search-fields', ['q' => 'پرستاری']))
+            ->assertOk()
+            ->assertJsonCount(1)
+            ->assertJsonPath('0.field_code', '33673')
+            ->assertJsonPath('0.field_name', 'پرستاری');
+    }
+
+    #[Test]
+    public function field_selection_responsible_print_does_not_show_student_personal_information(): void
+    {
+        $student = Student::factory()->create([
+            'full_name' => 'دانش‌آموز محرمانه',
+            'major' => 'تجربی',
+            'score' => '12345',
+        ]);
+        $consultant = User::factory()->create(['name' => 'مسئول انتخاب رشته']);
+        $consultant->assignRole(User::ROLE_CONSULTANT);
+        $advisor = Advisor::factory()->create(['user_id' => $consultant->id]);
+        $slot = ReservationSlot::factory()->create(['advisor_id' => $advisor->id]);
+        $reservation = Reservation::query()->create([
+            'student_id' => $student->id,
+            'slot_id' => $slot->id,
+            'advisor_id' => $advisor->id,
+            'status' => ReservationStatus::Confirmed,
+            'public_token' => str()->random(80),
+            'public_token_expires_at' => now()->addDay(),
+        ]);
+
+        $service = app(FieldSelectionService::class);
+        $plan = $service->createPlanForReservation($reservation, $consultant);
+        $service->addItem($plan, ['field_code' => '55555', 'field_name' => 'پرستاری', 'city' => 'رشت'], $consultant);
+        $service->publish($plan, $consultant);
+
+        $this->actingAs($consultant)
+            ->get(route('admin.field-selection-plans.print', $plan))
+            ->assertOk()
+            ->assertSee('55555')
+            ->assertDontSee('دانش‌آموز محرمانه')
+            ->assertDontSee('12345');
     }
 
     #[Test]

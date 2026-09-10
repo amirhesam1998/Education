@@ -244,8 +244,8 @@
                     <th>وضعیت تایم</th>
                     <th>وضعیت رزرو</th>
                     <th>دانش‌آموز</th>
-                    <th>شماره تماس</th>
-                    <th>وضعیت پرداخت</th>
+                    @if($canViewPersonalData)<th>شماره تماس</th>@endif
+                    @if($canViewPaymentInfo)<th>وضعیت پرداخت</th>@endif
                     <th>ظرفیت باقی‌مانده</th>
                     <th>عملیات</th>
                 </tr>
@@ -268,8 +268,8 @@
                             @endif
                         </td>
                         <td>{{ $row['student_name'] }}</td>
-                        <td class="ltr">{{ $row['student_phone'] }}</td>
-                        <td>{{ $row['payment_status'] }}</td>
+                        @if($canViewPersonalData)<td class="ltr">{{ $row['student_phone'] }}</td>@endif
+                        @if($canViewPaymentInfo)<td>{{ $row['payment_status'] }}</td>@endif
                         <td>{{ \App\Support\PersianDate::number($row['remaining_capacity']) }}</td>
                         <td>
                             <div class="slot-row-actions">
@@ -303,4 +303,3 @@
         </div>
     </div>
 @endsection
-
