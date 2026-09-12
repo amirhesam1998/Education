@@ -16,6 +16,72 @@
         margin-top: .3rem;
     }
 
+    .form-label-hint{
+        font-size: .74rem;
+        font-weight: 400;
+        color: var(--ink-500);
+    }
+
+    .choice-grid{
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+        gap: .5rem;
+    }
+    .choice-chip{
+        position: relative;
+        min-width: 0;
+        margin: 0;
+        cursor: pointer;
+    }
+    .choice-chip input{
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+    }
+    .choice-chip__box{
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: .45rem;
+        min-height: 42px;
+        padding: .5rem .7rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+        color: var(--ink-700);
+        font-size: .84rem;
+        font-weight: 500;
+        text-align: center;
+        transition: background-color .18s ease, color .18s ease, border-color .18s ease, box-shadow .18s ease;
+    }
+    .choice-chip__box::before{
+        content: "";
+        flex: 0 0 auto;
+        width: 16px;
+        height: 16px;
+        border: 1px solid var(--ink-300);
+        border-radius: 5px;
+        background: var(--surface);
+        transition: inherit;
+    }
+    .choice-chip:hover .choice-chip__box{
+        border-color: var(--brand-200);
+        background: var(--brand-50);
+    }
+    .choice-chip input:checked + .choice-chip__box{
+        border-color: var(--brand-500);
+        background: var(--brand-50);
+        color: var(--brand-700);
+    }
+    .choice-chip input:checked + .choice-chip__box::before{
+        border-color: var(--brand-500);
+        background: var(--brand-500) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23fff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8.4l3.2 3.2L13 5'/%3E%3C/svg%3E") center / 11px no-repeat;
+    }
+    .choice-chip input:focus-visible + .choice-chip__box{
+        border-color: var(--brand-500);
+        box-shadow: 0 0 0 .2rem rgba(47, 143, 131, .12);
+    }
+
     .form-control.bg-light{
         background: var(--bg) !important;
         color: var(--ink-700);
@@ -180,6 +246,7 @@
         .reservation-modal-body{ padding: .85rem .85rem 0; }
         .date-card{ flex-basis: 132px; }
         .form-card .card-body{ padding: 1rem; }
+        .choice-grid{ grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
         .form-actions{ flex-direction: column-reverse; }
         .form-actions .btn{ width: 100%; }
     }
@@ -427,7 +494,7 @@
     $phoneTwo = old('phone_two', $phones->where('is_primary', false)->first()?->phone ?? $phones->get(1)?->phone);
     $selectedSlotId = old('slot_id', request('slot_id', $reservation->slot_id));
     $selectedInterval = old('reservation_interval', request('reservation_interval', ($reservation->assignedStartTime() && $reservation->assignedEndTime()) ? substr($reservation->assignedStartTime(), 0, 5).'|'.substr($reservation->assignedEndTime(), 0, 5) : ''));
-    $selectedExamTypes = old('exam_type', is_array($student?->exam_type) ? $student->exam_type : array_filter([(string) $student?->exam_type]));
+    $selectedExamTypes = (array) old('exam_type', is_array($student?->exam_type) ? $student->exam_type : array_filter([(string) $student?->exam_type]));
     $regionOptions = $regionOptions ?? \App\Models\Student::regionOptions();
     $paymentDeadlineDefault = $reservation->exists ? $reservation->payment_deadline_at : now()->addHours($defaultDeadlineHours ?? 24);
     $closeUrl = $reservation->exists ? route('admin.reservations.show', $reservation) : route('admin.reservations.index');
@@ -464,7 +531,7 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-6">
                 <label class="form-label">منطقه</label>
                 <select name="region" class="form-select">
                     <option value="">انتخاب کنید</option>
@@ -473,23 +540,29 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-6">
                 <label class="form-label">تراز</label>
                 <input name="score" value="{{ old('score', $student?->score) }}" class="form-control">
             </div>
-            <div class="col-md-4">
-                <label class="form-label">نوع کنکور</label>
-                <select name="exam_type[]" class="form-select" multiple size="4">
+            <div class="col-12">
+                <label class="form-label">
+                    نوع کنکور
+                    <span class="form-label-hint">(می‌توانید چند مورد را انتخاب کنید)</span>
+                </label>
+                <div class="choice-grid">
                     @foreach($examTypes as $examType)
-                        <option value="{{ $examType }}" @selected(in_array($examType, $selectedExamTypes, true))>{{ $examType }}</option>
+                        <label class="choice-chip">
+                            <input type="checkbox" name="exam_type[]" value="{{ $examType }}" @checked(in_array($examType, $selectedExamTypes, true))>
+                            <span class="choice-chip__box">{{ $examType }}</span>
+                        </label>
                     @endforeach
-                </select>
+                </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-6">
                 <label class="form-label">شماره تماس اول</label>
                 <input name="phone_one" value="{{ $phoneOne }}" class="form-control ltr" required>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-6">
                 <label class="form-label">شماره تماس دوم</label>
                 <input name="phone_two" value="{{ $phoneTwo }}" class="form-control ltr">
             </div>
