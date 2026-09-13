@@ -1268,11 +1268,11 @@
                         <div class="field-info-item__content">
 
                             <span class="field-info-item__label">
-                                نسخه
+                                کنکور
                             </span>
 
                             <span class="field-info-item__value">
-                                {{ \App\Support\PersianDate::number($plan->version) }}
+                                {{ ($examTypeLabels ?? [])[$plan->exam_type_key] ?? 'انتخاب رشته ثبت‌شده' }}
                             </span>
 
                         </div>
@@ -1304,10 +1304,10 @@
 
                 @if(($visiblePlans ?? collect())->count() > 1)
                     <div class="no-print" style="margin-top:16px;display:grid;gap:8px;">
-                        <span style="font-weight:700;color:var(--ink-700);">نسخه‌های قابل مشاهده:</span>
+                        <span style="font-weight:700;color:var(--ink-700);">انتخاب رشته‌های قابل مشاهده:</span>
                         @foreach($visiblePlans as $visiblePlan)
                             <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
-                                <span>نسخه {{ \App\Support\PersianDate::number($visiblePlan->version) }} — {{ \App\Support\PersianDate::dateTime($visiblePlan->published_at) }}</span>
+                                <span>{{ ($examTypeLabels ?? [])[$visiblePlan->exam_type_key] ?? 'انتخاب رشته ثبت‌شده' }} — {{ \App\Support\PersianDate::dateTime($visiblePlan->published_at) }}</span>
                                 <a href="{{ route('public.reservations.field-selection.plan.show', [$reservation->public_token, $visiblePlan]) }}" class="field-action {{ (int) $visiblePlan->id === (int) $plan->id ? 'field-action--primary' : 'field-action--soft' }}">مشاهده</a>
                                 <a target="_blank" href="{{ route('public.reservations.field-selection.plan.print', [$reservation->public_token, $visiblePlan]) }}" class="field-action field-action--soft">چاپ</a>
                             </div>

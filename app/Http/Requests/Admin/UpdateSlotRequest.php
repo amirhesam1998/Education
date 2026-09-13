@@ -32,7 +32,7 @@ class UpdateSlotRequest extends FormRequest
             'advisor_id' => ['required', 'integer', $this->consultantAdvisorRule()],
             'date' => ['required', 'date'],
             'start_time' => ['required', 'date_format:H:i'],
-            'end_time' => ['required', 'date_format:H:i', 'after:start_time'],
+            'end_time' => ['required', 'date_format:H:i'],
             'duration_minutes' => ['required', 'integer', 'min:5', 'max:240'],
             'capacity' => ['required', 'integer', 'min:1', 'max:50'],
             'status' => ['required', Rule::in(array_keys(SlotStatus::options()))],
@@ -43,6 +43,12 @@ class UpdateSlotRequest extends FormRequest
     {
         $validator->after(function (Validator $validator): void {
             if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+
+            if (! $this->isValidRange((string) $this->input('start_time'), (string) $this->input('end_time'))) {
+                $validator->errors()->add('end_time', 'زمان پایان باید بعد از زمان شروع باشد؛ ساعت ۰۰:۰۰ پایان روز محسوب می‌شود.');
+
                 return;
             }
 
@@ -91,10 +97,7 @@ class UpdateSlotRequest extends FormRequest
 
     private function validateDurationFits(Validator $validator): void
     {
-        $start = Carbon::parse('2000-01-01 '.$this->input('start_time'));
-        $end = Carbon::parse('2000-01-01 '.$this->input('end_time'));
-
-        if ($start->diffInMinutes($end) < (int) $this->input('duration_minutes')) {
+        if ($this->timeToMinutes((string) $this->input('end_time'), true) - $this->timeToMinutes((string) $this->input('start_time')) < (int) $this->input('duration_minutes')) {
             $validator->errors()->add('duration_minutes', 'مدت هر رزرو نباید از طول بازه تایم بیشتر باشد.');
         }
     }
@@ -104,9 +107,25 @@ class UpdateSlotRequest extends FormRequest
         return ReservationSlot::query()
             ->where('advisor_id', $advisorId)
             ->whereDate('date', $date)
-            ->where('start_time', '<', $endTime)
-            ->where('end_time', '>', $startTime)
+            ->when($endTime !== '00:00', fn ($query) => $query->where('start_time', '<', $endTime))
+            ->where(fn ($query) => $query->where('end_time', '00:00')->orWhere('end_time', '>', $startTime))
             ->when($ignoreSlotId, fn ($query) => $query->where('id', '!=', $ignoreSlotId))
             ->exists();
+    }
+
+    private function isValidRange(string $startTime, string $endTime): bool
+    {
+        return $this->timeToMinutes($startTime) < $this->timeToMinutes($endTime, true);
+    }
+
+    private function timeToMinutes(string $time, bool $endBoundary = false): int
+    {
+        if ($endBoundary && $time === '00:00') {
+            return 1440;
+        }
+
+        [$hour, $minute] = array_map('intval', explode(':', $time));
+
+        return ($hour * 60) + $minute;
     }
 }

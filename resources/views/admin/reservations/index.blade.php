@@ -141,11 +141,11 @@
                     @endforeach
                 </select>
             </div>
-            @if($canViewPersonalData)
             <div class="col-md-4 col-sm-6">
                 <label class="form-label"><i class="ri-graduation-cap-line align-middle"></i> نام دانش آموز</label>
                 <input name="student_name" value="{{ request('student_name') }}" class="form-control">
             </div>
+            @if($canViewPersonalData)
             <div class="col-md-4 col-sm-6">
                 <label class="form-label"><i class="ri-phone-line align-middle"></i> شماره تماس</label>
                 <input name="phone" value="{{ request('phone') }}" class="form-control ltr">
@@ -181,11 +181,9 @@
                 @forelse($reservations as $reservation)
                 <tr>
                     <td class="student-cell">
-                        @if($canViewPersonalData)
                         <div class="student-name">{{ $reservation->student?->full_name ?: 'نامشخص' }}</div>
+                        @if($canViewPersonalData)
                         <div class="student-phone">{{ $reservation->student?->phones->pluck('phone')->implode(' / ') }}</div>
-                        @else
-                        <div class="student-name">رزرو #{{ $reservation->id }}</div>
                         @endif
                         <div class="student-phone">{{ $reservation->student?->examTypeLabel() }}</div>
                     </td>

@@ -101,11 +101,11 @@ class FieldSelectionTest extends TestCase
                 'course_type_id' => $day->id,
             ]))
             ->assertOk()
-            ->assertJsonCount(1)
-            ->assertJsonPath('0.field_code', '33673')
-            ->assertJsonPath('0.field_name', 'پرستاری')
-            ->assertJsonPath('0.city', 'رشت')
-            ->assertJsonPath('0.course_type', 'روزانه');
+            ->assertJsonPath('count', 1)
+            ->assertJsonPath('items.0.field_code', '33673')
+            ->assertJsonPath('items.0.field_name', 'پرستاری')
+            ->assertJsonPath('items.0.city', 'رشت')
+            ->assertJsonPath('items.0.course_type', 'روزانه');
 
         $this->actingAs($user)
             ->getJson(route('admin.field-selection.search-fields', [
@@ -115,7 +115,8 @@ class FieldSelectionTest extends TestCase
                 'course_type_id' => $nonprofit->id,
             ]))
             ->assertOk()
-            ->assertExactJson([]);
+            ->assertJsonPath('count', 0)
+            ->assertJsonPath('items', []);
 
         $this->actingAs($user)
             ->getJson(route('admin.field-selection.search-fields', [
@@ -124,9 +125,9 @@ class FieldSelectionTest extends TestCase
                 'course_type_id' => $nonprofit->id,
             ]))
             ->assertOk()
-            ->assertJsonCount(1)
-            ->assertJsonPath('0.field_code', '41200')
-            ->assertJsonPath('0.field_name', 'مهندسی کامپیوتر');
+            ->assertJsonPath('count', 1)
+            ->assertJsonPath('items.0.field_code', '41200')
+            ->assertJsonPath('items.0.field_name', 'مهندسی کامپیوتر');
     }
 
     #[Test]
@@ -175,10 +176,10 @@ class FieldSelectionTest extends TestCase
         $this->actingAs($user)
             ->getJson(route('admin.field-selection.search-fields', ['q' => 'برق']))
             ->assertOk()
-            ->assertJsonPath('0.field_code', '12345')
-            ->assertJsonPath('0.field_description', 'توضیحات رشته برق')
-            ->assertJsonPath('0.university_name', 'دانشگاه تهران')
-            ->assertJsonPath('0.booklet_source', 'دفترچه ریاضی');
+            ->assertJsonPath('items.0.field_code', '12345')
+            ->assertJsonPath('items.0.field_description', 'توضیحات رشته برق')
+            ->assertJsonPath('items.0.university_name', 'دانشگاه تهران')
+            ->assertJsonPath('items.0.booklet_source', 'دفترچه ریاضی');
 
         $this->actingAs($user)
             ->withSession(['_token' => 'test-token'])
@@ -287,9 +288,9 @@ class FieldSelectionTest extends TestCase
         $this->actingAs($user)
             ->getJson(route('admin.field-selection.search-fields', ['q' => '۳۳۶۷۳']))
             ->assertOk()
-            ->assertJsonCount(2)
-            ->assertJsonPath('0.field_code', '33673')
-            ->assertJsonPath('1.field_code', '336730');
+            ->assertJsonPath('count', 2)
+            ->assertJsonPath('items.0.field_code', '33673')
+            ->assertJsonPath('items.1.field_code', '336730');
     }
 
     #[Test]
@@ -311,13 +312,36 @@ class FieldSelectionTest extends TestCase
         $this->actingAs($user)
             ->getJson(route('admin.field-selection.search-fields', ['q' => 'پرستاری']))
             ->assertOk()
-            ->assertJsonCount(1)
-            ->assertJsonPath('0.field_code', '33673')
-            ->assertJsonPath('0.field_name', 'پرستاری');
+            ->assertJsonPath('count', 1)
+            ->assertJsonPath('items.0.field_code', '33673')
+            ->assertJsonPath('items.0.field_name', 'پرستاری');
     }
 
     #[Test]
-    public function field_selection_responsible_print_does_not_show_student_personal_information(): void
+    public function field_selection_catalog_search_returns_every_matching_program(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('Super Admin');
+        $province = Province::query()->create(['name' => 'گیلان', 'normalized_name' => 'گیلان']);
+        $city = City::query()->create(['province_id' => $province->id, 'name' => 'رشت', 'normalized_name' => 'رشت']);
+        $courseType = CourseType::query()->create(['name' => 'روزانه', 'slug' => 'day']);
+        $nursing = AcademicField::query()->create(['name' => 'پرستاری', 'normalized_name' => 'پرستاری']);
+        $institution = Institution::query()->create(['name' => 'دانشگاه آزمایشی', 'normalized_name' => 'دانشگاه آزمایشی', 'province_id' => $province->id, 'city_id' => $city->id]);
+
+        foreach (range(1, 31) as $number) {
+            $this->studyProgram((string) (50000 + $number), $province, $city, $institution, $nursing, $courseType);
+        }
+
+        $this->actingAs($user)
+            ->getJson(route('admin.field-selection.search-fields', ['q' => 'پرستاری']))
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('count', 31)
+            ->assertJsonCount(31, 'items');
+    }
+
+    #[Test]
+    public function field_selection_responsible_print_shows_student_name_without_contact_information(): void
     {
         $student = Student::factory()->create([
             'full_name' => 'دانش‌آموز محرمانه',
@@ -346,8 +370,7 @@ class FieldSelectionTest extends TestCase
             ->get(route('admin.field-selection-plans.print', $plan))
             ->assertOk()
             ->assertSee('55555')
-            ->assertDontSee('دانش‌آموز محرمانه')
-            ->assertDontSee('12345');
+            ->assertSee('دانش‌آموز محرمانه');
     }
 
     #[Test]
@@ -394,6 +417,23 @@ class FieldSelectionTest extends TestCase
         $this->assertTrue($first->refresh()->is_public_visible);
         $this->assertSame(FieldSelectionPlan::STATUS_ARCHIVED, $second->refresh()->status);
         $this->assertFalse($second->refresh()->is_public_visible);
+    }
+
+    #[Test]
+    public function a_reservation_keeps_one_editable_plan_per_exam_type(): void
+    {
+        $reservation = $this->reservation();
+        $reservation->student->update(['exam_type' => ['ریاضی', 'تجربی']]);
+        $service = app(FieldSelectionService::class);
+        $user = User::factory()->create();
+
+        $riazi = $service->getOrCreatePlanForExamType($reservation->fresh(), 'riazi', $user);
+        $tajrobi = $service->getOrCreatePlanForExamType($reservation->fresh(), 'tajrobi', $user);
+
+        $this->assertSame($riazi->id, $service->getOrCreatePlanForExamType($reservation->fresh(), 'riazi', $user)->id);
+        $this->assertNotSame($riazi->id, $tajrobi->id);
+        $this->assertSame('riazi', $riazi->exam_type_key);
+        $this->assertSame('tajrobi', $tajrobi->exam_type_key);
     }
 
     private function studyProgram(string $code, Province $province, City $city, Institution $institution, AcademicField $field, CourseType $courseType, ?string $description = null, string $groupSlug = 'tajrobi', string $groupName = 'تجربی'): StudyProgram

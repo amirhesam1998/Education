@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 
 class StudyProgramQuery
 {
+    // TODO: add a dormitory predicate only when the import source provides a normalized dormitory field.
     public function paginate(array $filters = []): LengthAwarePaginator
     {
         $perPage = min(max((int) ($filters['per_page'] ?? 30), 1), 100);
@@ -32,6 +33,7 @@ class StudyProgramQuery
             ->when($filters['group'] ?? null, fn (Builder $query, $group) => $query->whereHas('examGroup', fn ($q) => $q->where('slug', $group)))
             ->when($filters['code'] ?? null, fn (Builder $query, $code) => $query->where('code', (string) $code))
             ->when($filters['province_id'] ?? null, fn (Builder $query, $id) => $query->where('province_id', $id))
+            ->when($filters['province_ids'] ?? null, fn (Builder $query, $ids) => $query->whereIn('province_id', array_filter((array) $ids)))
             ->when($filters['city_id'] ?? null, fn (Builder $query, $id) => $query->where('city_id', $id))
             ->when($filters['institution_id'] ?? null, fn (Builder $query, $id) => $query->where('institution_id', $id))
             ->when($filters['institution_campus_id'] ?? null, fn (Builder $query, $id) => $query->where('institution_campus_id', $id))
@@ -43,6 +45,14 @@ class StudyProgramQuery
             ->when(($filters['accepts_male'] ?? null) !== null, fn (Builder $query) => $query->where('accepts_male', (bool) $filters['accepts_male']))
             ->when(($filters['accepts_female'] ?? null) !== null, fn (Builder $query) => $query->where('accepts_female', (bool) $filters['accepts_female']))
             ->when($filters['booklet_page'] ?? null, fn (Builder $query, $page) => $query->where('booklet_page', (int) $page))
+            ->when($filters['booklet'] ?? null, fn (Builder $query, $booklet) => $query->where('source_file', 'like', '%'.$booklet.'%'))
+            ->when($filters['semester'] ?? null, fn (Builder $query, $semester) => $query->where($semester === 'first' ? 'first_semester_capacity' : 'second_semester_capacity', '>', 0))
+            ->when($filters['academic_record_type'] ?? null, function (Builder $query, string $type): void {
+                $type === 'with_records'
+                    ? $query->whereHas('admissionType', fn (Builder $admission) => $admission->where('slug', 'academic_records'))
+                    : $query->whereDoesntHave('admissionType', fn (Builder $admission) => $admission->where('slug', 'academic_records'));
+            })
+            ->when($filters['gender'] ?? null, fn (Builder $query, $gender) => $query->where($gender === 'male' ? 'accepts_male' : 'accepts_female', true))
             ->when($filters['description'] ?? null, fn (Builder $query, $search) => $query->where('description', 'like', '%'.$search.'%'))
             ->when($filters['search'] ?? null, function (Builder $query, $search): void {
                 $this->applySearch($query, (string) $search);

@@ -6,10 +6,12 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['reservation_id', 'student_id', 'version', 'status', 'is_public_visible', 'student_visible_at', 'student_hidden_at', 'visibility_changed_by', 'visibility_note', 'created_by', 'updated_by', 'published_at'])]
+#[Fillable(['reservation_id', 'student_id', 'exam_type_key', 'version', 'status', 'is_public_visible', 'student_visible_at', 'student_hidden_at', 'visibility_changed_by', 'visibility_note', 'created_by', 'updated_by', 'published_at'])]
 class FieldSelectionPlan extends Model
 {
+    use SoftDeletes;
     public const STATUS_DRAFT = 'draft';
     public const STATUS_PUBLISHED = 'published';
     public const STATUS_ARCHIVED = 'archived';

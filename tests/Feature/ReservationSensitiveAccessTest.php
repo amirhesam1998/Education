@@ -38,11 +38,11 @@ class ReservationSensitiveAccessTest extends TestCase
         $this->actingAs($consultant)
             ->get(route('admin.reservations.show', $reservation))
             ->assertOk()
-            ->assertDontSee('دانش‌آموز محرمانه')
+            ->assertSee('دانش‌آموز محرمانه')
             ->assertDontSee('09120000000')
             ->assertDontSee($reservation->public_token)
             ->assertDontSee(PersianDate::money(450000))
-            ->assertSee('شما دسترسی مشاهده اطلاعات شخصی دانش‌آموز را ندارید.')
+            ->assertSee('شما دسترسی مشاهده اطلاعات تماس دانش‌آموز را ندارید.')
             ->assertSee('شما دسترسی مشاهده اطلاعات پرداخت را ندارید.')
             ->assertSee('شما دسترسی مشاهده لینک دانش‌آموز را ندارید.');
 
@@ -91,7 +91,7 @@ class ReservationSensitiveAccessTest extends TestCase
         $this->actingAs($accountant)
             ->get(route('admin.payments.show', $reservation->payment))
             ->assertOk()
-            ->assertDontSee('دانش‌آموز محرمانه')
+            ->assertSee('دانش‌آموز محرمانه')
             ->assertSee(PersianDate::money(450000));
     }
 

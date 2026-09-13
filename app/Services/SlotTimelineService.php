@@ -105,7 +105,7 @@ class SlotTimelineService
             'time_start' => $startTime,
             'time_end' => $endTime,
             'advisor_name' => $slot->advisor?->name ?? '-',
-            'student_name' => $canViewPersonalData ? ($reservation?->student?->full_name ?: '-') : ($reservation ? 'رزرو #'.$reservation->id : '-'),
+            'student_name' => $reservation?->student?->full_name ?: ($reservation ? 'رزرو #'.$reservation->id : '-'),
             'student_phone' => $canViewPersonalData ? ($reservation?->student?->phones?->firstWhere('is_primary', true)?->phone
                 ?? $reservation?->student?->phones?->first()?->phone
                 ?? '-') : '-',

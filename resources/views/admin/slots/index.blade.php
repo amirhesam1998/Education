@@ -41,6 +41,9 @@
     .empty-state{ text-align:center; padding:2.5rem 1rem; color:var(--ink-500); }
     .empty-state i{ font-size:2.2rem; color:var(--ink-300); margin-bottom:.5rem; display:block; }
     @media (max-width:575.98px){ .date-card{ flex-basis:132px; } .appointment-advisor{ align-items:flex-start; flex-direction:column; } }
+    .day-delete-summary{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.75rem; }
+    .day-delete-summary div{ padding:.65rem; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); font-size:.82rem; }
+    @media (max-width:575.98px){ .day-delete-summary{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
 </style>
 @endpush
 
@@ -57,6 +60,31 @@
 
         cards.forEach((card) => card.addEventListener('click', () => showDate(card.dataset.dateKey)));
         showDate(cards.find((card) => card.dataset.defaultSelected === '1')?.dataset.dateKey || cards[0]?.dataset.dateKey);
+
+        const dayDeleteForm = document.getElementById('day-delete-form');
+        const dayDeleteModal = document.getElementById('day-delete-modal');
+        dayDeleteForm?.addEventListener('submit', async function (event) {
+            event.preventDefault();
+            const body = new FormData(dayDeleteForm);
+            try {
+                const response = await fetch(dayDeleteForm.dataset.previewUrl, {method: 'POST', body, headers: {'X-CSRF-TOKEN': body.get('_token'), 'Accept': 'application/json'}});
+                if (!response.ok) {
+                    const payload = await response.json().catch(() => ({}));
+                    alert(payload.message || 'امکان بررسی تایم‌های این روز وجود ندارد.');
+
+                    return;
+                }
+
+                const summary = await response.json();
+                document.querySelectorAll('[data-day-delete-value]').forEach((node) => node.textContent = new Intl.NumberFormat('fa-IR').format(summary[node.dataset.dayDeleteValue] || 0));
+                document.getElementById('day-delete-date').textContent = dayDeleteForm.querySelector('[name="date"]').value;
+                dayDeleteModal.querySelectorAll('[name="date"]').forEach((input) => input.value = dayDeleteForm.querySelector('[name="date"]').value);
+                dayDeleteModal.querySelectorAll('[name="advisor_id"]').forEach((input) => input.value = dayDeleteForm.querySelector('[name="advisor_id"]').value);
+                bootstrap.Modal.getOrCreateInstance(dayDeleteModal).show();
+            } catch (error) {
+                alert('ارتباط با سرور برقرار نشد. دوباره تلاش کنید.');
+            }
+        });
     });
 </script>
 @endpush
@@ -105,6 +133,20 @@
             </form>
         </div>
     </div>
+
+    @can('delete_slots')
+        <div class="card filter-card mb-3">
+            <div class="card-body">
+                <form id="day-delete-form" method="post" action="{{ route('admin.slots.day-deletion-preview') }}" class="row g-3 align-items-end" data-preview-url="{{ route('admin.slots.day-deletion-preview') }}">
+                    @csrf
+                    <div class="col-md-4"><label class="form-label">حذف تایم‌های یک روز</label><input type="text" name="date" class="form-control jalali-date-picker" autocomplete="off" placeholder="انتخاب تاریخ" required></div>
+                    <div class="col-md-4"><label class="form-label">مشاور (اختیاری)</label><select name="advisor_id" class="form-select"><option value="">همه مشاوران</option>@foreach($advisors as $advisor)<option value="{{ $advisor->id }}">{{ $advisor->name }}</option>@endforeach</select></div>
+                    <div class="col-md-4"><button class="btn btn-outline-danger w-100"><i class="ri-delete-bin-line"></i> بررسی حذف تایم‌های روز</button></div>
+                </form>
+            </div>
+        </div>
+        <div class="modal fade" id="day-delete-modal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">حذف تایم‌های یک روز</h5><button type="button" class="btn-close m-0" data-bs-dismiss="modal"></button></div><div class="modal-body"><p>تاریخ انتخاب‌شده: <strong id="day-delete-date"></strong></p><div class="day-delete-summary"><div>تعداد کل تایم‌ها: <strong data-day-delete-value="total"></strong></div><div>تایم‌های آزاد: <strong data-day-delete-value="free"></strong></div><div>تایم‌های دارای رزرو: <strong data-day-delete-value="with_reservations"></strong></div><div>تایم‌های قابل حذف: <strong data-day-delete-value="deletable"></strong></div><div>تایم‌های غیرقابل حذف: <strong data-day-delete-value="not_deletable"></strong></div></div><p class="text-warning small mt-3 mb-0">برخی تایم‌های این روز دارای رزرو هستند و حذف نمی‌شوند.</p></div><div class="modal-footer"><form method="post" action="{{ route('admin.slots.bulk-delete-day') }}" onsubmit="return confirm('آیا از حذف تایم‌های آزاد این روز مطمئن هستید؟')">@csrf<input type="hidden" name="date"><input type="hidden" name="advisor_id"><input type="hidden" name="action" value="delete"><button class="btn btn-danger">حذف تایم‌های آزاد</button></form><form method="post" action="{{ route('admin.slots.bulk-delete-day') }}">@csrf<input type="hidden" name="date"><input type="hidden" name="advisor_id"><input type="hidden" name="action" value="deactivate"><button class="btn btn-outline-secondary">غیرفعال کردن تایم‌های روز</button></form></div></div></div></div>
+    @endcan
 
     <div class="card schedule-card">
         <div class="card-header"><i class="ri-calendar-check-line"></i> زمان‌بندی رزرو</div>

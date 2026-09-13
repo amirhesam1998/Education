@@ -203,14 +203,12 @@
                 <div class="card-body">
                     <h2><i class="ri-file-list-3-line"></i> رزرو</h2>
                     <div class="info-list mb-3">
+                        <div class="info-row"><span class="info-key">دانش آموز</span><span
+                                class="info-val">{{ $payment->reservation?->student?->full_name ?: '-' }}</span></div>
                         @if($canViewPersonalData)
-                            <div class="info-row"><span class="info-key">دانش آموز</span><span
-                                    class="info-val">{{ $payment->reservation?->student?->full_name ?: '-' }}</span></div>
                             <div class="info-row"><span class="info-key">شماره</span><span
                                     class="info-val ltr">{{ $payment->reservation?->student?->phones->pluck('phone')->implode(' / ') }}</span>
                             </div>
-                        @else
-                            <div class="info-row"><span class="info-key">رزرو</span><span class="info-val">#{{ $payment->reservation_id }}</span></div>
                         @endif
                         <div class="info-row"><span class="info-key">مشاور</span><span
                                 class="info-val">{{ $payment->reservation?->advisor?->name ?: $payment->reservation?->slot?->advisor?->name }}</span>

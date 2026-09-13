@@ -39,11 +39,11 @@ class StoreSlotRequest extends FormRequest
             'advisor_id' => ['required', 'integer', $this->consultantAdvisorRule()],
             'date' => ['required_if:mode,single', 'nullable', 'date'],
             'start_time' => ['required_if:mode,single', 'nullable', 'date_format:H:i'],
-            'end_time' => ['required_if:mode,single', 'nullable', 'date_format:H:i', 'after:start_time'],
+            'end_time' => ['required_if:mode,single', 'nullable', 'date_format:H:i'],
             'repeat_start_date' => ['required_if:mode,repeat', 'nullable', 'date'],
             'repeat_end_date' => ['required_if:mode,repeat', 'nullable', 'date', 'after_or_equal:repeat_start_date'],
             'daily_start_time' => ['required_if:mode,repeat', 'nullable', 'date_format:H:i'],
-            'daily_end_time' => ['required_if:mode,repeat', 'nullable', 'date_format:H:i', 'after:daily_start_time'],
+            'daily_end_time' => ['required_if:mode,repeat', 'nullable', 'date_format:H:i'],
             'interval_minutes' => ['required_if:mode,repeat', 'nullable', 'integer', 'min:15', 'max:240'],
             'duration_minutes' => ['required', 'integer', 'min:5', 'max:240'],
             'capacity' => ['required', 'integer', 'min:1', 'max:50'],
@@ -59,7 +59,18 @@ class StoreSlotRequest extends FormRequest
             }
 
             if ($this->input('mode') === 'repeat') {
+                if (! $this->isValidRange((string) $this->input('daily_start_time'), (string) $this->input('daily_end_time'))) {
+                    $validator->errors()->add('daily_end_time', 'زمان پایان باید بعد از زمان شروع باشد؛ ساعت ۰۰:۰۰ پایان روز محسوب می‌شود.');
+
+                    return;
+                }
                 $this->validateRepeatedSlotConflicts($validator);
+
+                return;
+            }
+
+            if (! $this->isValidRange((string) $this->input('start_time'), (string) $this->input('end_time'))) {
+                $validator->errors()->add('end_time', 'زمان پایان باید بعد از زمان شروع باشد؛ ساعت ۰۰:۰۰ پایان روز محسوب می‌شود.');
 
                 return;
             }
@@ -119,7 +130,7 @@ class StoreSlotRequest extends FormRequest
 
         while ($date->lte($endDate)) {
             $cursor = Carbon::parse($date->toDateString().' '.$this->input('daily_start_time'));
-            $dayEnd = Carbon::parse($date->toDateString().' '.$this->input('daily_end_time'));
+            $dayEnd = $this->timeOnDate($date->toDateString(), (string) $this->input('daily_end_time'), true);
 
             while ($cursor->copy()->addMinutes((int) $this->input('interval_minutes'))->lte($dayEnd)) {
                 $slotEnd = $cursor->copy()->addMinutes((int) $this->input('interval_minutes'));
@@ -150,10 +161,7 @@ class StoreSlotRequest extends FormRequest
 
     private function validateDurationFits(Validator $validator, string $startTime, string $endTime): void
     {
-        $start = Carbon::parse('2000-01-01 '.$startTime);
-        $end = Carbon::parse('2000-01-01 '.$endTime);
-
-        if ($start->diffInMinutes($end) < (int) $this->input('duration_minutes')) {
+        if ($this->timeToMinutes($endTime, true) - $this->timeToMinutes($startTime) < (int) $this->input('duration_minutes')) {
             $validator->errors()->add('duration_minutes', 'مدت هر رزرو نباید از طول بازه تایم بیشتر باشد.');
         }
     }
@@ -163,8 +171,31 @@ class StoreSlotRequest extends FormRequest
         return ReservationSlot::query()
             ->where('advisor_id', $advisorId)
             ->whereDate('date', $date)
-            ->where('start_time', '<', $endTime)
-            ->where('end_time', '>', $startTime)
+            ->when($endTime !== '00:00', fn ($query) => $query->where('start_time', '<', $endTime))
+            ->where(fn ($query) => $query->where('end_time', '00:00')->orWhere('end_time', '>', $startTime))
             ->exists();
+    }
+
+    private function isValidRange(string $startTime, string $endTime): bool
+    {
+        return $this->timeToMinutes($startTime) < $this->timeToMinutes($endTime, true);
+    }
+
+    private function timeToMinutes(string $time, bool $endBoundary = false): int
+    {
+        if ($endBoundary && $time === '00:00') {
+            return 1440;
+        }
+
+        [$hour, $minute] = array_map('intval', explode(':', $time));
+
+        return ($hour * 60) + $minute;
+    }
+
+    private function timeOnDate(string $date, string $time, bool $endBoundary = false): Carbon
+    {
+        $dateTime = Carbon::parse($date.' '.$time);
+
+        return $endBoundary && $time === '00:00' ? $dateTime->addDay() : $dateTime;
     }
 }

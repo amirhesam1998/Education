@@ -8,6 +8,7 @@ use App\Http\Requests\Admin\AddFieldSelectionCatalogItemRequest;
 use App\Http\Requests\Admin\BulkUpdateFieldSelectionItemsRequest;
 use App\Http\Requests\Admin\SearchFieldCatalogRequest;
 use App\Http\Requests\Admin\StoreFieldSelectionItemRequest;
+use App\Http\Requests\Admin\SelectFieldSelectionExamTypeRequest;
 use App\Http\Requests\Admin\UpdateFieldSelectionItemRequest;
 use App\Models\City;
 use App\Models\CourseType;
@@ -26,38 +27,57 @@ use Illuminate\View\View;
 
 class FieldSelectionController extends Controller
 {
-    public function createPlan(Reservation $reservation, Request $request, FieldSelectionService $fieldSelections): RedirectResponse
+    public function createPlan(Reservation $reservation, SelectFieldSelectionExamTypeRequest $request, FieldSelectionService $fieldSelections): RedirectResponse
     {
         $this->ensureManager($request->user(), $reservation);
-        $plan = $fieldSelections->createPlanForReservation($reservation, $request->user());
+        $plan = $fieldSelections->getOrCreatePlanForExamType($reservation, $request->validated('exam_type_key'), $request->user());
 
-        return redirect()->route('admin.reservations.field-selection.show', [$reservation, 'plan' => $plan->id]);
+        return redirect()->route('admin.reservations.field-selection.show', [$reservation, 'exam_type' => $plan->exam_type_key]);
     }
 
-    public function show(Reservation $reservation, Request $request): View
+    public function show(Reservation $reservation, Request $request, FieldSelectionService $fieldSelections): View
     {
         $this->ensureViewer($request->user(), $reservation);
-        $plan = $request->filled('plan')
-            ? FieldSelectionPlan::query()->where('reservation_id', $reservation->id)->findOrFail($request->integer('plan'))
-            : ($reservation->fieldSelectionPlans()->where('status', FieldSelectionPlan::STATUS_DRAFT)->latest('version')->first()
-                ?: $reservation->fieldSelectionPlans()->where('status', FieldSelectionPlan::STATUS_PUBLISHED)->latest('version')->first());
+        $examTypeOptions = $fieldSelections->examTypeOptions($reservation);
+        $selectedExamType = $request->string('exam_type')->toString();
 
-        abort_unless($plan, 404);
+        if ($request->filled('plan')) {
+            $legacyPlan = FieldSelectionPlan::query()->where('reservation_id', $reservation->id)->findOrFail($request->integer('plan'));
+            $selectedExamType = (string) $legacyPlan->exam_type_key;
+            if ($selectedExamType === '') {
+                $legacyPlan->load(['items', 'creator', 'updater', 'reservation.slot.advisor', 'reservation.advisor']);
+
+                return view('admin.field-selection.show', [
+                    'plan' => $legacyPlan,
+                    'reservation' => $reservation,
+                    'examTypeOptions' => [],
+                    'selectedExamType' => '',
+                    'selectedExamTypeLabel' => 'انتخاب رشته ثبت‌شده',
+                    'canViewStudentPersonalInfo' => $this->canViewStudentPersonalInfo($request->user()),
+                    'catalogProvinces' => collect(),
+                    'catalogCourseTypes' => collect(),
+                    'catalogBooklets' => collect(),
+                ]);
+            }
+        }
+
+        if ($selectedExamType === '' && count($examTypeOptions) === 1) {
+            $selectedExamType = (string) array_key_first($examTypeOptions);
+        }
+
+        if ($selectedExamType === '') {
+            return view('admin.field-selection.select-exam', compact('reservation', 'examTypeOptions'));
+        }
+
+        $plan = $fieldSelections->getOrCreatePlanForExamType($reservation, $selectedExamType, $request->user());
         $plan->load(['items', 'creator', 'updater', 'reservation.slot.advisor', 'reservation.advisor']);
-        $versions = $reservation->fieldSelectionPlans()->with('creator')->get();
 
         return view('admin.field-selection.show', [
             'plan' => $plan,
             'reservation' => $reservation,
-            'versions' => $versions,
-            'planVisibilityStats' => [
-                'total' => $versions->count(),
-                'published' => $versions->where('status', FieldSelectionPlan::STATUS_PUBLISHED)->count(),
-                'student_visible' => $versions
-                    ->where('status', FieldSelectionPlan::STATUS_PUBLISHED)
-                    ->where('is_public_visible', true)
-                    ->count(),
-            ],
+            'examTypeOptions' => $examTypeOptions,
+            'selectedExamType' => $selectedExamType,
+            'selectedExamTypeLabel' => $examTypeOptions[$selectedExamType] ?? $selectedExamType,
             'canViewStudentPersonalInfo' => $this->canViewStudentPersonalInfo($request->user()),
             'catalogProvinces' => Province::query()
                 ->whereIn('id', StudyProgram::query()->select('province_id')->whereNotNull('province_id')->where('validation_status', 'validated'))
@@ -67,6 +87,13 @@ class FieldSelectionController extends Controller
                 ->whereIn('id', StudyProgram::query()->select('course_type_id')->whereNotNull('course_type_id')->where('validation_status', 'validated'))
                 ->orderBy('name')
                 ->get(['id', 'name']),
+            'catalogBooklets' => StudyProgram::query()
+                ->where('validation_status', 'validated')
+                ->where('is_active', true)
+                ->whereNotNull('source_file')
+                ->distinct()
+                ->orderBy('source_file')
+                ->pluck('source_file'),
         ]);
     }
 
@@ -117,7 +144,13 @@ class FieldSelectionController extends Controller
 
     public function searchFields(SearchFieldCatalogRequest $request, FieldSelectionService $fieldSelections): JsonResponse
     {
-        return response()->json($fieldSelections->searchFieldCatalog($request->validated()));
+        $items = $fieldSelections->searchFieldCatalog($request->validated());
+
+        return response()->json([
+            'success' => true,
+            'count' => $items->count(),
+            'items' => $items->values(),
+        ]);
     }
 
     public function filterCities(Request $request): JsonResponse
@@ -233,13 +266,23 @@ class FieldSelectionController extends Controller
         return back()->with('success', 'نسخه آرشیو شد.');
     }
 
+    public function destroyPlan(Request $request, FieldSelectionPlan $plan, FieldSelectionService $fieldSelections): RedirectResponse
+    {
+        $this->ensureManager($request->user(), $plan->reservation);
+        $reservation = $plan->reservation;
+        $fieldSelections->deletePlan($plan, $request->user());
+
+        return redirect()->route('admin.reservations.field-selection.show', $reservation)->with('success', 'انتخاب رشته حذف شد.');
+    }
+
     public function print(Request $request, FieldSelectionPlan $plan): View
     {
         $plan->load(['items', 'student', 'reservation.slot.advisor', 'reservation.advisor']);
         $this->ensureViewer($request->user(), $plan->reservation);
         $canViewStudentPersonalInfo = $this->canViewStudentPersonalInfo($request->user());
+        $selectedExamTypeLabel = app(FieldSelectionService::class)->examTypeOptions($plan->reservation)[$plan->exam_type_key] ?? 'انتخاب رشته ثبت‌شده';
 
-        return view('field-selection.print', compact('plan', 'canViewStudentPersonalInfo'));
+        return view('field-selection.print', compact('plan', 'canViewStudentPersonalInfo', 'selectedExamTypeLabel'));
     }
 
     private function ensureViewer(User $user, Reservation $reservation): void

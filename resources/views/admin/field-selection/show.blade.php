@@ -9,7 +9,7 @@
 @endpush
 
 @section('content')
-    @php($editable = $plan->isDraft() && auth()->user()->can('manage_field_selection'))
+    @php($editable = $plan->status !== \App\Models\FieldSelectionPlan::STATUS_ARCHIVED && auth()->user()->can('manage_field_selection'))
     @php($itemsCount = $plan->items->count())
     <form id="bulk-update-form" method="post" action="{{ route('admin.field-selection-plans.bulk-update', $plan) }}">@csrf</form>
     <form id="add-item-form" method="post" action="{{ route('admin.field-selection-plans.items.store', $plan) }}">@csrf</form>
@@ -19,7 +19,7 @@
         <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
             <div class="selection-summary">
                 <a class="btn btn-outline-secondary" href="{{ route('admin.reservations.show', $reservation) }}" title="بازگشت به رزرو"><i class="ri-arrow-right-line"></i><span class="d-none d-sm-inline">بازگشت به رزرو</span></a>
-                <div><strong>لیست انتخاب رشته</strong><div class="selection-counter">نسخه {{ \App\Support\PersianDate::number($plan->version) }} | <span id="item-counter">{{ \App\Support\PersianDate::number($itemsCount) }}</span> از ۱۵۰ مورد</div></div>
+                <div><strong>انتخاب رشته کنکور {{ $selectedExamTypeLabel }}</strong><div class="selection-counter"><span id="item-counter">{{ \App\Support\PersianDate::number($itemsCount) }}</span> از ۱۵۰ مورد</div></div>
                 <span class="badge text-bg-{{ $plan->isPublished() ? 'success' : ($plan->status === \App\Models\FieldSelectionPlan::STATUS_ARCHIVED ? 'secondary' : 'warning') }}">{{ $plan->status === 'published' ? 'منتشر شده' : ($plan->status === 'archived' ? 'آرشیو شده' : 'پیش‌نویس') }}</span>
                 @if($plan->canBePubliclyVisible())<span class="badge text-bg-{{ $plan->is_public_visible ? 'info' : 'light' }}">{{ $plan->is_public_visible ? 'قابل مشاهده برای دانش‌آموز' : 'مخفی از دانش‌آموز' }}</span>@endif
                 @if($editable)<span class="selection-dirty" id="selection-dirty"><i class="ri-error-warning-line"></i> تغییرات ذخیره نشده دارید</span>@endif
@@ -27,6 +27,11 @@
             <div class="d-flex flex-wrap gap-2">
                 <a class="btn btn-outline-secondary" target="_blank" href="{{ route('admin.field-selection-plans.print', $plan) }}"><i class="ri-printer-line"></i> چاپ انتخاب رشته</a>
                 @can('manage_field_selection')
+                    <form method="get" action="{{ route('admin.reservations.field-selection.show', $reservation) }}">
+                        <select class="form-select" name="exam_type" onchange="this.form.submit()">
+                            @foreach($examTypeOptions as $key => $label)<option value="{{ $key }}" @selected($selectedExamType === $key)>{{ $label }}</option>@endforeach
+                        </select>
+                    </form>
                     @if($plan->canBePubliclyVisible())
                         <form method="post" action="{{ route($plan->is_public_visible ? 'admin.field-selection-plans.hide-from-student' : 'admin.field-selection-plans.show-to-student', $plan) }}">
                             @csrf
@@ -41,13 +46,15 @@
                             <button class="btn btn-outline-secondary" onclick="return confirm('آیا از آرشیو کردن این نسخه مطمئن هستید؟')" type="submit">آرشیو کردن</button>
                         </form>
                     @endif
+                    <form method="post" action="{{ route('admin.field-selection-plans.destroy', $plan) }}" onsubmit="return confirm('آیا از حذف این انتخاب رشته مطمئن هستید؟')">
+                        @csrf @method('delete')
+                        <button class="btn btn-outline-danger" type="submit">حذف انتخاب رشته</button>
+                    </form>
                 @endcan
                 @if($editable)
                     <button class="btn btn-outline-primary" type="submit" form="reorder-form" id="save-order" @disabled($itemsCount === 0)><i class="ri-list-check-2"></i> ذخیره ترتیب</button>
                     <button class="btn btn-primary" type="submit" form="bulk-update-form" id="save-changes" @disabled($itemsCount === 0)><i class="ri-save-line"></i> ذخیره تغییرات</button>
-                    <form method="post" action="{{ route('admin.field-selection-plans.publish', $plan) }}" id="publish-form" data-confirm="آیا از انتشار این لیست انتخاب رشته مطمئن هستید؟">@csrf<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="visible_to_student" value="1" id="visible-to-student"><label class="form-check-label small" for="visible-to-student">بعد از انتشار برای دانش‌آموز قابل مشاهده باشد</label></div><button class="btn btn-success" id="publish-selection" @disabled($itemsCount === 0) title="{{ $itemsCount === 0 ? 'برای انتشار حداقل یک رشته ثبت کنید.' : '' }}"><i class="ri-send-plane-line"></i> انتشار</button></form>
-                @elseif($plan->isPublished())
-                    @can('manage_field_selection')<form method="post" action="{{ route('admin.field-selection-plans.new-version', $plan) }}">@csrf<button class="btn btn-primary"><i class="ri-edit-2-line"></i> ویرایش رشته</button></form>@endcan
+                    @if($plan->isDraft())<form method="post" action="{{ route('admin.field-selection-plans.publish', $plan) }}" id="publish-form" data-confirm="آیا از انتشار این لیست انتخاب رشته مطمئن هستید؟">@csrf<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="visible_to_student" value="1" id="visible-to-student"><label class="form-check-label small" for="visible-to-student">بعد از انتشار برای دانش‌آموز قابل مشاهده باشد</label></div><button class="btn btn-success" id="publish-selection" @disabled($itemsCount === 0) title="{{ $itemsCount === 0 ? 'برای انتشار حداقل یک رشته ثبت کنید.' : '' }}"><i class="ri-send-plane-line"></i> انتشار</button></form>@endif
                 @endif
             </div>
         </div>
@@ -57,11 +64,11 @@
         <div class="alert alert-warning py-2">این نسخه منتشر شده است اما هنوز برای دانش‌آموز قابل مشاهده نیست.</div>
     @endif
 
-    <div class="d-flex flex-wrap gap-2 mb-3 small text-muted">
+    @if(false)<div class="d-flex flex-wrap gap-2 mb-3 small text-muted">
         <span>کل نسخه‌ها: {{ \App\Support\PersianDate::number($planVisibilityStats['total']) }}</span>
         <span>نسخه‌های منتشر شده: {{ \App\Support\PersianDate::number($planVisibilityStats['published']) }}</span>
         <span>نسخه‌های قابل مشاهده برای دانش‌آموز: {{ \App\Support\PersianDate::number($planVisibilityStats['student_visible']) }}</span>
-    </div>
+    </div>@endif
 
     <div class="card mb-3">
         <div class="card-header"><i class="ri-search-line"></i> جستجوی رشتهمحل از دیتابیس</div>
@@ -95,6 +102,27 @@
                         @endforeach
                     </select>
                 </div>
+                <div>
+                    <label class="form-label" for="catalog-booklet">دفترچه</label>
+                    <select class="form-select" id="catalog-booklet" @disabled(! $editable)><option value="">همه دفترچه‌ها</option>@foreach($catalogBooklets as $booklet)<option value="{{ $booklet }}">{{ basename($booklet) }}</option>@endforeach</select>
+                </div>
+                <div>
+                    <label class="form-label" for="catalog-provinces">استان‌ها</label>
+                    <select class="form-select" id="catalog-provinces" multiple @disabled(! $editable)>@foreach($catalogProvinces as $province)<option value="{{ $province->id }}">{{ $province->name }}</option>@endforeach</select>
+                </div>
+                <div>
+                    <label class="form-label" for="catalog-semester">نیم‌سال</label>
+                    <select class="form-select" id="catalog-semester" @disabled(! $editable)><option value="">همه</option><option value="first">نیم‌سال اول</option><option value="second">نیم‌سال دوم</option></select>
+                </div>
+                <div>
+                    <label class="form-label" for="catalog-academic-record">سوابق تحصیلی</label>
+                    <select class="form-select" id="catalog-academic-record" @disabled(! $editable)><option value="">همه</option><option value="with_records">با سوابق تحصیلی</option><option value="without_records">بدون سوابق تحصیلی</option></select>
+                </div>
+                <div>
+                    <label class="form-label" for="catalog-gender">جنسیت دانشگاه</label>
+                    <select class="form-select" id="catalog-gender" @disabled(! $editable)><option value="">همه</option><option value="male">مرد</option><option value="female">زن</option></select>
+                </div>
+                <div class="catalog-help">خوابگاه: داده‌ای برای این فیلتر در کاتالوگ فعلی وارد نشده است.</div>
                 <div class="catalog-filter-actions d-flex gap-2">
                     <button class="btn btn-primary" type="button" id="catalog-search-button" @disabled(! $editable)><i class="ri-search-line"></i> جستجو</button>
                     <button class="btn btn-outline-secondary" type="button" id="catalog-reset-button" @disabled(! $editable) title="پاک کردن فیلترها"><i class="ri-refresh-line"></i></button>
@@ -123,7 +151,7 @@
         </div>
     </div>
 
-    <div class="card mt-3">
+    @if(false)<div class="card mt-3">
         <div class="card-header"><i class="ri-history-line"></i> نسخه‌های انتخاب رشته</div>
         <div class="table-responsive">
             <table class="table mb-0">
@@ -189,7 +217,7 @@
                 </tbody>
             </table>
         </div>
-    </div>
+    </div>@endif
 @endsection
 
 @push('scripts')
@@ -223,12 +251,12 @@ document.addEventListener('DOMContentLoaded', function () {
     function hasDirtyChanges() { return dirty?.classList.contains('is-visible'); }
     async function saveBulkChanges() { const form = document.getElementById('bulk-update-form'); return jsonRequest(form.action, {method:'POST', body:new FormData(form)}); }
     async function saveOrderChanges() { const form = document.getElementById('reorder-form'); form.querySelectorAll('input[name="ordered_item_ids[]"]').forEach(input => input.remove()); itemRows().forEach(row => { const input = document.createElement('input'); input.type = 'hidden'; input.name = 'ordered_item_ids[]'; input.value = row.dataset.itemId; form.append(input); }); return jsonRequest(form.action, {method:'POST', body:new FormData(form)}); }
-    function catalogParams() { const params = new URLSearchParams(); const q = document.getElementById('catalog-field-query')?.value.trim() || ''; const province = document.getElementById('catalog-province')?.value || ''; const city = document.getElementById('catalog-city')?.value || ''; const course = document.getElementById('catalog-course-type')?.value || ''; if (q) params.set('q', q); if (province) params.set('province_id', province); if (city) params.set('city_id', city); if (course) params.set('course_type_id', course); return params; }
-    function canSearchCatalog() { const params = catalogParams(); const q = params.get('q') || ''; return q.length >= 2 || params.has('province_id') || params.has('city_id') || params.has('course_type_id'); }
+    function catalogParams() { const params = new URLSearchParams(); const q = document.getElementById('catalog-field-query')?.value.trim() || ''; const province = document.getElementById('catalog-province')?.value || ''; const city = document.getElementById('catalog-city')?.value || ''; const course = document.getElementById('catalog-course-type')?.value || ''; const booklet = document.getElementById('catalog-booklet')?.value || ''; const semester = document.getElementById('catalog-semester')?.value || ''; const records = document.getElementById('catalog-academic-record')?.value || ''; const gender = document.getElementById('catalog-gender')?.value || ''; const provinces = [...(document.getElementById('catalog-provinces')?.selectedOptions || [])].map(option => option.value); if (q) params.set('q', q); if (province) params.set('province_id', province); if (city) params.set('city_id', city); if (course) params.set('course_type_id', course); if (booklet) params.set('booklet', booklet); if (semester) params.set('semester', semester); if (records) params.set('academic_record_type', records); if (gender) params.set('gender', gender); provinces.forEach(id => params.append('province_ids[]', id)); return params; }
+    function canSearchCatalog() { const params = catalogParams(); const q = params.get('q') || ''; return q.length >= 2 || [...params.keys()].some(key => key !== 'q'); }
     function setCatalogState(message, tone = '') { document.getElementById('catalog-results').innerHTML = '<div class="catalog-state ' + tone + '">' + message + '</div>'; }
     async function loadCatalogCities(keepSelected = false) { const province = document.getElementById('catalog-province'), city = document.getElementById('catalog-city'); if (!province || !city) return; const selected = keepSelected ? city.value : ''; city.innerHTML = '<option value="">' + (province.value ? 'همه شهرهای استان' : 'اول استان را انتخاب کنید') + '</option>'; city.disabled = !province.value; if (!province.value) return; cityAbort?.abort(); cityAbort = new AbortController(); const params = catalogParams(); params.set('province_id', province.value); params.delete('city_id'); try { const response = await fetch(catalogCitiesUrl + '?' + params.toString(), {headers, signal: cityAbort.signal}); const cities = await response.json(); cities.forEach(item => city.add(new Option(item.name, item.id, false, String(item.id) === selected))); city.disabled = false; if (selected && [...city.options].some(option => option.value === selected)) city.value = selected; } catch (error) { if (error.name !== 'AbortError') city.disabled = false; } }
-    function renderCatalog(fields) { const results = document.getElementById('catalog-results'); results.replaceChildren(); if (!fields.length) { setCatalogState('موردی با این فیلترها پیدا نشد.'); return; } const summary = document.createElement('div'); summary.className = 'catalog-state'; summary.textContent = fields.length >= 30 ? '۳۰ مورد اول نمایش داده شده؛ برای نتیجه دقیق‌تر نام رشته یا شهر را محدودتر کن.' : formatter.format(fields.length) + ' رشتهمحل پیدا شد.'; results.append(summary); fields.forEach(field => { const row = document.createElement('div'); row.className = 'catalog-result'; row.dataset.catalogResult = '1'; row.dataset.code = field.field_code; const code = document.createElement('span'); code.className = 'catalog-code ltr'; code.textContent = field.field_code; const main = document.createElement('div'); const title = document.createElement('strong'); title.className = 'catalog-title'; title.textContent = field.field_name; const meta = document.createElement('div'); meta.className = 'catalog-meta'; [field.booklet_source, field.university_type || field.course_type, field.capacity ? formatter.format(field.capacity) + ' نفر ظرفیت' : null].filter(Boolean).forEach(text => { const chip = document.createElement('span'); chip.className = 'catalog-chip'; chip.textContent = text; meta.append(chip); }); main.append(title, meta); const place = document.createElement('div'); place.className = 'catalog-result-place'; const inst = document.createElement('div'); inst.textContent = field.university_name || field.institution || '-'; const city = document.createElement('div'); city.className = 'catalog-place'; city.textContent = [field.province, field.city].filter(Boolean).join(' / '); place.append(inst, city); const desc = document.createElement('div'); desc.className = 'catalog-meta'; desc.textContent = field.field_description || field.university_description || 'بدون توضیحات ثبت‌شده'; const action = document.createElement('div'); action.className = 'catalog-result-action'; const add = document.createElement('button'); add.type = 'button'; add.className = 'btn btn-sm btn-primary'; add.dataset.catalogAdd = field.id; add.textContent = 'افزودن به لیست'; add.disabled = itemRows().length >= 150; action.append(add); row.append(code, main, place, desc, action); results.append(row); }); }
-    async function runCatalogSearch() { clearTimeout(catalogTimer); if (!canSearchCatalog()) { setCatalogState('برای شروع، حداقل دو حرف از نام رشته را وارد کن یا یکی از فیلترها را انتخاب کن.'); return; } catalogAbort?.abort(); catalogAbort = new AbortController(); setCatalogState('در حال جستجو...', 'loading'); try { const fields = await jsonRequest(catalogUrl + '?' + catalogParams().toString(), {signal: catalogAbort.signal}); renderCatalog(fields); } catch (error) { if (error.name !== 'AbortError') setCatalogState(error.message); } }
+    function renderCatalog(fields, count = fields.length) { const results = document.getElementById('catalog-results'); results.replaceChildren(); if (!fields.length) { setCatalogState('موردی با این فیلترها پیدا نشد.'); return; } const summary = document.createElement('div'); summary.className = 'catalog-state'; summary.textContent = formatter.format(count) + ' رشته‌محل پیدا شد.'; results.append(summary); fields.forEach(field => { const row = document.createElement('div'); row.className = 'catalog-result'; row.dataset.catalogResult = '1'; row.dataset.code = field.field_code; const code = document.createElement('span'); code.className = 'catalog-code ltr'; code.textContent = field.field_code; const main = document.createElement('div'); const title = document.createElement('strong'); title.className = 'catalog-title'; title.textContent = field.field_name; const meta = document.createElement('div'); meta.className = 'catalog-meta'; [field.booklet_source, field.university_type || field.course_type, field.capacity ? formatter.format(field.capacity) + ' نفر ظرفیت' : null].filter(Boolean).forEach(text => { const chip = document.createElement('span'); chip.className = 'catalog-chip'; chip.textContent = text; meta.append(chip); }); main.append(title, meta); const place = document.createElement('div'); place.className = 'catalog-result-place'; const inst = document.createElement('div'); inst.textContent = field.university_name || field.institution || '-'; const city = document.createElement('div'); city.className = 'catalog-place'; city.textContent = [field.province, field.city].filter(Boolean).join(' / '); place.append(inst, city); const desc = document.createElement('div'); desc.className = 'catalog-meta'; desc.textContent = field.field_description || field.university_description || 'بدون توضیحات ثبت‌شده'; const action = document.createElement('div'); action.className = 'catalog-result-action'; const add = document.createElement('button'); add.type = 'button'; add.className = 'btn btn-sm btn-primary'; add.dataset.catalogAdd = field.id; add.textContent = 'افزودن به لیست'; add.disabled = itemRows().length >= 150; action.append(add); row.append(code, main, place, desc, action); results.append(row); }); }
+    async function runCatalogSearch() { clearTimeout(catalogTimer); if (!canSearchCatalog()) { setCatalogState('برای شروع، حداقل دو حرف از نام رشته را وارد کنید یا یکی از فیلترها را انتخاب کنید.'); return; } catalogAbort?.abort(); catalogAbort = new AbortController(); setCatalogState('در حال جستجو...', 'loading'); try { const payload = await jsonRequest(catalogUrl + '?' + catalogParams().toString(), {signal: catalogAbort.signal}); renderCatalog(payload.items || [], payload.count ?? 0); } catch (error) { if (error.name !== 'AbortError') setCatalogState(error.message); } }
     function scheduleCatalogSearch() { clearTimeout(catalogTimer); catalogTimer = setTimeout(runCatalogSearch, 300); }
     document.addEventListener('input', event => { const input = event.target; if (input.matches('[data-catalog-input]')) { markChanged(input.closest('tr')); clearTimeout(suggestionTimer); suggestionTimer = setTimeout(() => searchCatalog(input), 250); return; } if (input.matches('[data-item-input]')) markChanged(input.closest('[data-item-row]')); });
     document.addEventListener('click', event => { if (!event.target.closest('.catalog-menu') && !event.target.matches('[data-catalog-input]')) closeMenu(); });
@@ -238,8 +266,9 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('catalog-province')?.addEventListener('change', () => { loadCatalogCities(false); runCatalogSearch(); });
     document.getElementById('catalog-city')?.addEventListener('change', runCatalogSearch);
     document.getElementById('catalog-course-type')?.addEventListener('change', () => { loadCatalogCities(true); runCatalogSearch(); });
+    ['catalog-booklet', 'catalog-provinces', 'catalog-semester', 'catalog-academic-record', 'catalog-gender'].forEach(id => document.getElementById(id)?.addEventListener('change', runCatalogSearch));
     document.getElementById('catalog-search-button')?.addEventListener('click', runCatalogSearch);
-    document.getElementById('catalog-reset-button')?.addEventListener('click', () => { document.getElementById('catalog-field-query').value = ''; document.getElementById('catalog-province').value = ''; document.getElementById('catalog-course-type').value = ''; loadCatalogCities(false); setCatalogState('برای شروع، حداقل نام رشته را وارد کن یا یکی از فیلترها را انتخاب کن.'); });
+    document.getElementById('catalog-reset-button')?.addEventListener('click', () => { document.getElementById('catalog-field-query').value = ''; document.getElementById('catalog-province').value = ''; document.getElementById('catalog-course-type').value = ''; ['catalog-booklet', 'catalog-semester', 'catalog-academic-record', 'catalog-gender'].forEach(id => document.getElementById(id).value = ''); [...document.getElementById('catalog-provinces').options].forEach(option => option.selected = false); loadCatalogCities(false); setCatalogState('برای شروع، حداقل نام رشته را وارد کن یا یکی از فیلترها را انتخاب کن.'); });
     document.getElementById('catalog-results')?.addEventListener('click', async event => { const button = event.target.closest('[data-catalog-add]'); if (!button || button.disabled) return; const result = button.closest('[data-catalog-result]'); const code = result?.dataset.code || ''; if (itemRows().some(row => row.querySelector('[data-field="field_code"]').value.trim() === code)) { showToast('این کد رشته قبلاً در لیست ثبت شده است.', 'warning'); return; } button.disabled = true; try { appendItem(await jsonRequest(catalogAddUrl, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({field_catalog_id:button.dataset.catalogAdd})})); } catch (error) { button.disabled = false; showToast(error.message, 'danger'); } });
     document.getElementById('add-item-form')?.addEventListener('submit', async function (event) { event.preventDefault(); const code = this.querySelector('[name="field_code"]')?.value.trim(); if (code && itemRows().some(row => row.querySelector('[data-field="field_code"]').value.trim() === code)) { showToast('این کد رشته قبلاً در لیست ثبت شده است.', 'warning'); return; } try { appendItem(await jsonRequest(this.action, {method:'POST', body:new FormData(this)})); this.reset(); } catch (error) { showToast(error.message, 'danger'); } });
     document.getElementById('bulk-update-form')?.addEventListener('submit', async function (event) { event.preventDefault(); try { const payload = await saveBulkChanges(); await saveOrderChanges(); clearDirty(); showToast(payload.message); } catch (error) { showToast(error.message, 'danger'); } });

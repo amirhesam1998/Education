@@ -580,7 +580,6 @@
                 <div class="card-header"><i class="ri-graduation-cap-line"></i> دانش آموز</div>
                 <div class="card-body">
                     <div class="info-grid">
-                        @if($canViewPersonalData)
                         <div class="info-item">
                             <div class="info-label">نام و نام خانوادگی</div>
                             <div class="info-value">{{ $reservation->student?->full_name ?: '-' }}</div>
@@ -601,38 +600,30 @@
                             <div class="info-label">نوع کنکور</div>
                             <div class="info-value">{{ $reservation->student?->examTypeLabel() ?: '-' }}</div>
                         </div>
-                        <div class="info-item" style="grid-column: span 2;">
+                        @if($canViewPersonalData)<div class="info-item" style="grid-column: span 2;">
                             <div class="info-label">شمارهها</div>
                             <div class="info-value ltr">{{ $reservation->student?->phones->pluck('phone')->implode(' / ') }}</div>
-                        </div>
-                        @endif
+                        </div>@endif
                     </div>
                     @unless($canViewPersonalData)
-                        <div class="empty-state">شما دسترسی مشاهده اطلاعات شخصی دانش‌آموز را ندارید.</div>
+                        <div class="text-muted small mt-3">شما دسترسی مشاهده اطلاعات تماس دانش‌آموز را ندارید.</div>
                     @endunless
                 </div>
             </div>
 
             @if(in_array($reservation->status, [\App\Enums\ReservationStatus::Confirmed, \App\Enums\ReservationStatus::Completed], true))
-                @php($selectionPlans = $reservation->fieldSelectionPlans->sortByDesc('version'))
-                @php($selectionPlan = $selectionPlans->firstWhere('status', \App\Models\FieldSelectionPlan::STATUS_DRAFT) ?: $selectionPlans->firstWhere('status', \App\Models\FieldSelectionPlan::STATUS_PUBLISHED))
+                @php($selectionPlans = $reservation->fieldSelectionPlans->whereNull('deleted_at'))
                 <div class="card card-section">
                     <div class="card-header d-flex justify-content-between align-items-center"><span><i class="ri-list-ordered"></i> انتخاب رشته</span>
                         @can('manage_field_selection')
                             <div class="d-flex flex-wrap gap-2">
-                                @if($selectionPlan)
-                                    <a class="btn btn-sm btn-primary" href="{{ route('admin.reservations.field-selection.show', [$reservation, 'plan' => $selectionPlan]) }}">مدیریت انتخاب رشته</a>
-                                    <form method="post" action="{{ route('admin.reservations.field-selection.store', $reservation) }}">@csrf<button class="btn btn-sm btn-outline-primary">انتخاب رشته جدید</button></form>
-                                @else
-                                    <form method="post" action="{{ route('admin.reservations.field-selection.store', $reservation) }}">@csrf<button class="btn btn-sm btn-primary">مدیریت انتخاب رشته</button></form>
-                                @endif
+                                <a class="btn btn-sm btn-primary" href="{{ route('admin.reservations.field-selection.show', $reservation) }}">مدیریت انتخاب رشته</a>
                             </div>
                         @endcan
                     </div>
                     <div class="card-body">
-                        @if($selectionPlan)
-                            <div class="info-grid"><div class="info-item"><div class="info-label">نسخه فعلی</div><div class="info-value">{{ \App\Support\PersianDate::number($selectionPlan->version) }}</div></div><div class="info-item"><div class="info-label">وضعیت</div><div class="info-value">{{ $selectionPlan->status === 'published' ? 'منتشرشده' : ($selectionPlan->status === 'archived' ? 'بایگانی‌شده' : 'پیش‌نویس') }}</div></div><div class="info-item"><div class="info-label">تعداد انتخاب‌ها</div><div class="info-value">{{ \App\Support\PersianDate::number($selectionPlan->items->count()) }}</div></div></div>
-                            @can('view_field_selection')<a class="btn btn-outline-secondary mt-3" target="_blank" href="{{ route('admin.field-selection-plans.print', $selectionPlan) }}"><i class="ri-printer-line"></i> چاپ انتخاب رشته</a>@endcan
+                        @if($selectionPlans->isNotEmpty())
+                            <div class="info-grid"><div class="info-item"><div class="info-label">تعداد انتخاب رشته‌ها</div><div class="info-value">{{ \App\Support\PersianDate::number($selectionPlans->count()) }}</div></div><div class="info-item"><div class="info-label">منتشرشده</div><div class="info-value">{{ \App\Support\PersianDate::number($selectionPlans->where('status', 'published')->count()) }}</div></div></div>
                         @else
                             <div class="empty-state">هنوز رشته‌ای برای این دانش‌آموز ثبت نشده است.</div>
                         @endif

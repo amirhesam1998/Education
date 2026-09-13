@@ -32,4 +32,14 @@ class UploadReceiptRequest extends FormRequest
             'receipt_image' => 'فیش پرداخت',
         ];
     }
+
+    public function messages(): array
+    {
+        return [
+            'receipt_image.required' => 'فیش پرداخت را انتخاب کنید.',
+            'receipt_image.image' => 'فیش پرداخت باید تصویر باشد.',
+            'receipt_image.mimes' => 'فرمت فیش پرداخت باید JPG، PNG یا WEBP باشد.',
+            'receipt_image.max' => 'حجم فایل فیش پرداخت از حد مجاز بیشتر است.',
+        ];
+    }
 }

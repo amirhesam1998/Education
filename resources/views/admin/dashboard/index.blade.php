@@ -220,7 +220,7 @@
                             <tr>
                                 <td>
                                     <a href="{{ route('admin.reservations.show', $reservation) }}">
-                                        {{ $canViewPersonalData ? ($reservation->student?->full_name ?: '-') : 'رزرو #'.$reservation->id }}
+                                        {{ $reservation->student?->full_name ?: 'رزرو #'.$reservation->id }}
                                     </a>
                                 </td>
                                 <td>{{ $reservation->advisor?->name ?: $reservation->slot?->advisor?->name ?: '-' }}</td>
@@ -275,7 +275,7 @@
                         </div>
                         <div>
                             <div class="agenda-title">
-                                {{ $canViewPersonalData ? ($reservation->student?->full_name ?: '-') : 'رزرو #'.$reservation->id }}
+                                {{ $reservation->student?->full_name ?: 'رزرو #'.$reservation->id }}
                                 <span class="badge bg-{{ $statusColor }}">{{ $reservation->status->label() }}</span>
                             </div>
                             <div class="agenda-sub">{{ $reservation->advisor?->name ?: $reservation->slot?->advisor?->name ?: '-' }}</div>

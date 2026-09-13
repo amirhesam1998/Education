@@ -124,6 +124,7 @@
                 @else
                     <input type="time" name="end_time" value="{{ old('end_time', $slot->end_time ? substr($slot->end_time, 0, 5) : '') }}" class="form-control">
                 @endif
+                <div class="form-hint">برای پایان روز می‌توانید ساعت ۰۰:۰۰ را انتخاب کنید.</div>
             </div>
         </div>
     </div>
@@ -153,6 +154,7 @@
                     <input type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="HH:MM"
                         name="daily_end_time" value="{{ old('daily_end_time', '18:00') }}"
                         class="form-control ltr" data-time-24h>
+                    <div class="form-hint">۰۰:۰۰ یعنی پایان روز</div>
                 </div>
                 <div class="col-md-2 col-sm-6">
                     <label class="form-label">فاصله دقیقه</label>

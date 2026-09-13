@@ -176,6 +176,152 @@ class ReservationSlotConsultantTest extends TestCase
     }
 
     #[Test]
+    public function slots_can_end_at_midnight_and_generate_the_last_interval(): void
+    {
+        $admin = $this->admin();
+        [, $advisor] = $this->consultant(['name' => 'Midnight Consultant']);
+
+        $this->actingAs($admin)
+            ->post(route('admin.slots.store'), $this->slotPayload($advisor, [
+                'start_time' => '08:00',
+                'end_time' => '00:00',
+            ]))
+            ->assertRedirect(route('admin.slots.index'));
+
+        $slot = ReservationSlot::query()->firstOrFail();
+        $this->assertSame('00:00', substr($slot->end_time, 0, 5));
+        $this->assertSame('23:45|00:00', app(SlotAvailabilityService::class)->generateIntervalsForSlot($slot)->last()['value']);
+    }
+
+    #[Test]
+    public function slot_creation_rejects_reverse_ranges_and_converts_jalali_dates(): void
+    {
+        $admin = $this->admin();
+        [, $advisor] = $this->consultant(['name' => 'Jalali Slot Consultant']);
+
+        $this->actingAs($admin)
+            ->post(route('admin.slots.store'), $this->slotPayload($advisor, [
+                'date' => '1404/01/01',
+                'start_time' => '18:00',
+                'end_time' => '17:00',
+            ]))
+            ->assertSessionHasErrors('end_time');
+
+        $this->actingAs($admin)
+            ->post(route('admin.slots.store'), $this->slotPayload($advisor, [
+                'date' => '1404/01/01',
+                'start_time' => '08:00',
+                'end_time' => '00:00',
+            ]))
+            ->assertRedirect(route('admin.slots.index'));
+
+        $this->assertDatabaseHas('reservation_slots', [
+            'advisor_id' => $advisor->id,
+            'date' => '2025-03-21',
+            'end_time' => '00:00',
+        ]);
+    }
+
+    #[Test]
+    public function day_bulk_delete_only_removes_slots_without_history(): void
+    {
+        $admin = $this->admin();
+        [, $advisor] = $this->consultant(['name' => 'Bulk Delete Consultant']);
+        $free = ReservationSlot::factory()->create(['advisor_id' => $advisor->id, 'date' => $this->slotDate()]);
+        $reserved = ReservationSlot::factory()->create(['advisor_id' => $advisor->id, 'date' => $this->slotDate(), 'start_time' => '11:00', 'end_time' => '11:15']);
+        Reservation::query()->create([
+            'student_id' => Student::factory()->create()->id,
+            'slot_id' => $reserved->id,
+            'advisor_id' => $advisor->id,
+            'reserved_start_time' => '11:00',
+            'reserved_end_time' => '11:15',
+            'status' => ReservationStatus::Confirmed,
+            'prepayment_required' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.slots.bulk-delete-day'), ['date' => $this->slotDate(), 'advisor_id' => $advisor->id, 'action' => 'delete'])
+            ->assertRedirect(route('admin.slots.index'));
+
+        $this->assertModelMissing($free);
+        $this->assertModelExists($reserved);
+    }
+
+    #[Test]
+    public function day_bulk_actions_convert_jalali_dates_before_querying_slots(): void
+    {
+        $admin = $this->admin();
+        [, $advisor] = $this->consultant(['name' => 'Jalali Bulk Consultant']);
+        $slot = ReservationSlot::factory()->create([
+            'advisor_id' => $advisor->id,
+            'date' => '2025-03-21',
+        ]);
+
+        $this->actingAs($admin)
+            ->postJson(route('admin.slots.day-deletion-preview'), [
+                'date' => '1404/01/01',
+                'advisor_id' => $advisor->id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('date', '2025-03-21')
+            ->assertJsonPath('deletable', 1);
+
+        $this->actingAs($admin)
+            ->postJson(route('admin.slots.bulk-delete-day'), [
+                'date' => '1404/01/01',
+                'advisor_id' => $advisor->id,
+                'action' => 'delete',
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('deleted_count', 1)
+            ->assertJsonPath('blocked_count', 0);
+
+        $this->assertModelMissing($slot);
+    }
+
+    #[Test]
+    public function day_bulk_preview_returns_a_persian_validation_message_for_an_invalid_date(): void
+    {
+        $admin = $this->admin();
+
+        $this->actingAs($admin)
+            ->postJson(route('admin.slots.day-deletion-preview'), ['date' => 'not-a-date'])
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.date.0', 'تاریخ انتخاب‌شده معتبر نیست.');
+    }
+
+    #[Test]
+    public function day_bulk_deactivation_keeps_slots_with_active_reservations_active(): void
+    {
+        $admin = $this->admin();
+        [, $advisor] = $this->consultant(['name' => 'Protected Bulk Consultant']);
+        $free = ReservationSlot::factory()->create(['advisor_id' => $advisor->id, 'date' => $this->slotDate()]);
+        $reserved = ReservationSlot::factory()->create(['advisor_id' => $advisor->id, 'date' => $this->slotDate(), 'start_time' => '11:00', 'end_time' => '11:15']);
+        Reservation::query()->create([
+            'student_id' => Student::factory()->create()->id,
+            'slot_id' => $reserved->id,
+            'advisor_id' => $advisor->id,
+            'reserved_start_time' => '11:00',
+            'reserved_end_time' => '11:15',
+            'status' => ReservationStatus::Confirmed,
+            'prepayment_required' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.slots.bulk-delete-day'), [
+                'date' => $this->slotDate(),
+                'advisor_id' => $advisor->id,
+                'action' => 'deactivate',
+            ])
+            ->assertRedirect(route('admin.slots.index'));
+
+        $this->assertSame(SlotStatus::Inactive, $free->refresh()->status);
+        $this->assertSame(SlotStatus::Active, $reserved->refresh()->status);
+    }
+
+    #[Test]
     public function same_consultant_cannot_have_overlapping_slots_but_different_consultants_can(): void
     {
         $admin = $this->admin();

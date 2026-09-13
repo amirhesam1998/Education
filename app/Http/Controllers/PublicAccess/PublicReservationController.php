@@ -34,6 +34,8 @@ class PublicReservationController extends Controller
         }
 
         $visibleFieldSelectionPlans = $fieldSelections->getStudentVisiblePlans($reservation);
+        $examTypeLabels = $fieldSelections->examTypeOptions($reservation);
+        $visibleFieldSelectionPlansByExamType = $visibleFieldSelectionPlans->groupBy(fn (FieldSelectionPlan $plan) => $examTypeLabels[$plan->exam_type_key] ?? 'انتخاب رشته ثبت‌شده');
         $publishedFieldSelectionPlan = $visibleFieldSelectionPlans->first();
 
         return view('public.reservation.show', [
@@ -47,6 +49,7 @@ class PublicReservationController extends Controller
             'canUploadReportCard' => $this->canUploadReportCard($reservation, $links),
             'publishedFieldSelectionPlan' => $publishedFieldSelectionPlan,
             'visibleFieldSelectionPlans' => $visibleFieldSelectionPlans,
+            'visibleFieldSelectionPlansByExamType' => $visibleFieldSelectionPlansByExamType,
         ]);
     }
 
@@ -134,7 +137,9 @@ class PublicReservationController extends Controller
             : $visiblePlans->first();
         $plan?->load('items');
 
-        return view('public.field-selection.show', compact('reservation', 'plan', 'visiblePlans'));
+        $examTypeLabels = $fieldSelections->examTypeOptions($reservation);
+
+        return view('public.field-selection.show', compact('reservation', 'plan', 'visiblePlans', 'examTypeLabels'));
     }
 
     public function showFieldSelection(string $token, FieldSelectionPlan $plan, PublicReservationLinkService $links, ReservationService $reservations, FieldSelectionService $fieldSelections): View
@@ -150,7 +155,9 @@ class PublicReservationController extends Controller
         $plan->load('items');
         $visiblePlans = $fieldSelections->getStudentVisiblePlans($reservation);
 
-        return view('public.field-selection.show', compact('reservation', 'plan', 'visiblePlans'));
+        $examTypeLabels = $fieldSelections->examTypeOptions($reservation);
+
+        return view('public.field-selection.show', compact('reservation', 'plan', 'visiblePlans', 'examTypeLabels'));
     }
 
     public function printFieldSelection(string $token, FieldSelectionPlan $plan, PublicReservationLinkService $links, ReservationService $reservations, FieldSelectionService $fieldSelections): View
@@ -165,8 +172,9 @@ class PublicReservationController extends Controller
         $plan = $fieldSelections->getStudentVisiblePlanOrFail($reservation, $plan);
         $plan->load(['items', 'student', 'reservation.slot.advisor', 'reservation.advisor']);
         $canViewStudentPersonalInfo = true;
+        $selectedExamTypeLabel = $fieldSelections->examTypeOptions($reservation)[$plan->exam_type_key] ?? 'انتخاب رشته ثبت‌شده';
 
-        return view('field-selection.print', compact('plan', 'canViewStudentPersonalInfo'));
+        return view('field-selection.print', compact('plan', 'canViewStudentPersonalInfo', 'selectedExamTypeLabel'));
     }
 
     public function fieldSelectionPrint(string $token, Request $request, PublicReservationLinkService $links, ReservationService $reservations, FieldSelectionService $fieldSelections): View
@@ -187,8 +195,9 @@ class PublicReservationController extends Controller
         $canViewStudentPersonalInfo = true;
 
         abort_unless($plan, 404);
+        $selectedExamTypeLabel = $fieldSelections->examTypeOptions($reservation)[$plan->exam_type_key] ?? 'انتخاب رشته ثبت‌شده';
 
-        return view('field-selection.print', compact('plan', 'canViewStudentPersonalInfo'));
+        return view('field-selection.print', compact('plan', 'canViewStudentPersonalInfo', 'selectedExamTypeLabel'));
     }
 
     private function canUsePublicForm($reservation, PublicReservationLinkService $links): bool

@@ -7,6 +7,16 @@ use App\Models\User;
 
 class StudentPrivacyService
 {
+    public function canViewStudentName(User $user): bool
+    {
+        return true;
+    }
+
+    public function canViewStudentContactData(User $user): bool
+    {
+        return $this->canViewPersonalData($user);
+    }
+
     public function canViewPersonalData(User $user): bool
     {
         return $user->can('view_student_personal_data');

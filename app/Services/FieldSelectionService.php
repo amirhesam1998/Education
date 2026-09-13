@@ -9,6 +9,7 @@ use App\Models\Reservation;
 use App\Models\StudyProgram;
 use App\Models\User;
 use App\Services\StudyPrograms\StudyProgramQuery;
+use App\Services\StudyPrograms\StudyProgramValueMapper;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -29,6 +30,7 @@ class FieldSelectionService
     public function __construct(
         private readonly ActivityLogService $activityLog,
         private readonly StudyProgramQuery $studyPrograms,
+        private readonly StudyProgramValueMapper $valueMapper,
     ) {
     }
 
@@ -37,7 +39,7 @@ class FieldSelectionService
         $this->assertEligible($reservation);
 
         return DB::transaction(function () use ($reservation, $user): FieldSelectionPlan {
-            $latestVersion = (int) FieldSelectionPlan::query()
+            $latestVersion = (int) FieldSelectionPlan::withTrashed()
                 ->where('reservation_id', $reservation->id)
                 ->lockForUpdate()
                 ->max('version');
@@ -58,9 +60,76 @@ class FieldSelectionService
         });
     }
 
+    /** @return array<string, string> */
+    public function examTypeOptions(Reservation $reservation): array
+    {
+        $reservation->loadMissing('student');
+
+        return collect($reservation->student?->exam_type ?? [])
+            ->filter(fn ($label) => filled($label))
+            ->mapWithKeys(function (string $label): array {
+                $key = $this->valueMapper->examGroupSlug($label) ?: 'exam_'.substr(hash('sha256', $label), 0, 12);
+
+                return [$key => $label];
+            })
+            ->all();
+    }
+
+    public function getOrCreatePlanForExamType(Reservation $reservation, string $examTypeKey, User $user): FieldSelectionPlan
+    {
+        $this->assertEligible($reservation);
+        $options = $this->examTypeOptions($reservation);
+        if (! array_key_exists($examTypeKey, $options)) {
+            throw ValidationException::withMessages(['exam_type_key' => 'نوع کنکور انتخاب‌شده برای این رزرو معتبر نیست.']);
+        }
+
+        return DB::transaction(function () use ($reservation, $examTypeKey, $user): FieldSelectionPlan {
+            Reservation::query()->whereKey($reservation->id)->lockForUpdate()->firstOrFail();
+            $plan = FieldSelectionPlan::query()
+                ->where('reservation_id', $reservation->id)
+                ->where('exam_type_key', $examTypeKey)
+                ->where('status', '!=', FieldSelectionPlan::STATUS_ARCHIVED)
+                ->lockForUpdate()
+                ->first();
+
+            if ($plan) {
+                return $plan;
+            }
+
+            $version = ((int) FieldSelectionPlan::withTrashed()->where('reservation_id', $reservation->id)->max('version')) + 1;
+            $plan = FieldSelectionPlan::query()->create([
+                'reservation_id' => $reservation->id,
+                'student_id' => $reservation->student_id,
+                'exam_type_key' => $examTypeKey,
+                'version' => $version,
+                'status' => FieldSelectionPlan::STATUS_DRAFT,
+                'is_public_visible' => false,
+                'created_by' => $user->id,
+                'updated_by' => $user->id,
+            ]);
+            $this->activityLog->log('field_selection_exam_type_selected', $reservation, $user, null, ['plan_id' => $plan->id, 'exam_type_key' => $examTypeKey]);
+            $this->activityLog->log('field_selection_plan_created', $reservation, $user, null, ['plan_id' => $plan->id, 'exam_type_key' => $examTypeKey]);
+
+            return $plan;
+        });
+    }
+
+    public function deletePlan(FieldSelectionPlan $plan, User $user): void
+    {
+        $plan->forceFill(['is_public_visible' => false, 'student_hidden_at' => now(), 'visibility_changed_by' => $user->id, 'updated_by' => $user->id])->save();
+        $plan->delete();
+        $this->activityLog->log('field_selection_plan_deleted', $plan->reservation, $user, null, ['plan_id' => $plan->id, 'exam_type_key' => $plan->exam_type_key]);
+    }
+
+    /** @return Collection<string, Collection<int, FieldSelectionPlan>> */
+    public function getVisiblePlansGroupedByExamType(Reservation $reservation): Collection
+    {
+        return $this->getStudentVisiblePlans($reservation)->groupBy(fn (FieldSelectionPlan $plan) => $plan->exam_type_key ?: 'legacy');
+    }
+
     public function addItem(FieldSelectionPlan $plan, array $data, User $user): FieldSelectionItem
     {
-        $this->assertDraft($plan);
+        $this->assertEditable($plan);
         $data = $this->normalizeItemPayload($data);
 
         return DB::transaction(function () use ($plan, $data, $user): FieldSelectionItem {
@@ -87,7 +156,7 @@ class FieldSelectionService
     public function updateItem(FieldSelectionItem $item, array $data, User $user): FieldSelectionItem
     {
         $item->loadMissing('plan.reservation');
-        $this->assertDraft($item->plan);
+        $this->assertEditable($item->plan);
         $data = $this->normalizeItemPayload($data);
 
         if ($item->field_code !== $data['field_code'] && FieldSelectionItem::query()
@@ -107,7 +176,7 @@ class FieldSelectionService
 
     public function bulkUpdateItems(FieldSelectionPlan $plan, array $items, User $user): void
     {
-        $this->assertDraft($plan);
+        $this->assertEditable($plan);
 
         DB::transaction(function () use ($plan, $items, $user): void {
             $existing = FieldSelectionItem::query()
@@ -139,6 +208,7 @@ class FieldSelectionService
             }
 
             $plan->forceFill(['updated_by' => $user->id])->save();
+            $this->activityLog->log('field_selection_plan_updated', $plan->reservation, $user, null, ['plan_id' => $plan->id]);
         });
     }
 
@@ -171,7 +241,12 @@ class FieldSelectionService
         $search = trim((string) ($filters['q'] ?? ''));
         $hasStructuredFilter = filled($filters['province_id'] ?? null)
             || filled($filters['city_id'] ?? null)
-            || filled($filters['course_type_id'] ?? null);
+            || filled($filters['course_type_id'] ?? null)
+            || filled($filters['booklet'] ?? null)
+            || filled($filters['semester'] ?? null)
+            || filled($filters['academic_record_type'] ?? null)
+            || filled($filters['gender'] ?? null)
+            || filled($filters['province_ids'] ?? null);
 
         if ($search === '' && ! $hasStructuredFilter) {
             return collect();
@@ -181,6 +256,11 @@ class FieldSelectionService
             'province_id' => $filters['province_id'] ?? null,
             'city_id' => $filters['city_id'] ?? null,
             'course_type_id' => $filters['course_type_id'] ?? null,
+            'province_ids' => $filters['province_ids'] ?? null,
+            'booklet' => $filters['booklet'] ?? null,
+            'semester' => $filters['semester'] ?? null,
+            'academic_record_type' => $filters['academic_record_type'] ?? null,
+            'gender' => $filters['gender'] ?? null,
         ];
 
         $query = $this->studyPrograms->base(array_filter($programFilters, filled(...)));
@@ -189,7 +269,6 @@ class FieldSelectionService
         }
 
         return $query
-            ->limit(30)
             ->get()
             ->map(function (StudyProgram $program): array {
                 $capacity = ((int) ($program->first_semester_capacity ?? 0)) + ((int) ($program->second_semester_capacity ?? 0));
@@ -225,7 +304,7 @@ class FieldSelectionService
     {
         $item->loadMissing('plan.reservation');
         $plan = $item->plan;
-        $this->assertDraft($plan);
+        $this->assertEditable($plan);
 
         DB::transaction(function () use ($item, $plan, $user): void {
             $item->delete();
@@ -237,7 +316,7 @@ class FieldSelectionService
 
     public function reorderItems(FieldSelectionPlan $plan, array $orderedItemIds, User $user): void
     {
-        $this->assertDraft($plan);
+        $this->assertEditable($plan);
 
         DB::transaction(function () use ($plan, $orderedItemIds, $user): void {
             $items = FieldSelectionItem::query()->where('field_selection_plan_id', $plan->id)->lockForUpdate()->get();
@@ -263,7 +342,9 @@ class FieldSelectionService
 
     public function publish(FieldSelectionPlan $plan, User $user, bool $visibleToStudent = false): FieldSelectionPlan
     {
-        $this->assertDraft($plan);
+        if (! $plan->isDraft()) {
+            throw ValidationException::withMessages(['plan' => 'فقط انتخاب رشته پیش‌نویس قابل انتشار است.']);
+        }
 
         return DB::transaction(function () use ($plan, $user, $visibleToStudent): FieldSelectionPlan {
             $plan->forceFill([
@@ -380,7 +461,7 @@ class FieldSelectionService
             $newPlan = FieldSelectionPlan::query()->create([
                 'reservation_id' => $plan->reservation_id,
                 'student_id' => $plan->student_id,
-                'version' => ((int) FieldSelectionPlan::query()->where('reservation_id', $plan->reservation_id)->max('version')) + 1,
+                'version' => ((int) FieldSelectionPlan::withTrashed()->where('reservation_id', $plan->reservation_id)->max('version')) + 1,
                 'status' => FieldSelectionPlan::STATUS_DRAFT,
                 'is_public_visible' => false,
                 'created_by' => $user->id,
@@ -508,10 +589,10 @@ class FieldSelectionService
         }
     }
 
-    private function assertDraft(FieldSelectionPlan $plan): void
+    private function assertEditable(FieldSelectionPlan $plan): void
     {
-        if (! $plan->isDraft()) {
-            throw ValidationException::withMessages(['plan' => 'فقط نسخه پیش‌نویس قابل ویرایش است.']);
+        if ($plan->status === FieldSelectionPlan::STATUS_ARCHIVED) {
+            throw ValidationException::withMessages(['plan' => 'انتخاب رشته آرشیوشده قابل ویرایش نیست.']);
         }
     }
 

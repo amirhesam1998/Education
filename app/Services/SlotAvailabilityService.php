@@ -8,6 +8,7 @@ use App\Models\Advisor;
 use App\Models\Reservation;
 use App\Models\ReservationFollowUp;
 use App\Models\ReservationSlot;
+use App\Models\User;
 use App\Support\PersianDate;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -16,8 +17,71 @@ use Illuminate\Validation\ValidationException;
 
 class SlotAvailabilityService
 {
-    public function __construct(private readonly SettingsService $settings)
+    public function __construct(
+        private readonly SettingsService $settings,
+        private readonly ActivityLogService $activityLog,
+    )
     {
+    }
+
+    /** @return array{date:string,total:int,free:int,with_reservations:int,deletable:int,not_deletable:int} */
+    public function previewDayDeletion(string $date, ?int $advisorId = null, ?User $user = null): array
+    {
+        $slots = $this->slotsForDay($date, $advisorId)->get();
+        $deletable = $slots->filter(fn (ReservationSlot $slot) => ! $slot->reservations()->exists() && ! $slot->followUps()->exists());
+        $summary = [
+            'date' => $date,
+            'total' => $slots->count(),
+            'free' => $slots->filter(fn (ReservationSlot $slot) => $this->countActiveReservations($slot) === 0)->count(),
+            'with_reservations' => $slots->filter(fn (ReservationSlot $slot) => $slot->reservations()->exists() || $slot->followUps()->exists())->count(),
+            'deletable' => $deletable->count(),
+            'not_deletable' => $slots->count() - $deletable->count(),
+        ];
+
+        if ($user) {
+            $this->activityLog->log('slots_day_bulk_delete_previewed', null, $user, null, $summary);
+        }
+
+        return $summary;
+    }
+
+    /** @return array{deleted:int,skipped:int} */
+    public function deleteFreeSlotsForDay(string $date, ?int $advisorId, User $user): array
+    {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($date, $advisorId, $user): array {
+            $slots = $this->slotsForDay($date, $advisorId)->lockForUpdate()->get();
+            $deletable = $slots->filter(fn (ReservationSlot $slot) => ! $slot->reservations()->exists() && ! $slot->followUps()->exists());
+            $deleted = $deletable->count();
+
+            if ($deleted > 0) {
+                ReservationSlot::query()->whereKey($deletable->modelKeys())->delete();
+            }
+
+            $result = ['deleted' => $deleted, 'skipped' => $slots->count() - $deleted];
+            $this->activityLog->log('slots_day_bulk_deleted', null, $user, null, ['date' => $date, 'advisor_id' => $advisorId, ...$result]);
+
+            return $result;
+        });
+    }
+
+    /** @return array{deactivated:int,skipped:int} */
+    public function deactivateSlotsForDay(string $date, ?int $advisorId, User $user): array
+    {
+        $slots = $this->slotsForDay($date, $advisorId)
+            ->where('status', SlotStatus::Active)
+            ->get();
+        $deactivatable = $slots->filter(fn (ReservationSlot $slot) => ! $slot->reservations()
+            ->whereIn('status', ReservationStatus::activeValues())
+            ->exists());
+        $deactivated = $deactivatable->isEmpty()
+            ? 0
+            : ReservationSlot::query()
+                ->whereKey($deactivatable->modelKeys())
+                ->update(['status' => SlotStatus::Inactive, 'updated_at' => now()]);
+        $result = ['deactivated' => $deactivated, 'skipped' => $slots->count() - $deactivated];
+        $this->activityLog->log('slots_day_deactivated', null, $user, null, ['date' => $date, 'advisor_id' => $advisorId, ...$result]);
+
+        return $result;
     }
 
     public function isAvailable(ReservationSlot $slot): bool
@@ -150,7 +214,7 @@ class SlotAvailabilityService
         $durationMinutes = max(1, (int) ($durationMinutes ?? $slot->duration_minutes ?? $this->settings->defaultReservationDurationMinutes()));
         $date = $slot->date->toDateString();
         $cursor = Carbon::parse($date.' '.$this->normalizeTime($slot->start_time));
-        $slotEnd = Carbon::parse($date.' '.$this->normalizeTime($slot->end_time));
+        $slotEnd = $this->timeOnDate($date, $slot->end_time, true);
         $intervals = collect();
 
         while ($cursor->copy()->addMinutes($durationMinutes)->lte($slotEnd)) {
@@ -288,8 +352,8 @@ class SlotAvailabilityService
         return Reservation::query()
             ->with(['student.phones', 'payment', 'slot.advisor'])
             ->whereIn('status', $this->activeReservationStatuses())
-            ->where('reserved_start_time', '<', $endTime)
-            ->where('reserved_end_time', '>', $startTime)
+            ->when($endTime !== '00:00', fn (Builder $query) => $query->where('reserved_start_time', '<', $endTime))
+            ->where(fn (Builder $query) => $query->where('reserved_end_time', '00:00')->orWhere('reserved_end_time', '>', $startTime))
             ->when($ignoreReservation, fn (Builder $query) => $query->where('id', '!=', $ignoreReservation->id))
             ->where(function (Builder $query) use ($slot): void {
                 $query->where('slot_id', $slot->id)
@@ -310,8 +374,8 @@ class SlotAvailabilityService
         return ReservationFollowUp::query()
             ->with(['reservation.student.phones', 'slot.advisor'])
             ->where('status', ReservationFollowUp::STATUS_SCHEDULED)
-            ->where('reserved_start_time', '<', $endTime)
-            ->where('reserved_end_time', '>', $startTime)
+            ->when($endTime !== '00:00', fn (Builder $query) => $query->where('reserved_start_time', '<', $endTime))
+            ->where(fn (Builder $query) => $query->where('reserved_end_time', '00:00')->orWhere('reserved_end_time', '>', $startTime))
             ->when($ignoreFollowUp, fn (Builder $query) => $query->where('id', '!=', $ignoreFollowUp->id))
             ->where(function (Builder $query) use ($slot): void {
                 $query->where('slot_id', $slot->id)
@@ -326,14 +390,12 @@ class SlotAvailabilityService
 
     private function intervalIsInsideSlot(ReservationSlot $slot, string $startTime, string $endTime): bool
     {
-        $startTime = $this->normalizeTime($startTime);
-        $endTime = $this->normalizeTime($endTime);
-        $slotStart = $this->normalizeTime($slot->start_time);
-        $slotEnd = $this->normalizeTime($slot->end_time);
+        $start = $this->timeToMinutes($startTime);
+        $end = $this->timeToMinutes($endTime, true);
+        $slotStart = $this->timeToMinutes($slot->start_time);
+        $slotEnd = $this->timeToMinutes($slot->end_time, true);
 
-        return $startTime >= $slotStart
-            && $endTime <= $slotEnd
-            && $startTime < $endTime;
+        return $start >= $slotStart && $end <= $slotEnd && $start < $end;
     }
 
     private function intervalUnavailableLabel(?Reservation $reservation, ?ReservationFollowUp $followUp = null): string
@@ -359,6 +421,32 @@ class SlotAvailabilityService
     private function normalizeTime(?string $time): string
     {
         return substr((string) $time, 0, 5);
+    }
+
+    private function timeOnDate(string $date, string $time, bool $endBoundary = false): Carbon
+    {
+        $dateTime = Carbon::parse($date.' '.$this->normalizeTime($time));
+
+        return $endBoundary && $this->normalizeTime($time) === '00:00' ? $dateTime->addDay() : $dateTime;
+    }
+
+    private function timeToMinutes(?string $time, bool $endBoundary = false): int
+    {
+        $time = $this->normalizeTime($time);
+        if ($endBoundary && $time === '00:00') {
+            return 24 * 60;
+        }
+
+        [$hour, $minute] = array_map('intval', explode(':', $time));
+
+        return ($hour * 60) + $minute;
+    }
+
+    private function slotsForDay(string $date, ?int $advisorId): Builder
+    {
+        return ReservationSlot::query()
+            ->whereDate('date', $date)
+            ->when($advisorId, fn (Builder $query) => $query->where('advisor_id', $advisorId));
     }
 
     private function weekdayLabel(Carbon $date): string

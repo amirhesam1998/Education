@@ -112,7 +112,7 @@
                 <tbody>
                 @forelse($payments as $payment)
                     <tr>
-                        <td class="student-cell">{{ $canViewPersonalData ? ($payment->reservation?->student?->full_name ?: '-') : 'رزرو #'.($payment->reservation_id ?: '-') }}</td>
+                        <td class="student-cell">{{ $payment->reservation?->student?->full_name ?: 'رزرو #'.($payment->reservation_id ?: '-') }}</td>
                         <td class="amount-cell">{{ \App\Support\PersianDate::money($payment->amount) }}</td>
                         <td class="text-nowrap">{{ \App\Support\PersianDate::dateTime($payment->uploaded_at) }}</td>
                         <td class="reservation-cell">

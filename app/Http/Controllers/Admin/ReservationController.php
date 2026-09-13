@@ -56,7 +56,7 @@ class ReservationController extends Controller
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
             ->when($request->filled('advisor_id'), fn ($query) => $query->where('advisor_id', $request->integer('advisor_id')))
             ->when($dateFilter, fn ($query) => $query->whereHas('slot', fn ($slot) => $slot->whereDate('date', $dateFilter)))
-            ->when($canViewPersonalData && $request->filled('student_name'), fn ($query) => $query->whereHas('student', fn ($student) => $student->where('full_name', 'like', '%'.$request->string('student_name').'%')))
+            ->when($request->filled('student_name'), fn ($query) => $query->whereHas('student', fn ($student) => $student->where('full_name', 'like', '%'.$request->string('student_name').'%')))
             ->when($canViewPersonalData && $request->filled('phone'), fn ($query) => $query->whereHas('student.phones', fn ($phone) => $phone->where('phone', 'like', '%'.$request->string('phone').'%')))
             ->latest()
             ->paginate(20)

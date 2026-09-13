@@ -29,6 +29,13 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function (): v
         ->middleware('permission:view_dashboard')
         ->name('dashboard');
 
+    Route::post('slots/day-deletion-preview', [SlotController::class, 'previewDayDeletion'])
+        ->middleware('permission:delete_slots')
+        ->name('slots.day-deletion-preview');
+    Route::post('slots/bulk-delete-day', [SlotController::class, 'bulkDeleteDay'])
+        ->middleware('permission:delete_slots')
+        ->name('slots.bulk-delete-day');
+
     Route::resource('slots', SlotController::class)
         ->middlewareFor('index', 'permission:view_slots')
         ->middlewareFor('show', 'permission:view_slots')
@@ -120,6 +127,9 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function (): v
     Route::post('/field-selection-plans/{plan}/archive', [FieldSelectionController::class, 'archive'])
         ->middleware('permission:manage_field_selection')
         ->name('field-selection-plans.archive');
+    Route::delete('/field-selection-plans/{plan}', [FieldSelectionController::class, 'destroyPlan'])
+        ->middleware('permission:manage_field_selection')
+        ->name('field-selection-plans.destroy');
     Route::get('/field-selection-plans/{plan}/print', [FieldSelectionController::class, 'print'])
         ->middleware('permission:view_field_selection')
         ->name('field-selection-plans.print');

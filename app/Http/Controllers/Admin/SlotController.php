@@ -6,6 +6,7 @@ use App\Enums\SlotStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreSlotRequest;
 use App\Http\Requests\Admin\UpdateSlotRequest;
+use App\Http\Requests\Admin\BulkSlotDayRequest;
 use App\Models\Advisor;
 use App\Models\ReservationSlot;
 use App\Services\SlotAvailabilityService;
@@ -107,8 +108,8 @@ class SlotController extends Controller
 
     public function destroy(ReservationSlot $slot, SlotAvailabilityService $availability): RedirectResponse
     {
-        if ($availability->countActiveReservations($slot) > 0) {
-            return back()->withErrors(['slot' => 'این تایم رزرو فعال دارد و قابل حذف نیست.']);
+        if ($slot->reservations()->exists() || $slot->followUps()->exists()) {
+            return back()->withErrors(['slot' => 'این تایم سابقه رزرو دارد و برای حفظ سوابق قابل حذف نیست.']);
         }
 
         $slot->delete();
@@ -116,6 +117,61 @@ class SlotController extends Controller
         return redirect()
             ->route('admin.slots.index')
             ->with('success', 'تایم حذف شد.');
+    }
+
+    public function previewDayDeletion(BulkSlotDayRequest $request, SlotAvailabilityService $availability): \Illuminate\Http\JsonResponse
+    {
+        $summary = $availability->previewDayDeletion(
+            $request->validated('date'),
+            $request->validated('advisor_id'),
+            $request->user(),
+        );
+
+        if ($summary['total'] === 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'برای این تاریخ تایمی ثبت نشده است.',
+                ...$summary,
+            ], 422);
+        }
+
+        return response()->json(['success' => true, ...$summary]);
+    }
+
+    public function bulkDeleteDay(BulkSlotDayRequest $request, SlotAvailabilityService $availability): RedirectResponse|\Illuminate\Http\JsonResponse
+    {
+        $data = $request->validated();
+        $result = ($data['action'] ?? 'delete') === 'deactivate'
+            ? $availability->deactivateSlotsForDay($data['date'], $data['advisor_id'] ?? null, $request->user())
+            : $availability->deleteFreeSlotsForDay($data['date'], $data['advisor_id'] ?? null, $request->user());
+
+        $deletedCount = $result['deleted'] ?? $result['deactivated'];
+        if ($deletedCount === 0 && $result['skipped'] === 0) {
+            $message = 'برای این تاریخ تایمی ثبت نشده است.';
+
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $message], 422);
+            }
+
+            return back()->withErrors(['date' => $message]);
+        }
+
+        $message = ($data['action'] ?? 'delete') === 'deactivate'
+            ? 'تایم‌های آزاد این روز با موفقیت غیرفعال شدند.'
+            : 'تایم‌های آزاد این روز با موفقیت حذف شدند.';
+        $message .= $result['skipped'] ? ' برخی تایم‌های این روز دارای رزرو هستند و حذف نشدند.' : '';
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'deleted_count' => $deletedCount,
+                'blocked_count' => $result['skipped'],
+                'total_count' => $deletedCount + $result['skipped'],
+            ]);
+        }
+
+        return redirect()->route('admin.slots.index')->with('success', $message);
     }
 
     private function createSingleSlot(array $data): int
@@ -149,7 +205,7 @@ class SlotController extends Controller
 
         while ($date->lte($endDate)) {
             $cursor = Carbon::parse($date->toDateString().' '.$data['daily_start_time']);
-            $dayEnd = Carbon::parse($date->toDateString().' '.$data['daily_end_time']);
+            $dayEnd = $this->timeOnDate($date->toDateString(), $data['daily_end_time'], true);
 
             while ($cursor->copy()->addMinutes((int) $data['interval_minutes'])->lte($dayEnd)) {
                 $slotEnd = $cursor->copy()->addMinutes((int) $data['interval_minutes']);
@@ -173,5 +229,12 @@ class SlotController extends Controller
         }
 
         return $created;
+    }
+
+    private function timeOnDate(string $date, string $time, bool $endBoundary = false): Carbon
+    {
+        $dateTime = Carbon::parse($date.' '.$time);
+
+        return $endBoundary && $time === '00:00' ? $dateTime->addDay() : $dateTime;
     }
 }

@@ -2171,10 +2171,12 @@
             <div class="card-body">
                 <h2 class="h5 mb-3">انتخاب رشته‌های ثبت‌شده برای شما</h2>
                 <div class="d-grid gap-2">
-                    @foreach($visibleFieldSelectionPlans as $visiblePlan)
+                    @foreach($visibleFieldSelectionPlansByExamType as $examTypeLabel => $plans)
+                        <div class="fw-semibold mt-2">انتخاب رشته کنکور {{ $examTypeLabel }}</div>
+                    @foreach($plans as $visiblePlan)
                         <div class="border rounded p-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
                             <div>
-                                <div class="fw-semibold">نسخه {{ \App\Support\PersianDate::number($visiblePlan->version) }}</div>
+                                <div class="fw-semibold">انتخاب رشته کنکور {{ $examTypeLabel }}</div>
                                 <div class="small text-muted">تاریخ انتشار: {{ \App\Support\PersianDate::dateTime($visiblePlan->published_at) }}</div>
                                 <span class="badge text-bg-success mt-1">منتشر شده و قابل مشاهده برای دانش‌آموز</span>
                             </div>
@@ -2183,6 +2185,7 @@
                                 <a class="btn btn-outline-secondary btn-sm" target="_blank" href="{{ route('public.reservations.field-selection.plan.print', [$reservation->public_token, $visiblePlan]) }}">چاپ</a>
                             </div>
                         </div>
+                    @endforeach
                     @endforeach
                 </div>
             </div>
@@ -3660,7 +3663,7 @@
                         </div>
 
                         <div class="student-upload__hint">
-                            فایل JPG، JPEG، PNG یا WEBP انتخاب کنید.
+                            حداکثر حجم مجاز فیش پرداخت {{ \App\Support\PersianDate::number((int) ceil($settings->receiptMaxKilobytes() / 1024)) }} مگابایت است. فرمت‌های مجاز: JPG، PNG، WEBP
                         </div>
 
                         <input
@@ -3669,6 +3672,8 @@
                             accept=".jpg,.jpeg,.png,.webp"
                             class="student-file-input js-file-preview-input"
                             data-preview-target="receipt-preview"
+                            data-max-size-bytes="{{ $settings->receiptMaxKilobytes() * 1024 }}"
+                            data-max-size-message="حجم فایل فیش پرداخت نباید بیشتر از {{ \App\Support\PersianDate::number((int) ceil($settings->receiptMaxKilobytes() / 1024)) }} مگابایت باشد."
                             required
                         >
 
@@ -4458,6 +4463,14 @@
                                 preview
                             );
 
+                            return;
+                        }
+
+                        const maxSizeBytes = Number(input.dataset.maxSizeBytes || 0);
+                        if (maxSizeBytes && file.size > maxSizeBytes) {
+                            input.value = '';
+                            preview.textContent = input.dataset.maxSizeMessage || 'حجم فایل مجاز نیست.';
+                            preview.classList.add('is-visible');
                             return;
                         }
 
