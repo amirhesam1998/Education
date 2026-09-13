@@ -3,6 +3,9 @@
 @section('title', 'رشته‌محل‌ها')
 
 @section('actions')
+    @can('create_study_programs')
+        <a class="btn btn-primary" href="{{ route('admin.study-programs.create') }}"><i class="ri-add-line align-middle"></i> افزودن رشته‌محل</a>
+    @endcan
     <a class="btn btn-outline-primary" href="{{ route('admin.study-programs.reviews') }}">
         <i class="ri-file-list-3-line align-middle"></i> ردیف‌های نیازمند بررسی
     </a>
@@ -81,12 +84,25 @@
                     </select>
                 </div>
                 <div class="col-md-2">
+                    <label class="form-label">نوع پذیرش</label>
+                    <select name="admission_type_id" class="form-select">
+                        <option value="">همه</option>
+                        @foreach($admissionTypes as $type)
+                            <option value="{{ $type->id }}" @selected((int) request('admission_type_id') === $type->id)>{{ $type->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2">
                     <label class="form-label">کدرشته</label>
                     <input name="code" value="{{ request('code') }}" class="form-control ltr">
                 </div>
                 <div class="col-md-2">
                     <label class="form-label">جستجو</label>
                     <input name="search" value="{{ request('search') }}" class="form-control">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">وضعیت</label>
+                    <select name="is_active" class="form-select"><option value="">همه</option><option value="1" @selected(request('is_active', '1') === '1')>فعال</option><option value="0" @selected(request('is_active') === '0')>غیرفعال</option></select>
                 </div>
                 <div class="col-md-2 d-flex align-items-end gap-2">
                     <button class="btn btn-primary flex-grow-1"><i class="ri-search-line align-middle"></i> جستجو</button>
@@ -109,7 +125,7 @@
                     <th>استان</th>
                     <th>نوع دوره</th>
                     <th>پذیرش</th>
-                    <th>وضعیت توضیحات</th>
+                    <th>وضعیت</th>
                     <th></th>
                 </tr>
                 </thead>
@@ -124,8 +140,8 @@
                         <td>{{ $program->province?->name ?: '-' }}</td>
                         <td><span class="badge bg-info">{{ $program->courseType?->name ?: '-' }}</span></td>
                         <td><span class="badge bg-secondary">{{ $program->admissionType?->name ?: '-' }}</span></td>
-                        <td>{!! $program->description ? '<span class="badge bg-success">دارای توضیحات</span>' : '-' !!}</td>
-                        <td><a class="btn btn-sm btn-outline-primary" href="{{ route('admin.study-programs.show', $program) }}">مشاهده</a></td>
+                        <td><span class="badge bg-{{ $program->is_active ? 'success' : 'secondary' }}">{{ $program->is_active ? 'فعال' : 'غیرفعال' }}</span></td>
+                        <td class="text-nowrap"><a class="btn btn-sm btn-outline-primary" href="{{ route('admin.study-programs.show', $program) }}">مشاهده</a> @can('update_study_programs')<a class="btn btn-sm btn-outline-secondary" href="{{ route('admin.study-programs.edit', $program) }}">ویرایش</a>@endcan</td>
                     </tr>
                 @empty
                     <tr><td colspan="10"><div class="empty-state">رشته‌محلی یافت نشد.</div></td></tr>

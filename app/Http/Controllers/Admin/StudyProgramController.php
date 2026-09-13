@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreStudyProgramRequest;
+use App\Http\Requests\Admin\UpdateStudyProgramRequest;
 use App\Models\AdmissionType;
 use App\Models\AcademicField;
 use App\Models\City;
@@ -15,6 +17,7 @@ use App\Models\StudyProgram;
 use App\Models\StudyProgramImport;
 use App\Models\StudyProgramReviewRecord;
 use App\Services\StudyPrograms\StudyProgramQuery;
+use App\Services\StudyPrograms\StudyProgramAdminService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,12 +25,12 @@ use Illuminate\View\View;
 
 class StudyProgramController extends Controller
 {
-    public function index(Request $request, StudyProgramQuery $programs): View
+    public function index(Request $request, StudyProgramAdminService $programs, StudyProgramQuery $query): View
     {
-        abort_unless($programs->cityBelongsToProvince($request->integer('city_id') ?: null, $request->integer('province_id') ?: null), 422, 'شهر انتخاب‌شده متعلق به استان نیست.');
+        abort_unless($query->cityBelongsToProvince($request->integer('city_id') ?: null, $request->integer('province_id') ?: null), 422, 'شهر انتخاب‌شده متعلق به استان نیست.');
 
         return view('admin.study-programs.index', [
-            'programs' => $programs->paginate($request->query()),
+            'programs' => $programs->paginateForAdmin($request->query()),
             'years' => ExamYear::query()->orderByDesc('year')->get(),
             'groups' => ExamGroup::query()->orderBy('id')->get(),
             'provinces' => Province::query()->orderBy('name')->get(),
@@ -37,6 +40,38 @@ class StudyProgramController extends Controller
             'courseTypes' => CourseType::query()->orderBy('name')->get(),
             'admissionTypes' => AdmissionType::query()->orderBy('name')->get(),
         ]);
+    }
+
+    public function create(): View
+    {
+        return view('admin.study-programs.create', $this->formData());
+    }
+
+    public function store(StoreStudyProgramRequest $request, StudyProgramAdminService $programs): RedirectResponse
+    {
+        $program = $programs->createManual($request->validated(), $request->user());
+
+        return redirect()->route('admin.study-programs.edit', $program)->with('success', 'رشته‌محل با موفقیت ثبت شد.');
+    }
+
+    public function edit(StudyProgram $studyProgram): View
+    {
+        return view('admin.study-programs.edit', ['program' => $studyProgram, ...$this->formData()]);
+    }
+
+    public function update(UpdateStudyProgramRequest $request, StudyProgram $studyProgram, StudyProgramAdminService $programs): RedirectResponse
+    {
+        $programs->updateManual($studyProgram, $request->validated(), $request->user());
+
+        return back()->with('success', 'رشته‌محل با موفقیت ویرایش شد.');
+    }
+
+    public function destroy(StudyProgram $studyProgram, StudyProgramAdminService $programs): RedirectResponse
+    {
+        abort_unless($programs->canDelete($studyProgram), 404);
+        $programs->deleteOrDeactivate($studyProgram, request()->user());
+
+        return redirect()->route('admin.study-programs.index')->with('success', 'رشته‌محل غیرفعال شد و سوابق انتخاب رشته حفظ شدند.');
     }
 
     public function show(StudyProgram $studyProgram): View
@@ -133,10 +168,26 @@ class StudyProgramController extends Controller
 
     private function filterPrograms($query, Request $request, bool $includeInstitution = true): void
     {
-        $query->when($request->integer('exam_year_id'), fn ($q, $id) => $q->where('exam_year_id', $id))
+        $query->where('is_active', true)
+            ->when($request->integer('exam_year_id'), fn ($q, $id) => $q->where('exam_year_id', $id))
             ->when($request->integer('exam_group_id'), fn ($q, $id) => $q->where('exam_group_id', $id))
             ->when($request->integer('province_id'), fn ($q, $id) => $q->where('province_id', $id))
             ->when($request->integer('city_id'), fn ($q, $id) => $q->where('city_id', $id))
             ->when($includeInstitution && $request->integer('institution_id'), fn ($q) => $q->where('institution_id', $request->integer('institution_id')));
+    }
+
+    private function formData(): array
+    {
+        return [
+            'years' => ExamYear::query()->orderByDesc('year')->get(),
+            'groups' => ExamGroup::query()->orderBy('name')->get(),
+            'provinces' => Province::query()->orderBy('name')->get(),
+            'cities' => City::query()->with('province')->orderBy('name')->get(),
+            'institutions' => Institution::query()->orderBy('name')->get(),
+            'campuses' => \App\Models\InstitutionCampus::query()->orderBy('name')->get(),
+            'academicFields' => AcademicField::query()->orderBy('name')->get(),
+            'courseTypes' => CourseType::query()->orderBy('name')->get(),
+            'admissionTypes' => AdmissionType::query()->orderBy('name')->get(),
+        ];
     }
 }

@@ -32,6 +32,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'source_hash',
     'identity_hash',
     'validation_status',
+    'is_active',
+    'source_type',
     'raw_data',
 ])]
 class StudyProgram extends Model
@@ -56,6 +58,7 @@ class StudyProgram extends Model
             'accepts_female' => 'boolean',
             'first_semester_capacity' => 'integer',
             'second_semester_capacity' => 'integer',
+            'is_active' => 'boolean',
         ];
     }
 }

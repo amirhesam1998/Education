@@ -188,7 +188,7 @@ class FieldSelectionController extends Controller
     public function publish(Request $request, FieldSelectionPlan $plan, FieldSelectionService $fieldSelections): RedirectResponse
     {
         $this->ensureManager($request->user(), $plan->reservation);
-        $fieldSelections->publish($plan, $request->user());
+        $fieldSelections->publish($plan, $request->user(), $request->boolean('visible_to_student'));
 
         return redirect()->route('admin.reservations.show', $plan->reservation)->with('success', 'لیست انتخاب رشته منتشر شد.');
     }
@@ -223,6 +223,14 @@ class FieldSelectionController extends Controller
         $fieldSelections->hideFromStudent($plan, $request->user(), $request->validate(['visibility_note' => ['nullable', 'string', 'max:1000']])['visibility_note'] ?? null);
 
         return back()->with('success', 'نسخه از دید دانش‌آموز مخفی شد.');
+    }
+
+    public function archive(Request $request, FieldSelectionPlan $plan, FieldSelectionService $fieldSelections): RedirectResponse
+    {
+        $this->ensureManager($request->user(), $plan->reservation);
+        $fieldSelections->archive($plan, $request->user());
+
+        return back()->with('success', 'نسخه آرشیو شد.');
     }
 
     public function print(Request $request, FieldSelectionPlan $plan): View

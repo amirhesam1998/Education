@@ -117,6 +117,9 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function (): v
     Route::post('/field-selection-plans/{plan}/hide-from-student', [FieldSelectionController::class, 'hideFromStudent'])
         ->middleware('permission:manage_field_selection')
         ->name('field-selection-plans.hide-from-student');
+    Route::post('/field-selection-plans/{plan}/archive', [FieldSelectionController::class, 'archive'])
+        ->middleware('permission:manage_field_selection')
+        ->name('field-selection-plans.archive');
     Route::get('/field-selection-plans/{plan}/print', [FieldSelectionController::class, 'print'])
         ->middleware('permission:view_field_selection')
         ->name('field-selection-plans.print');
@@ -159,19 +162,25 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function (): v
         ->name('settings.update');
 
     Route::get('/study-programs', [StudyProgramController::class, 'index'])
-        ->middleware('permission:view_reports')
+        ->middleware('permission:view_study_programs')
         ->name('study-programs.index');
+    Route::get('/study-programs/create', [StudyProgramController::class, 'create'])
+        ->middleware('permission:create_study_programs')
+        ->name('study-programs.create');
+    Route::post('/study-programs', [StudyProgramController::class, 'store'])
+        ->middleware('permission:create_study_programs')
+        ->name('study-programs.store');
     Route::get('/study-programs/cities', [StudyProgramController::class, 'cities'])
-        ->middleware('permission:view_reports')
+        ->middleware('permission:view_study_programs')
         ->name('study-programs.cities');
     Route::get('/study-programs/filter-options/cities', [StudyProgramController::class, 'cities'])
-        ->middleware('permission:view_reports')
+        ->middleware('permission:view_study_programs')
         ->name('study-programs.filter-options.cities');
     Route::get('/study-programs/filter-options/institutions', [StudyProgramController::class, 'institutions'])
-        ->middleware('permission:view_reports')
+        ->middleware('permission:view_study_programs')
         ->name('study-programs.filter-options.institutions');
     Route::get('/study-programs/filter-options/academic-fields', [StudyProgramController::class, 'academicFields'])
-        ->middleware('permission:view_reports')
+        ->middleware('permission:view_study_programs')
         ->name('study-programs.filter-options.academic-fields');
     Route::get('/study-programs/reviews', [StudyProgramController::class, 'reviews'])
         ->middleware('permission:view_reports')
@@ -186,8 +195,17 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function (): v
         ->middleware('permission:view_reports')
         ->name('study-programs.failures');
     Route::get('/study-programs/{studyProgram}', [StudyProgramController::class, 'show'])
-        ->middleware('permission:view_reports')
+        ->middleware('permission:view_study_programs')
         ->name('study-programs.show');
+    Route::get('/study-programs/{studyProgram}/edit', [StudyProgramController::class, 'edit'])
+        ->middleware('permission:update_study_programs')
+        ->name('study-programs.edit');
+    Route::put('/study-programs/{studyProgram}', [StudyProgramController::class, 'update'])
+        ->middleware('permission:update_study_programs')
+        ->name('study-programs.update');
+    Route::delete('/study-programs/{studyProgram}', [StudyProgramController::class, 'destroy'])
+        ->middleware('permission:delete_study_programs')
+        ->name('study-programs.destroy');
 });
 
 Route::get('/reservation/access/{token}', [PublicReservationController::class, 'show'])->name('public.reservations.show');

@@ -3,6 +3,10 @@
 @section('title', 'جزئیات رشته‌محل')
 
 @section('actions')
+    @can('update_study_programs')<a class="btn btn-primary" href="{{ route('admin.study-programs.edit', $program) }}">ویرایش</a>@endcan
+    @can('delete_study_programs')
+        @if($program->is_active)<form class="d-inline" method="post" action="{{ route('admin.study-programs.destroy', $program) }}" onsubmit="return confirm('این رشته‌محل ممکن است در انتخاب رشته‌های قبلی استفاده شده باشد. حذف آن فقط از لیست جستجو/انتخاب‌های جدید اثر می‌گذارد و سوابق قبلی حذف نمی‌شوند.')">@csrf @method('DELETE')<button class="btn btn-outline-danger">غیرفعال کردن</button></form>@endif
+    @endcan
     <a class="btn btn-outline-secondary" href="{{ route('admin.study-programs.index') }}">بازگشت</a>
 @endsection
 

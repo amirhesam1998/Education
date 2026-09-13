@@ -20,9 +20,12 @@ class StudyProgramQuery
 
     public function base(array $filters = []): Builder
     {
+        $isActive = array_key_exists('is_active', $filters) ? $filters['is_active'] : true;
+
         return StudyProgram::query()
             ->with(['examYear', 'examGroup', 'province', 'city', 'institution', 'institutionCampus', 'academicField', 'courseType', 'admissionType'])
             ->where('validation_status', $filters['validation_status'] ?? 'validated')
+            ->when($isActive !== null && $isActive !== '', fn (Builder $query) => $query->where('is_active', in_array($isActive, [false, 0, '0'], true) ? false : true))
             ->when($filters['exam_year_id'] ?? null, fn (Builder $query, $id) => $query->where('exam_year_id', $id))
             ->when($filters['exam_group_id'] ?? null, fn (Builder $query, $id) => $query->where('exam_group_id', $id))
             ->when($filters['year'] ?? null, fn (Builder $query, $year) => $query->whereHas('examYear', fn ($q) => $q->where('year', $year)))

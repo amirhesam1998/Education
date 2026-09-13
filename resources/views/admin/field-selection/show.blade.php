@@ -35,11 +35,17 @@
                             </button>
                         </form>
                     @endif
+                    @if($plan->status !== \App\Models\FieldSelectionPlan::STATUS_ARCHIVED)
+                        <form method="post" action="{{ route('admin.field-selection-plans.archive', $plan) }}">
+                            @csrf
+                            <button class="btn btn-outline-secondary" onclick="return confirm('آیا از آرشیو کردن این نسخه مطمئن هستید؟')" type="submit">آرشیو کردن</button>
+                        </form>
+                    @endif
                 @endcan
                 @if($editable)
                     <button class="btn btn-outline-primary" type="submit" form="reorder-form" id="save-order" @disabled($itemsCount === 0)><i class="ri-list-check-2"></i> ذخیره ترتیب</button>
                     <button class="btn btn-primary" type="submit" form="bulk-update-form" id="save-changes" @disabled($itemsCount === 0)><i class="ri-save-line"></i> ذخیره تغییرات</button>
-                    <form method="post" action="{{ route('admin.field-selection-plans.publish', $plan) }}" id="publish-form" data-confirm="آیا از انتشار این لیست انتخاب رشته مطمئن هستید؟">@csrf<button class="btn btn-success" id="publish-selection" @disabled($itemsCount === 0) title="{{ $itemsCount === 0 ? 'برای انتشار حداقل یک رشته ثبت کنید.' : '' }}"><i class="ri-send-plane-line"></i> انتشار لیست</button></form>
+                    <form method="post" action="{{ route('admin.field-selection-plans.publish', $plan) }}" id="publish-form" data-confirm="آیا از انتشار این لیست انتخاب رشته مطمئن هستید؟">@csrf<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="visible_to_student" value="1" id="visible-to-student"><label class="form-check-label small" for="visible-to-student">بعد از انتشار برای دانش‌آموز قابل مشاهده باشد</label></div><button class="btn btn-success" id="publish-selection" @disabled($itemsCount === 0) title="{{ $itemsCount === 0 ? 'برای انتشار حداقل یک رشته ثبت کنید.' : '' }}"><i class="ri-send-plane-line"></i> انتشار</button></form>
                 @elseif($plan->isPublished())
                     @can('manage_field_selection')<form method="post" action="{{ route('admin.field-selection-plans.new-version', $plan) }}">@csrf<button class="btn btn-primary"><i class="ri-edit-2-line"></i> ویرایش رشته</button></form>@endcan
                 @endif
@@ -119,7 +125,70 @@
 
     <div class="card mt-3">
         <div class="card-header"><i class="ri-history-line"></i> نسخه‌های انتخاب رشته</div>
-        <div class="table-responsive"><table class="table mb-0"><thead><tr><th>نسخه</th><th>وضعیت</th><th>نمایش برای دانش‌آموز</th><th>ایجادکننده</th><th>تاریخ انتشار</th><th></th></tr></thead><tbody>@foreach($versions as $version)<tr><td>{{ \App\Support\PersianDate::number($version->version) }}</td><td><span class="badge text-bg-{{ $version->status === 'published' ? 'success' : ($version->status === 'archived' ? 'secondary' : 'warning') }}">{{ $version->status === 'published' ? 'منتشر شده' : ($version->status === 'archived' ? 'آرشیو شده' : 'پیش‌نویس') }}</span></td><td>@if($version->canBePubliclyVisible())<div class="d-flex flex-wrap align-items-center gap-2"><span class="badge text-bg-{{ $version->is_public_visible ? 'info' : 'light' }}">{{ $version->is_public_visible ? 'قابل مشاهده برای دانش‌آموز' : 'مخفی از دانش‌آموز' }}</span>@can('manage_field_selection')<form method="post" action="{{ route($version->is_public_visible ? 'admin.field-selection-plans.hide-from-student' : 'admin.field-selection-plans.show-to-student', $version) }}">@csrf<button class="btn btn-sm btn-outline-{{ $version->is_public_visible ? 'danger' : 'success' }}" onclick="return confirm('{{ $version->is_public_visible ? 'آیا این نسخه از دید دانش‌آموز مخفی شود؟' : 'آیا این نسخه برای دانش‌آموز قابل مشاهده شود؟' }}')">{{ $version->is_public_visible ? 'مخفی کردن از دانش‌آموز' : 'نمایش به دانش‌آموز' }}</button></form>@endcan</div>@else<span class="text-muted">فقط بعد از انتشار</span>@endif</td><td>{{ $version->creator?->name ?: '-' }}</td><td>{{ \App\Support\PersianDate::dateTime($version->published_at) }}</td><td class="text-nowrap"><a class="btn btn-sm btn-outline-primary" href="{{ route('admin.reservations.field-selection.show', [$reservation, 'plan' => $version]) }}" title="مشاهده"><i class="ri-eye-line"></i></a> <a class="btn btn-sm btn-outline-secondary" target="_blank" href="{{ route('admin.field-selection-plans.print', $version) }}" title="چاپ"><i class="ri-printer-line"></i></a></td></tr>@endforeach</tbody></table></div>
+        <div class="table-responsive">
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th>نسخه</th>
+                        <th>وضعیت</th>
+                        <th>نمایش برای دانش‌آموز</th>
+                        <th>تاریخ ایجاد</th>
+                        <th>تاریخ انتشار</th>
+                        <th>عملیات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($versions as $version)
+                        <tr>
+                            <td>{{ \App\Support\PersianDate::number($version->version) }}</td>
+                            <td>
+                                <span class="badge text-bg-{{ $version->status === 'published' ? 'success' : ($version->status === 'archived' ? 'secondary' : 'warning') }}">
+                                    {{ $version->status === 'published' ? 'منتشر شده' : ($version->status === 'archived' ? 'آرشیو شده' : 'پیش‌نویس') }}
+                                </span>
+                            </td>
+                            <td>
+                                @if($version->isPublished())
+                                    <span class="badge text-bg-{{ $version->is_public_visible ? 'info' : 'light' }}">
+                                        {{ $version->is_public_visible ? 'قابل مشاهده برای دانش‌آموز' : 'مخفی از دانش‌آموز' }}
+                                    </span>
+                                @else
+                                    <span class="text-muted">مخفی از دانش‌آموز</span>
+                                @endif
+                            </td>
+                            <td>{{ \App\Support\PersianDate::dateTime($version->created_at) }}</td>
+                            <td>{{ \App\Support\PersianDate::dateTime($version->published_at) }}</td>
+                            <td class="text-nowrap">
+                                <div class="d-flex flex-wrap gap-1">
+                                    <a class="btn btn-sm btn-outline-primary" href="{{ route('admin.reservations.field-selection.show', [$reservation, 'plan' => $version]) }}">مشاهده</a>
+                                    <a class="btn btn-sm btn-outline-secondary" target="_blank" href="{{ route('admin.field-selection-plans.print', $version) }}">چاپ</a>
+                                    @can('manage_field_selection')
+                                        @if($version->isDraft())
+                                            <form method="post" action="{{ route('admin.field-selection-plans.publish', $version) }}">
+                                                @csrf
+                                                <input type="hidden" name="visible_to_student" value="0">
+                                                <button class="btn btn-sm btn-success">انتشار</button>
+                                            </form>
+                                        @endif
+                                        @if($version->isPublished())
+                                            <form method="post" action="{{ route($version->is_public_visible ? 'admin.field-selection-plans.hide-from-student' : 'admin.field-selection-plans.show-to-student', $version) }}">
+                                                @csrf
+                                                <button class="btn btn-sm btn-outline-{{ $version->is_public_visible ? 'danger' : 'success' }}">{{ $version->is_public_visible ? 'مخفی کردن از دانش‌آموز' : 'نمایش به دانش‌آموز' }}</button>
+                                            </form>
+                                        @endif
+                                        @if($version->status !== \App\Models\FieldSelectionPlan::STATUS_ARCHIVED)
+                                            <form method="post" action="{{ route('admin.field-selection-plans.archive', $version) }}" onsubmit="return confirm('آیا از آرشیو کردن این نسخه مطمئن هستید؟')">
+                                                @csrf
+                                                <button class="btn btn-sm btn-outline-secondary">آرشیو کردن</button>
+                                            </form>
+                                        @endif
+                                    @endcan
+                                </div>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
     </div>
 @endsection
 

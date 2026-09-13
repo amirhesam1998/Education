@@ -59,7 +59,7 @@ class PublicFieldSelectionVisibilityTest extends TestCase
             ->assertNotFound();
         $this->get(route('public.reservations.show', $reservation->public_token))
             ->assertOk()
-            ->assertDontSee('مشاهده انتخاب رشته');
+            ->assertSee('مشاهده انتخاب رشته');
     }
 
     #[Test]

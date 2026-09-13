@@ -47,6 +47,7 @@ class FieldSelectionService
                 'student_id' => $reservation->student_id,
                 'version' => $latestVersion + 1,
                 'status' => FieldSelectionPlan::STATUS_DRAFT,
+                'is_public_visible' => false,
                 'created_by' => $user->id,
                 'updated_by' => $user->id,
             ]);
@@ -260,26 +261,22 @@ class FieldSelectionService
         });
     }
 
-    public function publish(FieldSelectionPlan $plan, User $user): FieldSelectionPlan
+    public function publish(FieldSelectionPlan $plan, User $user, bool $visibleToStudent = false): FieldSelectionPlan
     {
         $this->assertDraft($plan);
 
-        return DB::transaction(function () use ($plan, $user): FieldSelectionPlan {
-            FieldSelectionPlan::query()
-                ->where('reservation_id', $plan->reservation_id)
-                ->where('status', FieldSelectionPlan::STATUS_PUBLISHED)
-                ->update([
-                    'status' => FieldSelectionPlan::STATUS_ARCHIVED,
-                    'updated_at' => now(),
-                ]);
-
+        return DB::transaction(function () use ($plan, $user, $visibleToStudent): FieldSelectionPlan {
             $plan->forceFill([
                 'status' => FieldSelectionPlan::STATUS_PUBLISHED,
                 'published_at' => now(),
+                'is_public_visible' => false,
                 'updated_by' => $user->id,
             ])->save();
 
             $this->activityLog->log('field_selection_published', $plan->reservation, $user, null, ['plan_id' => $plan->id, 'version' => $plan->version]);
+            if ($visibleToStudent) {
+                $this->setPublicVisibility($plan, true, $user);
+            }
             $this->keepPublicLinkAccessibleForPublishedSelection($plan->reservation);
 
             return $plan;
@@ -326,6 +323,24 @@ class FieldSelectionService
         return $plan;
     }
 
+    public function archive(FieldSelectionPlan $plan, User $user): FieldSelectionPlan
+    {
+        if ($plan->status === FieldSelectionPlan::STATUS_ARCHIVED) {
+            return $plan;
+        }
+
+        $plan->forceFill([
+            'status' => FieldSelectionPlan::STATUS_ARCHIVED,
+            'is_public_visible' => false,
+            'student_hidden_at' => now(),
+            'visibility_changed_by' => $user->id,
+            'updated_by' => $user->id,
+        ])->save();
+        $this->activityLog->log('field_selection_archived', $plan->reservation, $user, null, ['plan_id' => $plan->id, 'version' => $plan->version]);
+
+        return $plan;
+    }
+
     /** @return Collection<int, FieldSelectionPlan> */
     public function getStudentVisiblePlans(Reservation $reservation): Collection
     {
@@ -333,7 +348,7 @@ class FieldSelectionService
             ->where('reservation_id', $reservation->id)
             ->where('status', FieldSelectionPlan::STATUS_PUBLISHED)
             ->where('is_public_visible', true)
-            ->with('items')
+            ->with(['items' => fn ($query) => $query->orderBy('priority_order')])
             ->orderByDesc('version')
             ->get();
     }
@@ -361,13 +376,13 @@ class FieldSelectionService
 
         return DB::transaction(function () use ($plan, $user): FieldSelectionPlan {
             $plan = FieldSelectionPlan::query()->with('items')->whereKey($plan->id)->lockForUpdate()->firstOrFail();
-            $plan->forceFill(['status' => FieldSelectionPlan::STATUS_ARCHIVED, 'updated_by' => $user->id])->save();
 
             $newPlan = FieldSelectionPlan::query()->create([
                 'reservation_id' => $plan->reservation_id,
                 'student_id' => $plan->student_id,
                 'version' => ((int) FieldSelectionPlan::query()->where('reservation_id', $plan->reservation_id)->max('version')) + 1,
                 'status' => FieldSelectionPlan::STATUS_DRAFT,
+                'is_public_visible' => false,
                 'created_by' => $user->id,
                 'updated_by' => $user->id,
             ]);

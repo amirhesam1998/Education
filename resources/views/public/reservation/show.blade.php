@@ -2166,6 +2166,29 @@
 
     </section>
 
+    @if($visibleFieldSelectionPlans->isNotEmpty())
+        <section class="card shadow-sm border-0 mb-4">
+            <div class="card-body">
+                <h2 class="h5 mb-3">انتخاب رشته‌های ثبت‌شده برای شما</h2>
+                <div class="d-grid gap-2">
+                    @foreach($visibleFieldSelectionPlans as $visiblePlan)
+                        <div class="border rounded p-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                            <div>
+                                <div class="fw-semibold">نسخه {{ \App\Support\PersianDate::number($visiblePlan->version) }}</div>
+                                <div class="small text-muted">تاریخ انتشار: {{ \App\Support\PersianDate::dateTime($visiblePlan->published_at) }}</div>
+                                <span class="badge text-bg-success mt-1">منتشر شده و قابل مشاهده برای دانش‌آموز</span>
+                            </div>
+                            <div class="d-flex flex-wrap gap-2">
+                                <a class="btn btn-primary btn-sm" href="{{ route('public.reservations.field-selection.plan.show', [$reservation->public_token, $visiblePlan]) }}">مشاهده انتخاب رشته</a>
+                                <a class="btn btn-outline-secondary btn-sm" target="_blank" href="{{ route('public.reservations.field-selection.plan.print', [$reservation->public_token, $visiblePlan]) }}">چاپ</a>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </section>
+    @endif
+
 
 
     {{-- ========================================================

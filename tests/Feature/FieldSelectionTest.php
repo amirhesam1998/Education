@@ -10,6 +10,7 @@ use App\Models\City;
 use App\Models\CourseType;
 use App\Models\ExamGroup;
 use App\Models\ExamYear;
+use App\Models\FieldSelectionPlan;
 use App\Models\Institution;
 use App\Models\Province;
 use App\Models\Reservation;
@@ -260,8 +261,7 @@ class FieldSelectionTest extends TestCase
 
         $this->get(route('public.reservations.field-selection.show', $reservation->public_token))
             ->assertOk()
-            ->assertSee('انتخاب رشته شما هنوز توسط آموزشگاه منتشر نشده است.')
-            ->assertDontSee('11111')
+            ->assertSee('11111')
             ->assertDontSee('22222');
 
         $this->get(route('public.reservations.field-selection.show', [$reservation->public_token, 'plan' => $second->id]))
@@ -364,10 +364,36 @@ class FieldSelectionTest extends TestCase
         $service->publish($first, $user);
         $second = $service->createNewVersionFromExisting($first->refresh(), $user);
 
-        $this->assertSame('archived', $first->refresh()->status);
+        $this->assertSame('published', $first->refresh()->status);
         $this->assertSame('draft', $second->status);
         $this->assertSame(2, $second->version);
         $this->assertSame(['102', '101'], $second->items()->pluck('field_code')->all());
+    }
+
+    #[Test]
+    public function publishing_and_archiving_a_plan_do_not_change_other_versions(): void
+    {
+        $reservation = $this->reservation();
+        $user = User::factory()->create();
+        $service = app(FieldSelectionService::class);
+        $first = $service->createPlanForReservation($reservation, $user);
+        $service->addItem($first, ['field_code' => '101', 'field_name' => 'رشته اول', 'city' => 'تهران'], $user);
+        $service->publish($first, $user, true);
+        $second = $service->createPlanForReservation($reservation, $user);
+        $service->addItem($second, ['field_code' => '102', 'field_name' => 'رشته دوم', 'city' => 'شیراز'], $user);
+        $service->publish($second, $user, true);
+
+        $this->assertSame(FieldSelectionPlan::STATUS_PUBLISHED, $first->refresh()->status);
+        $this->assertTrue($first->refresh()->is_public_visible);
+        $this->assertSame(FieldSelectionPlan::STATUS_PUBLISHED, $second->refresh()->status);
+        $this->assertTrue($second->refresh()->is_public_visible);
+
+        $service->archive($second->refresh(), $user);
+
+        $this->assertSame(FieldSelectionPlan::STATUS_PUBLISHED, $first->refresh()->status);
+        $this->assertTrue($first->refresh()->is_public_visible);
+        $this->assertSame(FieldSelectionPlan::STATUS_ARCHIVED, $second->refresh()->status);
+        $this->assertFalse($second->refresh()->is_public_visible);
     }
 
     private function studyProgram(string $code, Province $province, City $city, Institution $institution, AcademicField $field, CourseType $courseType, ?string $description = null, string $groupSlug = 'tajrobi', string $groupName = 'تجربی'): StudyProgram
