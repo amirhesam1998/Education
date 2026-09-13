@@ -6,9 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <title>@yield('title', 'پنل مدیریت')</title>
 
-    <link href="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css"
-        rel="stylesheet">
-    @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/css/admin.css'])
+    {{-- jalali.js carries jQuery + the date picker; only the admin panel needs it --}}
+    @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/js/jalali.js', 'resources/css/admin.css'])
     @stack('styles')
 </head>
 
@@ -134,9 +133,8 @@
         </main>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/persian-date@1.1.0/dist/persian-date.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
+    {{-- jQuery, persian-date and persian-datepicker are bundled through Vite
+         (see resources/js/app.js) — nothing is loaded from a CDN. --}}
     <script>
         document.addEventListener('DOMContentLoaded', function () {
 
