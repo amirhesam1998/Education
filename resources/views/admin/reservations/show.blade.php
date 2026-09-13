@@ -274,6 +274,7 @@
     }
     .change-time-dialog::backdrop{
         background: rgba(18, 24, 32, .58);
+        -webkit-backdrop-filter: blur(9px);
         backdrop-filter: blur(9px);
     }
     .change-time-dialog .dialog-head{

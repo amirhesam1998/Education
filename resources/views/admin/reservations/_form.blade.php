@@ -115,6 +115,7 @@
         inset: 0;
         z-index: 1060;
         background: rgba(18, 24, 32, .58);
+        -webkit-backdrop-filter: blur(9px);
         backdrop-filter: blur(9px);
         display: grid;
         place-items: center;
@@ -532,7 +533,7 @@
                 </select>
             </div>
             <div class="col-md-6">
-                <label class="form-label">منطقه</label>
+                <label class="form-label">سهمیه</label>
                 <select name="region" class="form-select">
                     <option value="">انتخاب کنید</option>
                     @foreach($regionOptions as $region)

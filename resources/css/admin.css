@@ -92,6 +92,28 @@
             position: sticky;
             top: 0;
             z-index: 1030;
+
+            /* iOS Safari repaints sticky layers out of sync during momentum
+               scrolling, which lets the page bleed through an otherwise opaque
+               bar. Giving it its own stacking context and compositor layer
+               keeps it painted over the content. */
+            isolation: isolate;
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+        }
+
+        /* Sticky action bars are declared per page but never carried a
+           z-index, so they fell back to `auto` and could be painted over by
+           any sibling that forms a stacking context. */
+        .form-actions {
+            z-index: 20;
+            isolation: isolate;
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
         }
 
         .topbar-inner {

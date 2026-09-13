@@ -8,6 +8,510 @@
 </style>
 @endpush
 
+@push('styles')
+<style>
+    /* ===========================================================
+       Row reordering — drag handle, step buttons, jump-to-priority
+    =========================================================== */
+    .row-move {
+        display: flex;
+        align-items: center;
+        gap: .1rem;
+    }
+
+    /* without this the browser scrolls the page instead of starting a
+       touch drag when the finger goes down on the handle */
+    .drag-handle {
+        touch-action: none;
+        -webkit-user-select: none;
+        user-select: none;
+    }
+
+    .row-move__steps {
+        display: inline-flex;
+        flex-direction: column;
+    }
+
+    .row-move__btn {
+        width: 22px;
+        height: 17px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        border: 0;
+        border-radius: 5px;
+        background: transparent;
+        color: var(--ink-500);
+        font-size: .9rem;
+        line-height: 1;
+        cursor: pointer;
+        transition: background .15s ease, color .15s ease;
+    }
+
+    .row-move__btn:hover:not(:disabled) { background: var(--brand-50); color: var(--brand-700); }
+    .row-move__btn:disabled { opacity: .3; cursor: default; }
+
+    .selection-number--button {
+        border: 0;
+        font-family: inherit;
+        cursor: pointer;
+        transition: background .15s ease, color .15s ease;
+    }
+
+    .selection-number--button:hover {
+        background: var(--brand-500);
+        color: #fff;
+    }
+
+    .selection-jump {
+        width: 3.6rem;
+        height: 2rem;
+        padding: 0 .3rem;
+        border: 1px solid var(--brand-500);
+        border-radius: var(--radius-sm);
+        font-size: .8rem;
+        font-weight: 700;
+        text-align: center;
+        color: var(--ink-900);
+        background: #fff;
+        outline: none;
+        box-shadow: 0 0 0 .2rem rgba(47, 143, 131, .12);
+    }
+
+    /* touch drag feedback */
+    .selection-row.is-touch-dragging {
+        background: var(--brand-50) !important;
+        box-shadow: inset 3px 0 0 var(--brand-500), var(--shadow-md);
+        opacity: .9;
+    }
+
+    @media (hover: none) {
+        /* fingers need a bigger target than a mouse pointer */
+        .drag-handle { padding: .5rem .35rem; font-size: 1.15rem; }
+        .row-move__btn { width: 26px; height: 22px; font-size: 1.05rem; }
+    }
+
+    /* ===========================================================
+       Toolbar — identity row + action row
+    =========================================================== */
+    /* .card sets overflow:hidden globally, which would clip the actions menu */
+    .selection-toolbar { overflow: visible; }
+    .selection-toolbar .card-body { padding: .9rem 1.1rem; }
+
+    .toolbar-identity {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: .75rem;
+    }
+
+    .toolbar-back { flex: 0 0 auto; }
+
+    .toolbar-title {
+        flex: 1 1 240px;
+        min-width: 0;
+    }
+
+    .toolbar-title > strong {
+        display: block;
+        font-size: .98rem;
+        line-height: 1.7;
+        color: var(--ink-900);
+    }
+
+    .toolbar-badges {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: .4rem;
+        margin-top: .25rem;
+    }
+
+    .toolbar-badges .badge { font-weight: 600; }
+    .toolbar-badges .selection-counter { margin-inline-end: .2rem; }
+
+    .toolbar-exam-switch {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        gap: .4rem;
+        margin: 0;
+    }
+
+    .toolbar-exam-switch__label {
+        font-size: .78rem;
+        font-weight: 600;
+        color: var(--ink-500);
+        margin: 0;
+    }
+
+    .toolbar-exam-switch .form-select {
+        width: auto;
+        min-width: 148px;
+        height: 38px;
+        font-size: .84rem;
+    }
+
+    .toolbar-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: .5rem;
+        margin-top: .85rem;
+        padding-top: .85rem;
+        border-top: 1px solid var(--border);
+    }
+
+    .toolbar-actions .btn { height: 38px; }
+
+    /* the publish form keeps its checkbox beside its button */
+    #publish-form {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        margin: 0;
+    }
+
+    #publish-form .form-check { margin: 0; }
+    #publish-form .form-check-label { font-size: .78rem; color: var(--ink-700); }
+
+    /* ---- "more actions" menu — always parked at the far end ---- */
+    .toolbar-menu {
+        position: relative;
+        margin-inline-start: auto;
+    }
+
+    .toolbar-menu__panel {
+        position: absolute;
+        z-index: 40;
+        top: calc(100% + 6px);
+        /* the toggle sits at the inline-end of the row, so the panel has to
+           grow back toward the inline-start or it lands off-screen */
+        inset-inline-end: 0;
+        min-width: 232px;
+        padding: .3rem;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        box-shadow: var(--shadow-md);
+    }
+
+    .toolbar-menu__panel form { margin: 0; }
+
+    .toolbar-menu__item {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        width: 100%;
+        padding: .5rem .6rem;
+        border: 0;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--ink-700);
+        font-family: inherit;
+        font-size: .83rem;
+        text-align: right;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .toolbar-menu__item i { font-size: 1rem; color: var(--ink-500); }
+    .toolbar-menu__item:hover { background: var(--brand-50); color: var(--brand-700); }
+    .toolbar-menu__item:hover i { color: inherit; }
+    .toolbar-menu__item.is-danger:hover { background: #fcecea; color: var(--danger); }
+    .toolbar-menu__item.is-success:hover { background: #eaf7f1; color: var(--success); }
+
+    .toolbar-menu__divider {
+        height: 1px;
+        margin: .25rem .3rem;
+        background: var(--border);
+    }
+
+    @media (max-width: 767.98px) {
+        .toolbar-exam-switch { flex: 1 1 100%; }
+        .toolbar-exam-switch .form-select { flex: 1 1 auto; }
+        #publish-form { flex: 1 1 100%; flex-wrap: wrap; }
+        .toolbar-actions .btn { flex: 1 1 auto; }
+        .toolbar-menu { flex: 1 1 100%; margin-inline-start: 0; }
+        .toolbar-menu__toggle { width: 100%; }
+        .toolbar-menu__panel { inset-inline: 0; }
+    }
+
+    /* ===========================================================
+       Catalog filter panel — layout polish
+    =========================================================== */
+    .catalog-filter-grid {
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: .85rem 1rem;
+        align-items: start;
+    }
+
+    .catalog-filter-grid > div { min-width: 0; }
+
+    .catalog-filter-grid .form-label {
+        font-size: .78rem;
+        font-weight: 600;
+        color: var(--ink-700);
+        margin-bottom: .35rem;
+    }
+
+    .filter-note {
+        font-size: .7rem;
+        font-weight: 400;
+        color: var(--ink-500);
+    }
+
+    .catalog-filter-grid .form-select,
+    .catalog-filter-grid .form-control {
+        height: 40px;
+    }
+
+    .catalog-filter-actions {
+        grid-column: 1 / -1;
+        justify-content: flex-end;
+        padding-top: .2rem;
+    }
+
+    .catalog-filter-actions .btn { height: 40px; }
+
+    /* the "خوابگاه" note should not sit in a filter column */
+    .catalog-filter-grid > .catalog-help { grid-column: 1 / -1; margin-top: 0; }
+
+    /* ===========================================================
+       Multi-select (provinces)
+    =========================================================== */
+    .catalog-provinces-field { grid-column: span 2; }
+
+    .ms-field { position: relative; }
+
+    .ms-native {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .ms-control {
+        width: 100%;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        gap: .45rem;
+        padding: 0 .7rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+        color: var(--ink-900);
+        font-size: .85rem;
+        text-align: right;
+        cursor: pointer;
+        transition: border-color .15s ease, box-shadow .15s ease;
+    }
+
+    .ms-control:hover:not(:disabled) { border-color: var(--brand-200); }
+
+    .ms-control:focus-visible,
+    .ms-field.is-open .ms-control {
+        outline: none;
+        border-color: var(--brand-500);
+        box-shadow: 0 0 0 .2rem rgba(47, 143, 131, .12);
+    }
+
+    .ms-control:disabled { background: var(--ink-100); cursor: not-allowed; opacity: .7; }
+
+    .ms-control__icon { color: var(--ink-500); font-size: 1rem; }
+
+    .ms-control__label {
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .ms-control__label.is-placeholder { color: var(--ink-500); }
+
+    .ms-control__count {
+        flex: 0 0 auto;
+        min-width: 1.4rem;
+        padding: .05rem .4rem;
+        border-radius: 999px;
+        background: var(--brand-500);
+        color: #fff;
+        font-size: .72rem;
+        font-weight: 700;
+        text-align: center;
+    }
+
+    .ms-control__caret { color: var(--ink-500); transition: transform .18s ease; }
+    .ms-field.is-open .ms-control__caret { transform: rotate(180deg); }
+
+    .ms-panel {
+        position: absolute;
+        z-index: 50;
+        top: calc(100% + 4px);
+        inset-inline: 0;
+        min-width: 240px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        box-shadow: var(--shadow-md);
+        overflow: hidden;
+    }
+
+    .ms-panel__search {
+        display: flex;
+        align-items: center;
+        gap: .4rem;
+        padding: .55rem .7rem;
+        border-bottom: 1px solid var(--border);
+        color: var(--ink-500);
+    }
+
+    .ms-panel__search input {
+        flex: 1 1 auto;
+        min-width: 0;
+        border: 0;
+        outline: none;
+        background: transparent;
+        font-family: inherit;
+        font-size: .83rem;
+        color: var(--ink-900);
+    }
+
+    .ms-panel__tools {
+        display: flex;
+        gap: .4rem;
+        padding: .45rem .7rem;
+        border-bottom: 1px solid var(--border);
+        background: var(--bg);
+    }
+
+    .ms-tool {
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--surface);
+        color: var(--ink-700);
+        padding: .18rem .6rem;
+        font-family: inherit;
+        font-size: .74rem;
+        cursor: pointer;
+        transition: border-color .15s ease, color .15s ease, background .15s ease;
+    }
+
+    .ms-tool:hover { border-color: var(--brand-500); color: var(--brand-700); background: var(--brand-50); }
+
+    .ms-panel__options { max-height: 230px; overflow-y: auto; padding: .3rem; }
+
+    .ms-option {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        width: 100%;
+        padding: .42rem .55rem;
+        border: 0;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--ink-900);
+        font-family: inherit;
+        font-size: .83rem;
+        text-align: right;
+        cursor: pointer;
+    }
+
+    .ms-option:hover { background: var(--brand-50); }
+
+    .ms-option__box {
+        flex: 0 0 auto;
+        width: 17px;
+        height: 17px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--ink-300);
+        border-radius: 5px;
+        background: var(--surface);
+        color: #fff;
+        font-size: .7rem;
+        transition: background .15s ease, border-color .15s ease;
+    }
+
+    .ms-option__box i { opacity: 0; }
+
+    .ms-option.is-selected .ms-option__box {
+        background: var(--brand-500);
+        border-color: var(--brand-500);
+    }
+
+    .ms-option.is-selected .ms-option__box i { opacity: 1; }
+    .ms-option.is-selected { color: var(--brand-700); font-weight: 600; }
+
+    .ms-panel__empty { padding: .9rem .7rem; color: var(--ink-500); font-size: .8rem; text-align: center; }
+
+    .ms-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .35rem;
+        margin-top: .45rem;
+    }
+
+    .ms-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: .3rem;
+        padding: .18rem .3rem .18rem .55rem;
+        border: 1px solid var(--brand-200);
+        border-radius: 999px;
+        background: var(--brand-50);
+        color: var(--brand-700);
+        font-size: .74rem;
+        font-weight: 600;
+    }
+
+    .ms-chip__remove {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        border: 0;
+        border-radius: 50%;
+        background: rgba(47, 143, 131, .14);
+        color: var(--brand-700);
+        font-size: .7rem;
+        cursor: pointer;
+        padding: 0;
+    }
+
+    .ms-chip__remove:hover { background: var(--brand-500); color: #fff; }
+
+    .ms-chips__clear {
+        border: 0;
+        background: transparent;
+        color: var(--ink-500);
+        font-family: inherit;
+        font-size: .73rem;
+        text-decoration: underline;
+        cursor: pointer;
+        padding: .18rem .2rem;
+    }
+
+    .ms-chips__clear:hover { color: var(--danger); }
+
+    @media (max-width: 1199.98px) {
+        .catalog-provinces-field { grid-column: span 2; }
+    }
+
+    @media (max-width: 575.98px) {
+        .catalog-provinces-field { grid-column: 1 / -1; }
+        .catalog-filter-actions { justify-content: stretch; }
+        .catalog-filter-actions .btn { flex: 1; }
+    }
+</style>
+@endpush
+
 @section('content')
     @php($editable = $plan->status !== \App\Models\FieldSelectionPlan::STATUS_ARCHIVED && auth()->user()->can('manage_field_selection'))
     @php($itemsCount = $plan->items->count())
@@ -16,46 +520,88 @@
     <form id="reorder-form" method="post" action="{{ route('admin.field-selection-plans.reorder', $plan) }}">@csrf</form>
 
     <div class="card selection-toolbar mb-3">
-        <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <div class="selection-summary">
-                <a class="btn btn-outline-secondary" href="{{ route('admin.reservations.show', $reservation) }}" title="بازگشت به رزرو"><i class="ri-arrow-right-line"></i><span class="d-none d-sm-inline">بازگشت به رزرو</span></a>
-                <div><strong>انتخاب رشته کنکور {{ $selectedExamTypeLabel }}</strong><div class="selection-counter"><span id="item-counter">{{ \App\Support\PersianDate::number($itemsCount) }}</span> از ۱۵۰ مورد</div></div>
-                <span class="badge text-bg-{{ $plan->isPublished() ? 'success' : ($plan->status === \App\Models\FieldSelectionPlan::STATUS_ARCHIVED ? 'secondary' : 'warning') }}">{{ $plan->status === 'published' ? 'منتشر شده' : ($plan->status === 'archived' ? 'آرشیو شده' : 'پیش‌نویس') }}</span>
-                @if($plan->canBePubliclyVisible())<span class="badge text-bg-{{ $plan->is_public_visible ? 'info' : 'light' }}">{{ $plan->is_public_visible ? 'قابل مشاهده برای دانش‌آموز' : 'مخفی از دانش‌آموز' }}</span>@endif
-                @if($editable)<span class="selection-dirty" id="selection-dirty"><i class="ri-error-warning-line"></i> تغییرات ذخیره نشده دارید</span>@endif
-            </div>
-            <div class="d-flex flex-wrap gap-2">
-                <a class="btn btn-outline-secondary" target="_blank" href="{{ route('admin.field-selection-plans.print', $plan) }}"><i class="ri-printer-line"></i> چاپ انتخاب رشته</a>
+        <div class="card-body">
+
+            {{-- Row 1 — identity: who/what this plan is --}}
+            <div class="toolbar-identity">
+                <a class="btn btn-outline-secondary toolbar-back" href="{{ route('admin.reservations.show', $reservation) }}" title="بازگشت به رزرو">
+                    <i class="ri-arrow-right-line"></i><span class="d-none d-sm-inline">بازگشت</span>
+                </a>
+
+                <div class="toolbar-title">
+                    <strong>انتخاب رشته {{ $selectedExamTypeLabel }}</strong>
+                    <div class="toolbar-badges">
+                        <span class="selection-counter"><span id="item-counter">{{ \App\Support\PersianDate::number($itemsCount) }}</span> از ۱۵۰ مورد</span>
+                        <span class="badge text-bg-{{ $plan->isPublished() ? 'success' : ($plan->status === \App\Models\FieldSelectionPlan::STATUS_ARCHIVED ? 'secondary' : 'warning') }}">{{ $plan->status === 'published' ? 'منتشر شده' : ($plan->status === 'archived' ? 'آرشیو شده' : 'پیش‌نویس') }}</span>
+                        @if($plan->canBePubliclyVisible())<span class="badge text-bg-{{ $plan->is_public_visible ? 'info' : 'light' }}">{{ $plan->is_public_visible ? 'قابل مشاهده برای دانش‌آموز' : 'مخفی از دانش‌آموز' }}</span>@endif
+                        @if($editable)<span class="selection-dirty" id="selection-dirty"><i class="ri-error-warning-line"></i> تغییرات ذخیره نشده دارید</span>@endif
+                    </div>
+                </div>
+
                 @can('manage_field_selection')
-                    <form method="get" action="{{ route('admin.reservations.field-selection.show', $reservation) }}">
-                        <select class="form-select" name="exam_type" onchange="this.form.submit()">
+                    <form method="get" action="{{ route('admin.reservations.field-selection.show', $reservation) }}" class="toolbar-exam-switch">
+                        <label class="toolbar-exam-switch__label" for="toolbar-exam-type">کنکور</label>
+                        <select class="form-select" id="toolbar-exam-type" name="exam_type" onchange="this.form.submit()">
                             @foreach($examTypeOptions as $key => $label)<option value="{{ $key }}" @selected($selectedExamType === $key)>{{ $label }}</option>@endforeach
                         </select>
                     </form>
-                    @if($plan->canBePubliclyVisible())
-                        <form method="post" action="{{ route($plan->is_public_visible ? 'admin.field-selection-plans.hide-from-student' : 'admin.field-selection-plans.show-to-student', $plan) }}">
-                            @csrf
-                            <button class="btn btn-outline-{{ $plan->is_public_visible ? 'danger' : 'success' }}" onclick="return confirm('{{ $plan->is_public_visible ? 'آیا این نسخه از دید دانش‌آموز مخفی شود؟' : 'آیا این نسخه برای دانش‌آموز قابل مشاهده شود؟' }}')" type="submit">
-                                {{ $plan->is_public_visible ? 'مخفی کردن از دانش‌آموز' : 'نمایش به دانش‌آموز' }}
-                            </button>
-                        </form>
-                    @endif
-                    @if($plan->status !== \App\Models\FieldSelectionPlan::STATUS_ARCHIVED)
-                        <form method="post" action="{{ route('admin.field-selection-plans.archive', $plan) }}">
-                            @csrf
-                            <button class="btn btn-outline-secondary" onclick="return confirm('آیا از آرشیو کردن این نسخه مطمئن هستید؟')" type="submit">آرشیو کردن</button>
-                        </form>
-                    @endif
-                    <form method="post" action="{{ route('admin.field-selection-plans.destroy', $plan) }}" onsubmit="return confirm('آیا از حذف این انتخاب رشته مطمئن هستید؟')">
-                        @csrf @method('delete')
-                        <button class="btn btn-outline-danger" type="submit">حذف انتخاب رشته</button>
-                    </form>
                 @endcan
+            </div>
+
+            {{-- Row 2 — actions: primary on the right, the rest folded into a menu --}}
+            <div class="toolbar-actions">
                 @if($editable)
                     <button class="btn btn-outline-primary" type="submit" form="reorder-form" id="save-order" @disabled($itemsCount === 0)><i class="ri-list-check-2"></i> ذخیره ترتیب</button>
                     <button class="btn btn-primary" type="submit" form="bulk-update-form" id="save-changes" @disabled($itemsCount === 0)><i class="ri-save-line"></i> ذخیره تغییرات</button>
                     @if($plan->isDraft())<form method="post" action="{{ route('admin.field-selection-plans.publish', $plan) }}" id="publish-form" data-confirm="آیا از انتشار این لیست انتخاب رشته مطمئن هستید؟">@csrf<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="visible_to_student" value="1" id="visible-to-student"><label class="form-check-label small" for="visible-to-student">بعد از انتشار برای دانش‌آموز قابل مشاهده باشد</label></div><button class="btn btn-success" id="publish-selection" @disabled($itemsCount === 0) title="{{ $itemsCount === 0 ? 'برای انتشار حداقل یک رشته ثبت کنید.' : '' }}"><i class="ri-send-plane-line"></i> انتشار</button></form>@endif
                 @endif
+
+                {{-- Secondary + destructive actions live behind one menu so the
+                     toolbar keeps only what is used on every visit. --}}
+                <div class="toolbar-menu" data-toolbar-menu>
+                    <button type="button" class="btn btn-outline-secondary toolbar-menu__toggle"
+                            data-toolbar-menu-toggle aria-haspopup="true" aria-expanded="false">
+                        <i class="ri-more-2-fill"></i>
+                        <span class="d-none d-sm-inline">عملیات بیشتر</span>
+                    </button>
+
+                    <div class="toolbar-menu__panel" data-toolbar-menu-panel hidden>
+                        <a class="toolbar-menu__item" target="_blank" href="{{ route('admin.field-selection-plans.print', $plan) }}">
+                            <i class="ri-printer-line"></i> چاپ انتخاب رشته
+                        </a>
+
+                        @can('manage_field_selection')
+                            @if($plan->canBePubliclyVisible())
+                                <form method="post" action="{{ route($plan->is_public_visible ? 'admin.field-selection-plans.hide-from-student' : 'admin.field-selection-plans.show-to-student', $plan) }}">
+                                    @csrf
+                                    <button class="toolbar-menu__item {{ $plan->is_public_visible ? 'is-danger' : 'is-success' }}"
+                                            onclick="return confirm('{{ $plan->is_public_visible ? 'آیا این نسخه از دید دانش‌آموز مخفی شود؟' : 'آیا این نسخه برای دانش‌آموز قابل مشاهده شود؟' }}')" type="submit">
+                                        <i class="{{ $plan->is_public_visible ? 'ri-eye-off-line' : 'ri-eye-line' }}"></i>
+                                        {{ $plan->is_public_visible ? 'مخفی کردن از دانش‌آموز' : 'نمایش به دانش‌آموز' }}
+                                    </button>
+                                </form>
+                            @endif
+
+                            @if($plan->status !== \App\Models\FieldSelectionPlan::STATUS_ARCHIVED)
+                                <form method="post" action="{{ route('admin.field-selection-plans.archive', $plan) }}">
+                                    @csrf
+                                    <button class="toolbar-menu__item" onclick="return confirm('آیا از آرشیو کردن این نسخه مطمئن هستید؟')" type="submit">
+                                        <i class="ri-archive-line"></i> آرشیو کردن
+                                    </button>
+                                </form>
+                            @endif
+
+                            <div class="toolbar-menu__divider"></div>
+
+                            <form method="post" action="{{ route('admin.field-selection-plans.destroy', $plan) }}" onsubmit="return confirm('آیا از حذف این انتخاب رشته مطمئن هستید؟')">
+                                @csrf @method('delete')
+                                <button class="toolbar-menu__item is-danger" type="submit">
+                                    <i class="ri-delete-bin-6-line"></i> حذف انتخاب رشته
+                                </button>
+                            </form>
+                        @endcan
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -71,7 +617,7 @@
     </div>@endif
 
     <div class="card mb-3">
-        <div class="card-header"><i class="ri-search-line"></i> جستجوی رشتهمحل از دیتابیس</div>
+        <div class="card-header"><i class="ri-search-line"></i>جستجوی رشته  </div>
         <div class="card-body">
             <div class="catalog-filter-grid">
                 <div>
@@ -79,7 +625,10 @@
                     <input class="form-control" id="catalog-field-query" placeholder="مثلاً پرستاری" autocomplete="off" @disabled(! $editable)>
                 </div>
                 <div>
-                    <label class="form-label" for="catalog-province">استان</label>
+                    <label class="form-label" for="catalog-province">
+                        استان
+                        <span class="filter-note">(برای انتخاب شهر)</span>
+                    </label>
                     <select class="form-select" id="catalog-province" @disabled(! $editable)>
                         <option value="">همه استان‌ها</option>
                         @foreach($catalogProvinces as $province)
@@ -106,9 +655,43 @@
                     <label class="form-label" for="catalog-booklet">دفترچه</label>
                     <select class="form-select" id="catalog-booklet" @disabled(! $editable)><option value="">همه دفترچه‌ها</option>@foreach($catalogBooklets as $booklet)<option value="{{ $booklet }}">{{ basename($booklet) }}</option>@endforeach</select>
                 </div>
-                <div>
-                    <label class="form-label" for="catalog-provinces">استان‌ها</label>
-                    <select class="form-select" id="catalog-provinces" multiple @disabled(! $editable)>@foreach($catalogProvinces as $province)<option value="{{ $province->id }}">{{ $province->name }}</option>@endforeach</select>
+                <div class="catalog-provinces-field">
+                    <label class="form-label" for="catalog-provinces-toggle">
+                        فیلتر چند استان
+                        <span class="filter-note">(می‌توانید چند مورد را انتخاب کنید)</span>
+                    </label>
+
+                    {{-- The native <select multiple> stays in the DOM (hidden) because the
+                         existing catalogParams()/reset code reads it directly. The widget
+                         below only drives its `selected` flags and fires `change`. --}}
+                    <div class="ms-field" data-multiselect>
+                        <button type="button" class="ms-control" id="catalog-provinces-toggle"
+                                data-ms-toggle aria-haspopup="listbox" aria-expanded="false"
+                                @disabled(! $editable)>
+                            <i class="ri-map-pin-line ms-control__icon"></i>
+                            <span class="ms-control__label" data-ms-label>همه استان‌ها</span>
+                            <span class="ms-control__count" data-ms-count hidden></span>
+                            <i class="ri-arrow-down-s-line ms-control__caret"></i>
+                        </button>
+
+                        <div class="ms-panel" data-ms-panel hidden>
+                            <div class="ms-panel__search">
+                                <i class="ri-search-line"></i>
+                                <input type="text" data-ms-search placeholder="جستجوی استان…" autocomplete="off">
+                            </div>
+                            <div class="ms-panel__tools">
+                                <button type="button" class="ms-tool" data-ms-all>انتخاب همه</button>
+                                <button type="button" class="ms-tool" data-ms-none>پاک کردن</button>
+                            </div>
+                            <div class="ms-panel__options" data-ms-options role="listbox" aria-multiselectable="true"></div>
+                            <div class="ms-panel__empty" data-ms-empty hidden>استانی با این نام پیدا نشد.</div>
+                        </div>
+
+                        <select class="ms-native" id="catalog-provinces" multiple tabindex="-1" aria-hidden="true"
+                                @disabled(! $editable)>@foreach($catalogProvinces as $province)<option value="{{ $province->id }}">{{ $province->name }}</option>@endforeach</select>
+                    </div>
+
+                    <div class="ms-chips" data-ms-chips hidden></div>
                 </div>
                 <div>
                     <label class="form-label" for="catalog-semester">نیم‌سال</label>
@@ -277,6 +860,462 @@ document.addEventListener('DOMContentLoaded', function () {
     document.addEventListener('click', async event => { const button = event.target.closest('[data-delete-item]'); if (!button || !confirm('این رشته حذف شود؟')) return; try { const payload = await jsonRequest(button.dataset.deleteUrl, {method:'POST', body:new URLSearchParams({_method:'DELETE', _token:csrf})}); button.closest('[data-item-row]').remove(); rebalance(); clearDirty(); showToast(payload.message); } catch (error) { showToast(error.message, 'danger'); } });
     lists.forEach(list => { list.addEventListener('dragover', event => { event.preventDefault(); list.classList.add('is-over'); }); list.addEventListener('dragleave', () => list.classList.remove('is-over')); list.addEventListener('drop', event => { event.preventDefault(); if (!dragged) return; const before = [...list.querySelectorAll('[data-item-row]')].find(row => event.clientY < row.getBoundingClientRect().top + row.offsetHeight / 2); list.insertBefore(dragged, before || list.querySelector('[data-add-row]')); setDirty(); }); });
     itemRows().forEach(bindRow); rebalance(); updateDuplicates();
+});
+</script>
+@endif
+@endpush
+
+@push('scripts')
+<script>
+/* -------------------------------------------------------------
+   Province multi-select widget.
+
+   It never owns the data: the native <select multiple id="catalog-provinces">
+   remains the single source of truth, so catalogParams() and the existing
+   reset button keep working untouched. The widget only flips `selected`
+   flags and dispatches `change`, which the existing search listener
+   already reacts to.
+------------------------------------------------------------- */
+document.addEventListener('DOMContentLoaded', function () {
+    const field = document.querySelector('[data-multiselect]');
+    const native = document.getElementById('catalog-provinces');
+    if (!field || !native) return;
+
+    const toggle = field.querySelector('[data-ms-toggle]');
+    const panel = field.querySelector('[data-ms-panel]');
+    const optionsBox = field.querySelector('[data-ms-options]');
+    const emptyBox = field.querySelector('[data-ms-empty]');
+    const searchInput = field.querySelector('[data-ms-search]');
+    const labelEl = field.querySelector('[data-ms-label]');
+    const countEl = field.querySelector('[data-ms-count]');
+    const chipsBox = document.querySelector('[data-ms-chips]');
+    const formatter = new Intl.NumberFormat('fa-IR');
+
+    const options = [...native.options];
+
+    // ---- build the option rows once -------------------------
+    const rows = options.map(option => {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'ms-option';
+        row.dataset.value = option.value;
+        row.setAttribute('role', 'option');
+
+        const box = document.createElement('span');
+        box.className = 'ms-option__box';
+        box.innerHTML = '<i class="ri-check-line"></i>';
+
+        const text = document.createElement('span');
+        text.textContent = option.textContent;
+
+        row.append(box, text);
+        row.addEventListener('click', () => {
+            option.selected = !option.selected;
+            commit();
+        });
+
+        optionsBox.append(row);
+        return row;
+    });
+
+    function selectedOptions() {
+        return options.filter(option => option.selected);
+    }
+
+    function render() {
+        const chosen = selectedOptions();
+
+        rows.forEach((row, index) => row.classList.toggle('is-selected', options[index].selected));
+
+        if (chosen.length === 0) {
+            labelEl.textContent = 'همه استان‌ها';
+            labelEl.classList.add('is-placeholder');
+            countEl.hidden = true;
+        } else if (chosen.length === 1) {
+            labelEl.textContent = chosen[0].textContent;
+            labelEl.classList.remove('is-placeholder');
+            countEl.hidden = true;
+        } else {
+            labelEl.textContent = formatter.format(chosen.length) + ' استان انتخاب شده';
+            labelEl.classList.remove('is-placeholder');
+            countEl.hidden = false;
+            countEl.textContent = formatter.format(chosen.length);
+        }
+
+        chipsBox.replaceChildren();
+        chipsBox.hidden = chosen.length === 0;
+
+        chosen.forEach(option => {
+            const chip = document.createElement('span');
+            chip.className = 'ms-chip';
+            chip.append(document.createTextNode(option.textContent));
+
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'ms-chip__remove';
+            remove.setAttribute('aria-label', 'حذف ' + option.textContent);
+            remove.innerHTML = '<i class="ri-close-line"></i>';
+            remove.addEventListener('click', () => {
+                option.selected = false;
+                commit();
+            });
+
+            chip.append(remove);
+            chipsBox.append(chip);
+        });
+
+        if (chosen.length > 1) {
+            const clear = document.createElement('button');
+            clear.type = 'button';
+            clear.className = 'ms-chips__clear';
+            clear.textContent = 'حذف همه';
+            clear.addEventListener('click', () => {
+                options.forEach(option => (option.selected = false));
+                commit();
+            });
+            chipsBox.append(clear);
+        }
+    }
+
+    // re-render, then let the page's own search listener run
+    function commit() {
+        render();
+        native.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    function filterOptions(term) {
+        const needle = term.trim();
+        let visible = 0;
+
+        rows.forEach((row, index) => {
+            const match = needle === '' || options[index].textContent.includes(needle);
+            row.hidden = !match;
+            if (match) visible++;
+        });
+
+        emptyBox.hidden = visible > 0;
+    }
+
+    function open() {
+        if (toggle.disabled) return;
+        field.classList.add('is-open');
+        panel.hidden = false;
+        toggle.setAttribute('aria-expanded', 'true');
+        searchInput.value = '';
+        filterOptions('');
+        searchInput.focus();
+    }
+
+    function close() {
+        field.classList.remove('is-open');
+        panel.hidden = true;
+        toggle.setAttribute('aria-expanded', 'false');
+    }
+
+    toggle.addEventListener('click', () => (panel.hidden ? open() : close()));
+    searchInput.addEventListener('input', () => filterOptions(searchInput.value));
+
+    field.querySelector('[data-ms-all]').addEventListener('click', () => {
+        rows.forEach((row, index) => {
+            if (!row.hidden) options[index].selected = true;
+        });
+        commit();
+    });
+
+    field.querySelector('[data-ms-none]').addEventListener('click', () => {
+        options.forEach(option => (option.selected = false));
+        commit();
+    });
+
+    document.addEventListener('click', event => {
+        if (!field.contains(event.target)) close();
+    });
+
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && !panel.hidden) {
+            close();
+            toggle.focus();
+        }
+    });
+
+    // the reset button clears the native select without firing `change`,
+    // so mirror it back into the widget afterwards
+    document.getElementById('catalog-reset-button')?.addEventListener('click', () => {
+        window.setTimeout(render, 0);
+    });
+
+    render();
+});
+
+/* -------------------------------------------------------------
+   Toolbar "more actions" menu.
+   Registered separately from the multi-select so it also works
+   on archived plans, where the editing scripts are not printed.
+------------------------------------------------------------- */
+document.addEventListener('DOMContentLoaded', function () {
+    const menu = document.querySelector('[data-toolbar-menu]');
+    if (!menu) return;
+
+    const toggle = menu.querySelector('[data-toolbar-menu-toggle]');
+    const panel = menu.querySelector('[data-toolbar-menu-panel]');
+
+    function close() {
+        panel.hidden = true;
+        toggle.setAttribute('aria-expanded', 'false');
+    }
+
+    toggle.addEventListener('click', function () {
+        panel.hidden = !panel.hidden;
+        toggle.setAttribute('aria-expanded', String(!panel.hidden));
+    });
+
+    document.addEventListener('click', function (event) {
+        if (!menu.contains(event.target)) close();
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && !panel.hidden) {
+            close();
+            toggle.focus();
+        }
+    });
+});
+</script>
+@endpush
+
+@push('scripts')
+@if($editable)
+<script>
+/* -------------------------------------------------------------
+   Row reordering for touch devices + precise jumps.
+
+   The page already reorders rows with the HTML5 drag-and-drop API,
+   which never fires from a finger on iOS/Android. This adds:
+     1. a pointer-based drag that handles touch and pen
+     2. per-row up/down buttons
+     3. clicking the priority number to jump to any position
+
+   It deliberately does NOT touch the existing mouse drag. After any
+   move it dispatches `dragend` on the row, which is what the original
+   script already listens for to re-balance the two columns and
+   renumber - so there stays exactly one source of truth for that.
+------------------------------------------------------------- */
+document.addEventListener('DOMContentLoaded', function () {
+    const lists = [...document.querySelectorAll('.selection-list')];
+    if (!lists.length) return;
+
+    const ROW = '[data-item-row]';
+
+    function itemRows() {
+        return lists.flatMap(list => [...list.querySelectorAll(ROW)]);
+    }
+
+    function markDirty() {
+        document.getElementById('selection-dirty')?.classList.add('is-visible');
+    }
+
+    // hand back to the original script: it re-balances columns and renumbers
+    function settle(row) {
+        row.dispatchEvent(new Event('dragend'));
+    }
+
+    /* ---- shared move primitive ---------------------------------
+       targetIndex is the wanted position in the flattened list. */
+    function moveRowTo(row, targetIndex) {
+        const others = itemRows().filter(candidate => candidate !== row);
+        const index = Math.max(0, Math.min(targetIndex, others.length));
+        const reference = others[index];
+
+        if (reference) {
+            reference.parentNode.insertBefore(row, reference);
+        } else {
+            // past the last row - park it at the end of the second column
+            const lastList = lists[lists.length - 1];
+            lastList.insertBefore(row, lastList.querySelector('[data-add-row]'));
+        }
+
+        markDirty();
+        settle(row);
+    }
+
+    function moveRowBy(row, delta) {
+        const rows = itemRows();
+        const from = rows.indexOf(row);
+        if (from < 0) return;
+
+        const to = from + delta;
+        if (to < 0 || to >= rows.length) return;
+
+        moveRowTo(row, to);
+    }
+
+    /* ---- 1. up / down buttons ---------------------------------- */
+    document.addEventListener('click', function (event) {
+        const up = event.target.closest('[data-move-up]');
+        const down = event.target.closest('[data-move-down]');
+        if (!up && !down) return;
+
+        const trigger = up || down;
+        const row = trigger.closest(ROW);
+        if (!row) return;
+
+        event.preventDefault();
+        moveRowBy(row, up ? -1 : 1);
+        row.querySelector(up ? '[data-move-up]' : '[data-move-down]')?.focus();
+    });
+
+    // keep the first/last row from offering a move that cannot happen
+    function syncStepButtons() {
+        const rows = itemRows();
+        rows.forEach((row, index) => {
+            const up = row.querySelector('[data-move-up]');
+            const down = row.querySelector('[data-move-down]');
+            if (up) up.disabled = index === 0;
+            if (down) down.disabled = index === rows.length - 1;
+        });
+    }
+
+    /* ---- 2. click the number to jump to a priority -------------- */
+    let openJump = null;
+
+    function closeJump(apply) {
+        if (!openJump) return;
+
+        const badge = openJump.badge;
+        const input = openJump.input;
+        const row = openJump.row;
+        const value = parseInt(input.value, 10);
+
+        openJump = null;
+        input.remove();
+        badge.hidden = false;
+
+        if (apply && !Number.isNaN(value)) {
+            moveRowTo(row, Math.max(1, value) - 1);
+        }
+    }
+
+    document.addEventListener('click', function (event) {
+        const badge = event.target.closest('[data-move-to]');
+
+        if (!badge) {
+            if (openJump && event.target !== openJump.input) closeJump(false);
+            return;
+        }
+
+        event.preventDefault();
+        closeJump(false);
+
+        const row = badge.closest(ROW);
+        const current = itemRows().indexOf(row) + 1;
+
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.className = 'selection-jump';
+        input.min = '1';
+        input.max = String(itemRows().length);
+        input.value = String(current);
+        input.setAttribute('aria-label', 'انتقال به اولویت');
+        input.title = 'شماره اولویت جدید را وارد کنید و Enter بزنید';
+
+        badge.hidden = true;
+        badge.after(input);
+        openJump = { badge: badge, input: input, row: row };
+
+        input.focus();
+        input.select();
+
+        input.addEventListener('keydown', function (keyEvent) {
+            if (keyEvent.key === 'Enter') {
+                keyEvent.preventDefault();
+                closeJump(true);
+            } else if (keyEvent.key === 'Escape') {
+                keyEvent.preventDefault();
+                closeJump(false);
+            }
+        });
+
+        input.addEventListener('blur', function () {
+            window.setTimeout(function () { closeJump(false); }, 0);
+        });
+    });
+
+    /* ---- 3. pointer drag (touch + pen) -------------------------- */
+    let drag = null;
+
+    function rowUnderPoint(x, y) {
+        const stack = document.elementsFromPoint(x, y);
+        for (const element of stack) {
+            const candidate = element.closest ? element.closest(ROW) : null;
+            if (candidate && candidate !== drag.row) return candidate;
+        }
+        return null;
+    }
+
+    function autoScroll(y) {
+        const margin = 90;
+        if (y < margin) window.scrollBy(0, -14);
+        else if (y > window.innerHeight - margin) window.scrollBy(0, 14);
+    }
+
+    document.addEventListener('pointerdown', function (event) {
+        // mouse keeps using the original HTML5 drag-and-drop untouched
+        if (event.pointerType === 'mouse') return;
+
+        const handle = event.target.closest('.drag-handle');
+        if (!handle) return;
+
+        const row = handle.closest(ROW);
+        if (!row) return;
+
+        event.preventDefault();
+        drag = { row: row, handle: handle, moved: false };
+        row.classList.add('is-touch-dragging');
+
+        try {
+            handle.setPointerCapture(event.pointerId);
+        } catch (error) {
+            /* capture is a nicety, the document listeners still work */
+        }
+    });
+
+    document.addEventListener('pointermove', function (event) {
+        if (!drag) return;
+
+        event.preventDefault();
+        drag.moved = true;
+        autoScroll(event.clientY);
+
+        const target = rowUnderPoint(event.clientX, event.clientY);
+        if (!target) return;
+
+        const rect = target.getBoundingClientRect();
+        const insertBefore = event.clientY < rect.top + rect.height / 2;
+
+        target.parentNode.insertBefore(drag.row, insertBefore ? target : target.nextSibling);
+    }, { passive: false });
+
+    function endDrag() {
+        if (!drag) return;
+
+        const row = drag.row;
+        const moved = drag.moved;
+        drag = null;
+
+        row.classList.remove('is-touch-dragging');
+        if (moved) markDirty();
+        settle(row);
+    }
+
+    document.addEventListener('pointerup', endDrag);
+    document.addEventListener('pointercancel', endDrag);
+
+    /* keep the step buttons in sync after every reorder */
+    lists.forEach(function (list) {
+        new MutationObserver(syncStepButtons).observe(list, { childList: true });
+    });
+
+    syncStepButtons();
 });
 </script>
 @endif

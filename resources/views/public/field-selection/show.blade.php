@@ -223,6 +223,153 @@
 
 
         /* ==========================================================
+           Plan switcher — other published plans for this student
+        ========================================================== */
+
+        .plan-switch {
+            position: relative;
+            z-index: 2;
+
+            margin-top: 16px;
+            padding: 13px;
+
+            border: 1px solid rgba(140, 198, 63, .16);
+            border-radius: var(--fs-radius-md);
+
+            background: rgba(255, 255, 255, .72);
+        }
+
+        .plan-switch__head {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+
+            margin-bottom: 10px;
+
+            color: var(--fs-deep);
+
+            font-size: 12.5px;
+            font-weight: 700;
+        }
+
+        .plan-switch__head i {
+            color: var(--fs-primary);
+            font-size: 16px;
+        }
+
+        .plan-switch__count {
+            min-width: 20px;
+            padding: 1px 7px;
+
+            border-radius: 999px;
+
+            background: var(--fs-soft);
+            color: var(--fs-deep);
+
+            font-size: 10.5px;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .plan-switch__list {
+            display: grid;
+            gap: 8px;
+        }
+
+        .plan-switch__item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+
+            padding: 10px 11px;
+
+            border: 1px solid var(--fs-border);
+            border-radius: 14px;
+
+            background: #fff;
+
+            transition:
+                border-color .18s ease,
+                box-shadow .18s ease;
+        }
+
+        .plan-switch__item:hover {
+            border-color: var(--fs-primary);
+            box-shadow: var(--fs-shadow-sm);
+        }
+
+        .plan-switch__item.is-current {
+            border-color: var(--fs-primary);
+            background: var(--fs-soft);
+        }
+
+        .plan-switch__info {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        .plan-switch__name {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+
+            color: var(--fs-text);
+
+            font-size: 12.5px;
+            font-weight: 650;
+            line-height: 1.8;
+
+            overflow-wrap: anywhere;
+        }
+
+        .plan-switch__badge {
+            padding: 1px 8px;
+
+            border-radius: 999px;
+
+            background: var(--fs-primary);
+            color: #fff;
+
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        .plan-switch__date {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+
+            margin-top: 3px;
+
+            color: var(--fs-muted);
+
+            font-size: 10.5px;
+        }
+
+        .plan-switch__actions {
+            flex: 0 0 auto;
+
+            display: flex;
+            gap: 6px;
+        }
+
+        /* the shared .field-action is sized for the page header — slim it here */
+        .plan-switch__btn {
+            min-height: 36px;
+
+            padding: 8px 13px;
+
+            border-radius: 11px;
+
+            font-size: 11.5px;
+
+            white-space: nowrap;
+        }
+
+
+        /* ==========================================================
            Info
         ========================================================== */
 
@@ -674,7 +821,7 @@
 
             color: var(--fs-text);
 
-            font-size: 12.5px;
+            font-size: 14.5px;
             line-height: 1.7;
             font-weight: 650;
         }
@@ -721,7 +868,7 @@
 
             color: #484848;
 
-            font-size: 11px;
+            font-size: 15px;
             line-height: 1.9;
             font-weight: 500;
 
@@ -773,6 +920,22 @@
         ========================================================== */
 
         @media (max-width: 767.98px) {
+
+            /* stack each row so the buttons never squeeze the exam name */
+            .plan-switch__item {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 9px;
+            }
+
+            .plan-switch__actions {
+                width: 100%;
+            }
+
+            .plan-switch__btn {
+                flex: 1 1 0;
+                min-width: 0;
+            }
 
             .field-columns {
                 display: none;
@@ -1303,15 +1466,51 @@
                 </div>
 
                 @if(($visiblePlans ?? collect())->count() > 1)
-                    <div class="no-print" style="margin-top:16px;display:grid;gap:8px;">
-                        <span style="font-weight:700;color:var(--ink-700);">انتخاب رشته‌های قابل مشاهده:</span>
-                        @foreach($visiblePlans as $visiblePlan)
-                            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
-                                <span>{{ ($examTypeLabels ?? [])[$visiblePlan->exam_type_key] ?? 'انتخاب رشته ثبت‌شده' }} — {{ \App\Support\PersianDate::dateTime($visiblePlan->published_at) }}</span>
-                                <a href="{{ route('public.reservations.field-selection.plan.show', [$reservation->public_token, $visiblePlan]) }}" class="field-action {{ (int) $visiblePlan->id === (int) $plan->id ? 'field-action--primary' : 'field-action--soft' }}">مشاهده</a>
-                                <a target="_blank" href="{{ route('public.reservations.field-selection.plan.print', [$reservation->public_token, $visiblePlan]) }}" class="field-action field-action--soft">چاپ</a>
-                            </div>
-                        @endforeach
+                    <div class="plan-switch no-print">
+
+                        <div class="plan-switch__head">
+                            <i class="ri-stack-line"></i>
+                            <span>انتخاب رشته‌های قابل مشاهده</span>
+                            <span class="plan-switch__count">{{ \App\Support\PersianDate::number($visiblePlans->count()) }}</span>
+                        </div>
+
+                        <div class="plan-switch__list">
+                            @foreach($visiblePlans as $visiblePlan)
+                                @php($isCurrent = (int) $visiblePlan->id === (int) $plan->id)
+
+                                <div @class(['plan-switch__item', 'is-current' => $isCurrent])>
+
+                                    <div class="plan-switch__info">
+                                        <div class="plan-switch__name">
+                                            {{ ($examTypeLabels ?? [])[$visiblePlan->exam_type_key] ?? 'انتخاب رشته ثبت‌شده' }}
+                                            @if($isCurrent)
+                                                <span class="plan-switch__badge">در حال مشاهده</span>
+                                            @endif
+                                        </div>
+                                        <div class="plan-switch__date">
+                                            <i class="ri-calendar-check-line"></i>
+                                            {{ \App\Support\PersianDate::dateTime($visiblePlan->published_at) }}
+                                        </div>
+                                    </div>
+
+                                    <div class="plan-switch__actions">
+                                        @unless($isCurrent)
+                                            <a href="{{ route('public.reservations.field-selection.plan.show', [$reservation->public_token, $visiblePlan]) }}"
+                                               class="field-action field-action--primary plan-switch__btn">
+                                                <i class="ri-eye-line"></i> مشاهده
+                                            </a>
+                                        @endunless
+                                        <a target="_blank"
+                                           href="{{ route('public.reservations.field-selection.plan.print', [$reservation->public_token, $visiblePlan]) }}"
+                                           class="field-action field-action--soft plan-switch__btn">
+                                            <i class="ri-printer-line"></i> چاپ
+                                        </a>
+                                    </div>
+
+                                </div>
+                            @endforeach
+                        </div>
+
                     </div>
                 @endif
 
