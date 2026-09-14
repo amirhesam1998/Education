@@ -268,6 +268,99 @@
             border-color: #E0BABA;
         }
 
+        /* ===========================================================
+           Captcha
+        =========================================================== */
+        .captcha-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px 8px 8px;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: #FCFDFA;
+            transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
+            direction: ltr;
+        }
+
+        .captcha-box:focus-within {
+            border-color: var(--brand-600);
+            background: #fff;
+            box-shadow: 0 0 0 4px rgba(140, 198, 63, .12);
+        }
+
+        .captcha-box.is-invalid {
+            border-color: #D98B8B;
+            background: #FFFAFA;
+        }
+
+        .captcha-box__icon {
+            flex: 0 0 auto;
+            width: 34px;
+            height: 34px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            background: var(--glow);
+            color: var(--brand-700);
+            font-size: 1.05rem;
+        }
+
+        /* the sum itself — deliberately not selectable, so it cannot be copied
+           straight into the answer box */
+        .captcha-box__question {
+            flex: 0 0 auto;
+            padding: 8px 14px;
+            border-radius: 11px;
+            background: var(--brand-700);
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: .5px;
+            white-space: nowrap;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .captcha-box__input {
+            flex: 1 1 auto;
+            min-width: 0;
+            height: 40px;
+            padding: 0 12px;
+            border: 0;
+            border-radius: 11px;
+            outline: none;
+            background: transparent;
+            color: var(--ink-900);
+            font-family: inherit;
+            font-size: 14px;
+            direction: rtl;
+            font-weight: 600;
+        }
+
+        .captcha-box__input::placeholder {
+            color: var(--placeholder);
+            font-weight: 400;
+        }
+
+        /* strip the number spinners — they make no sense for an answer box */
+        .captcha-box__input::-webkit-outer-spin-button,
+        .captcha-box__input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .captcha-box__input[type="number"] {
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+
+        @media (max-width: 380px) {
+            .captcha-box__question { padding: 8px 10px; font-size: 14px; }
+            .captcha-box__icon { display: none; }
+        }
+
         /* conditional reveal (سایر) */
         .field-reveal {
             margin-top: 10px;
@@ -754,7 +847,6 @@
                 <img src="{{ asset('images/behrozan-logo.webp') }}" alt="بهروزان" class="brand-logo-img">
                 <div class="brand-greeting">درخواست تایم انتخاب رشته</div>
                 <div class="brand-sub">لطفاً اطلاعات زیر را تکمیل کنید تا همکاران ما با شما تماس بگیرند.</div>
-                <a class="field__hint" href="{{ route('login') }}">ورود به پنل مدیریت</a>
             </div>
 
             <form class="request-card" id="requestForm" method="post" action="{{ route('public.reservation-requests.store') }}">
@@ -774,7 +866,7 @@
                         @error('full_name')<p class="field-error">{{ $message }}</p>@enderror
                     </div>
                     <div class="field">
-                        <label class="field__label" for="major">رشته</label>
+                        <label class="field__label" for="major">رشته تحصیلی</label>
                         <select id="major" name="major" class="field-input">
                             <option value="">انتخاب کنید</option>
                             @foreach(['تجربی', 'انسانی', 'ریاضی', 'هنر', 'زبان'] as $major)
@@ -832,8 +924,21 @@
                     </div>
 
                     <div class="field field--full">
-                        <label class="field__label" for="captcha">عبارت امنیتی: <span class="ltr-num">{{ $captchaQuestion }}</span></label>
-                        <input type="number" id="captcha" name="captcha" class="field-input ltr" inputmode="numeric" autocomplete="off" required>
+                        <label class="field__label" for="captcha">
+                            عبارت امنیتی
+                            <span class="field__hint">(برای اطمینان از اینکه ربات نیستید)</span>
+                        </label>
+
+                        <div class="captcha-box @error('captcha') is-invalid @enderror">
+                            <span class="captcha-box__icon"><i class="ri-shield-check-line"></i></span>
+
+                            <span class="captcha-box__question ltr-num" aria-hidden="true">{{ $captchaQuestion }}</span>
+
+                            <input type="number" id="captcha" name="captcha" class="captcha-box__input ltr"
+                                   inputmode="numeric" autocomplete="off" placeholder="پاسخ"
+                                   aria-label="پاسخ عبارت امنیتی {{ $captchaQuestion }}" required>
+                        </div>
+
                         @error('captcha')<p class="field-error">{{ $message }}</p>@enderror
                     </div>
 
@@ -1011,15 +1116,7 @@
             removeBtn.addEventListener('click', clearFile);
             }
 
-            /* -------------------------------------------------
-               Input sanitising + validation
-
-               NOTE: this is a UX guard only. It stops typos and
-               junk characters in the browser. Whenever a backend
-               is wired up, every rule below MUST be repeated
-               server-side — client-side checks are trivial to
-               bypass and are not a security boundary.
-            ------------------------------------------------- */
+       
             const FA_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
 
             function toLatinDigits(value) {
