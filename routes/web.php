@@ -19,8 +19,9 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [PublicReservationRequestController::class, 'create'])->name('public.reservation-requests.create');
 Route::post('/', [PublicReservationRequestController::class, 'store'])->name('public.reservation-requests.store');
 
+Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+
 Route::middleware('guest')->group(function (): void {
-    Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->name('login.store');
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [AuthController::class, 'register'])->name('register.store');
