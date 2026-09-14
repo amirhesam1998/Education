@@ -754,11 +754,10 @@
                 <img src="{{ asset('images/behrozan-logo.webp') }}" alt="بهروزان" class="brand-logo-img">
                 <div class="brand-greeting">درخواست تایم انتخاب رشته</div>
                 <div class="brand-sub">لطفاً اطلاعات زیر را تکمیل کنید تا همکاران ما با شما تماس بگیرند.</div>
-                <a class="field__hint" href="{{ route('login') }}">ورود به پنل مدیریت</a>
             </div>
 
-            <form class="request-card" id="requestForm" method="post" action="{{ route('public.reservation-requests.store') }}">
-                @csrf
+            {{-- این فرم فعلاً بک‌اند ندارد: action و توکن CSRF عمداً اضافه نشده‌اند. --}}
+            <form class="request-card" id="requestForm" method="post" enctype="multipart/form-data">
 
                 <div class="card-title">
                     <i class="ri-graduation-cap-line"></i>
@@ -767,37 +766,36 @@
 
                 <div class="form-grid">
 
-                    <div class="field">
+                    <div class="field ">
                         <label class="field__label" for="full_name">نام و نام خانوادگی</label>
                         <input type="text" id="full_name" name="full_name" class="field-input" data-validate="name"
-                            maxlength="255" value="{{ old('full_name') }}" placeholder="نام و نام خانوادگی دانش‌آموز" autocomplete="name" spellcheck="false" required>
-                        @error('full_name')<p class="field-error">{{ $message }}</p>@enderror
+                            maxlength="60" placeholder="نام و نام خانوادگی دانش‌آموز" autocomplete="name"
+                            spellcheck="false">
+                        <p class="field-error" data-error-for="full_name" hidden></p>
                     </div>
-                    <div class="field">
-                        <label class="field__label" for="major">رشته</label>
-                        <select id="major" name="major" class="field-input">
-                            <option value="">انتخاب کنید</option>
-                            @foreach(['تجربی', 'انسانی', 'ریاضی', 'هنر', 'زبان'] as $major)
-                                <option value="{{ $major }}" @selected(old('major') === $major)>{{ $major }}</option>
-                            @endforeach
-                        </select>
-                        @error('major')<p class="field-error">{{ $message }}</p>@enderror
+                     <div class="field ">
+                        <label class="field__label" for="major">رشته تحصیلی</label>
+                        <input type="text" id="major" name="major" class="field-input" data-validate="name"
+                            maxlength="40" placeholder="مثلاً تجربی" spellcheck="false">
+                        <p class="field-error" data-error-for="major" hidden></p>
                     </div>
 
                     <div class="field">
                         <label class="field__label" for="student_phone">شماره تماس دانش‌آموز</label>
                         <input type="tel" id="student_phone" name="student_phone" class="field-input ltr"
                             data-validate="phone" inputmode="numeric" maxlength="11" placeholder="09xxxxxxxxx"
-                            value="{{ old('student_phone', old('phone_1')) }}" autocomplete="tel" required>
-                        @error('phone_1')<p class="field-error">{{ $message }}</p>@enderror
+                            autocomplete="tel">
+                        <p class="field-error" data-error-for="student_phone" hidden></p>
                     </div>
 
                     <div class="field">
                         <label class="field__label" for="parent_phone">شماره تماس اولیا</label>
                         <input type="tel" id="parent_phone" name="parent_phone" class="field-input ltr"
-                            data-validate="phone" inputmode="numeric" maxlength="11" placeholder="09xxxxxxxxx" value="{{ old('parent_phone', old('phone_2')) }}">
-                        @error('phone_2')<p class="field-error">{{ $message }}</p>@enderror
+                            data-validate="phone" inputmode="numeric" maxlength="11" placeholder="09xxxxxxxxx">
+                        <p class="field-error" data-error-for="parent_phone" hidden></p>
                     </div>
+
+                   
 
                     <div class="field field--full">
                         <label class="field__label">
@@ -805,36 +803,100 @@
                             <span class="field__hint">(می‌توانید چند مورد را انتخاب کنید)</span>
                         </label>
                         <div class="choice-grid">
-                            @foreach($examTypes as $examType)<label class="choice"><input type="checkbox" name="exam_type[]" value="{{ $examType }}" @checked(in_array($examType, (array) old('exam_type', []), true))><span class="choice__box">{{ $examType }}</span></label>@endforeach
+                            <label class="choice">
+                                <input type="checkbox" name="exam_type[]" value="تجربی">
+                                <span class="choice__box">تجربی</span>
+                            </label>
+                            <label class="choice">
+                                <input type="checkbox" name="exam_type[]" value="ریاضی">
+                                <span class="choice__box">ریاضی</span>
+                            </label>
+                            <label class="choice">
+                                <input type="checkbox" name="exam_type[]" value="انسانی">
+                                <span class="choice__box">انسانی</span>
+                            </label>
+                            <label class="choice">
+                                <input type="checkbox" name="exam_type[]" value="هنر">
+                                <span class="choice__box">هنر</span>
+                            </label>
+                            <label class="choice">
+                                <input type="checkbox" name="exam_type[]" value="زبان">
+                                <span class="choice__box">زبان</span>
+                            </label>
                         </div>
-                        @error('exam_type')<p class="field-error">{{ $message }}</p>@enderror
                     </div>
 
                     <div class="field field--full">
-                        <label class="field__label">سهمیه منطقه <span class="field__hint">(یک مورد را انتخاب کنید)</span></label>
+                        <label class="field__label">
+                            سهمیه منطقه
+                            <span class="field__hint">(یک مورد را انتخاب کنید)</span>
+                        </label>
                         <div class="choice-grid">
-                            @foreach(['منطقه یک', 'منطقه دو', 'منطقه سه', 'اطلاعی ندارم'] as $region)<label class="choice"><input type="radio" name="region" value="{{ $region }}" @checked(old('region') === $region)><span class="choice__box">{{ $region }}</span></label>@endforeach
+                            <label class="choice">
+                                <input type="radio" name="region" value="منطقه یک">
+                                <span class="choice__box">منطقه یک</span>
+                            </label>
+                            <label class="choice">
+                                <input type="radio" name="region" value="منطقه دو">
+                                <span class="choice__box">منطقه دو</span>
+                            </label>
+                            <label class="choice">
+                                <input type="radio" name="region" value="منطقه سه">
+                                <span class="choice__box">منطقه سه</span>
+                            </label>
+                            <label class="choice">
+                                <input type="radio" name="region" value="اطلاعی ندارم">
+                                <span class="choice__box">اطلاعی ندارم</span>
+                            </label>
                         </div>
-                        @error('region')<p class="field-error">{{ $message }}</p>@enderror
                     </div>
 
                     <div class="field field--full">
-                        <label class="field__label">آیا دارای سهمیه خاص هستید؟ <span class="field__hint">(یک مورد را انتخاب کنید)</span></label>
+                        <label class="field__label">
+                            آیا دارای سهمیه خاص هستید؟
+                            <span class="field__hint">(یک مورد را انتخاب کنید)</span>
+                        </label>
                         <div class="choice-grid choice-grid--wide">
-                            @foreach(['خیر، سهمیه خاص ندارم', 'ایثارگران ۵٪', 'ایثارگران ۲۵٪', 'رزمندگان', 'خانواده شهدا', 'بهیاران', 'سایر', 'اطلاعی ندارم'] as $quota)<label class="choice"><input type="radio" name="special_quota" value="{{ $quota }}" data-quota-other @checked(old('special_quota') === $quota)><span class="choice__box">{{ $quota }}</span></label>@endforeach
+                            <label class="choice">
+                                <input type="radio" name="special_quota" value="خیر، سهمیه خاص ندارم">
+                                <span class="choice__box">خیر، سهمیه خاص ندارم</span>
+                            </label>
+                            <label class="choice">
+                                <input type="radio" name="special_quota" value="ایثارگران ۵٪">
+                                <span class="choice__box">ایثارگران ۵٪</span>
+                            </label>
+                            <label class="choice">
+                                <input type="radio" name="special_quota" value="ایثارگران ۲۵٪">
+                                <span class="choice__box">ایثارگران ۲۵٪</span>
+                            </label>
+                            <label class="choice">
+                                <input type="radio" name="special_quota" value="رزمندگان">
+                                <span class="choice__box">رزمندگان</span>
+                            </label>
+                            <label class="choice">
+                                <input type="radio" name="special_quota" value="خانواده شهدا">
+                                <span class="choice__box">خانواده شهدا</span>
+                            </label>
+                            <label class="choice">
+                                <input type="radio" name="special_quota" value="بهیاران">
+                                <span class="choice__box">بهیاران</span>
+                            </label>
+                            <label class="choice">
+                                <input type="radio" name="special_quota" value="سایر" data-quota-other>
+                                <span class="choice__box">سایر</span>
+                            </label>
+                            <label class="choice">
+                                <input type="radio" name="special_quota" value="اطلاعی ندارم">
+                                <span class="choice__box">اطلاعی ندارم</span>
+                            </label>
                         </div>
+
                         <div class="field-reveal" data-quota-other-wrap hidden>
                             <label class="field__label" for="special_quota_other">عنوان سهمیه را وارد کنید</label>
-                            <input type="text" id="special_quota_other" name="special_quota_other" class="field-input" maxlength="60" value="{{ old('special_quota_other') }}" placeholder="عنوان سهمیه">
-                            @error('special_quota_other')<p class="field-error">{{ $message }}</p>@enderror
+                            <input type="text" id="special_quota_other" name="special_quota_other"
+                                class="field-input" maxlength="60" placeholder="عنوان سهمیه">
+                            <p class="field-error" data-error-for="special_quota_other" hidden></p>
                         </div>
-                        @error('special_quota')<p class="field-error">{{ $message }}</p>@enderror
-                    </div>
-
-                    <div class="field field--full">
-                        <label class="field__label" for="captcha">عبارت امنیتی: <span class="ltr-num">{{ $captchaQuestion }}</span></label>
-                        <input type="number" id="captcha" name="captcha" class="field-input ltr" inputmode="numeric" autocomplete="off" required>
-                        @error('captcha')<p class="field-error">{{ $message }}</p>@enderror
                     </div>
 
                 </div>
@@ -864,13 +926,14 @@
     </div>
 
     {{-- Success modal --}}
-    <div class="success-modal {{ session('success') ? 'is-open' : '' }}" id="successModal" @unless(session('success')) hidden @endunless>
+    <div class="success-modal" id="successModal" hidden>
         <div class="success-modal__card" role="dialog" aria-modal="true" aria-labelledby="successTitle"
             aria-describedby="successText">
             <div class="success-modal__icon"><i class="ri-check-line"></i></div>
             <h2 class="success-modal__title" id="successTitle">دانش‌آموز گرامی</h2>
             <p class="success-modal__text" id="successText">
-                {{ session('success', 'درخواست شما با موفقیت ثبت شد. آموزشگاه پس از بررسی با شما تماس خواهد گرفت.') }}
+                درخواست شما ثبت شد.<br>
+                برای هماهنگی بیشتر با شما تماس گرفته خواهد شد.
             </p>
 
             <div class="signature signature--modal">
@@ -1260,7 +1323,9 @@
             }
 
             form.addEventListener('submit', function (event) {
-                if (!validateForm()) event.preventDefault();
+                // No backend yet — validate, then show the confirmation modal instead of posting.
+                event.preventDefault();
+                if (validateForm()) openModal();
             });
 
             closeBtn.addEventListener('click', closeModal);

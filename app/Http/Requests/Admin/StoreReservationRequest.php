@@ -52,6 +52,7 @@ class StoreReservationRequest extends FormRequest
             'payment_card_id' => [Rule::excludeIf(! $prepaymentRequired), Rule::requiredIf($prepaymentRequired), 'nullable', 'exists:payment_cards,id'],
             'payment_deadline_at' => [Rule::excludeIf(! $prepaymentRequired), 'nullable', 'date', 'after:now'],
             'admin_note' => ['nullable', 'string', 'max:5000'],
+            'reservation_request_id' => ['nullable', 'integer', 'exists:reservation_requests,id'],
         ];
     }
 

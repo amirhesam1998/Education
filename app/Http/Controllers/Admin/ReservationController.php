@@ -15,13 +15,16 @@ use App\Http\Requests\Admin\UpdateReservationRequest;
 use App\Models\Advisor;
 use App\Models\PaymentCard;
 use App\Models\Reservation;
+use App\Models\ReservationRequest;
 use App\Models\ReservationDocument;
 use App\Models\Student;
+use App\Models\StudentPhone;
 use App\Models\ReservationFollowUp;
 use App\Models\ReservationSlot;
 use App\Services\PaymentApprovalService;
 use App\Services\PublicReservationLinkService;
 use App\Services\ReservationService;
+use App\Services\ReservationRequestService;
 use App\Services\ReservationDocumentService;
 use App\Services\ReservationFollowUpService;
 use App\Services\SettingsService;
@@ -31,6 +34,7 @@ use App\Support\PersianDate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
@@ -74,9 +78,36 @@ class ReservationController extends Controller
     public function create(Request $request, SlotAvailabilityService $availability, SettingsService $settings): View
     {
         $slots = $this->bookableSlots();
+        $sourceRequest = $request->integer('reservation_request')
+            ? ReservationRequest::query()->findOrFail($request->integer('reservation_request'))
+            : null;
+
+        if ($sourceRequest) {
+            abort_unless($request->user()->can('convert_reservation_requests'), 403);
+            abort_unless($sourceRequest->isApproved(), 422, 'فقط درخواست تأییدشده قابل تبدیل به رزرو است.');
+        }
+
+        $reservation = new Reservation(['slot_id' => $request->integer('slot_id') ?: null]);
+
+        if ($sourceRequest) {
+            $student = new Student([
+                'full_name' => $sourceRequest->full_name,
+                'major' => $sourceRequest->major,
+                'region' => in_array($sourceRequest->region, Student::regionOptions(), true) ? $sourceRequest->region : null,
+                'score' => $sourceRequest->score,
+                'exam_type' => $sourceRequest->exam_type,
+            ]);
+            $student->setRelation('phones', new Collection(array_filter([
+                new StudentPhone(['phone' => $sourceRequest->phone_1, 'is_primary' => true]),
+                $sourceRequest->phone_2 ? new StudentPhone(['phone' => $sourceRequest->phone_2, 'is_primary' => false]) : null,
+            ])));
+            $reservation->setRelation('student', $student);
+            $reservation->admin_note = $sourceRequest->description;
+        }
 
         return view('admin.reservations.create', [
-            'reservation' => new Reservation(['slot_id' => $request->integer('slot_id') ?: null]),
+            'reservation' => $reservation,
+            'reservationRequest' => $sourceRequest,
             'availableSlots' => $slots,
             'slotIntervals' => $this->slotIntervals($slots, $availability),
             'slotDateGroups' => $availability->groupedIntervalsForSlots($slots),
@@ -90,13 +121,28 @@ class ReservationController extends Controller
         ]);
     }
 
-    public function store(StoreReservationRequest $request, ReservationService $reservations): RedirectResponse
+    public function store(StoreReservationRequest $request, ReservationService $reservations, ReservationRequestService $reservationRequests): RedirectResponse
     {
-        $reservation = $reservations->createFromAdmin($request->validated());
+        $data = $request->validated();
+        $sourceRequestId = $data['reservation_request_id'] ?? null;
+        $reservation = $sourceRequestId
+            ? $this->convertReservationRequest($sourceRequestId, $data, $request, $reservationRequests)
+            : $reservations->createFromAdmin($data);
 
         return redirect()
             ->route('admin.reservations.show', $reservation)
             ->with('success', 'رزرو با موفقیت ثبت شد و لینک امن ساخته شد.');
+    }
+
+    private function convertReservationRequest(int $requestId, array $data, Request $request, ReservationRequestService $reservationRequests): Reservation
+    {
+        abort_unless($request->user()->can('convert_reservation_requests'), 403);
+
+        return $reservationRequests->convertToReservation(
+            ReservationRequest::query()->findOrFail($requestId),
+            $data,
+            $request->user(),
+        );
     }
 
     public function show(Reservation $reservation, SlotAvailabilityService $availability, StudentPrivacyService $privacy): View

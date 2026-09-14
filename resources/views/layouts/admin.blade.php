@@ -51,6 +51,12 @@
                         <i class="ri-dashboard-3-line"></i> داشبورد
                     </a>
                 @endcan
+                @can('view_operator_field_selection_stats')
+                    <a class="nav-link {{ request()->routeIs('admin.reports.operator-field-selection.*') ? 'active' : '' }}"
+                        href="{{ route('admin.reports.operator-field-selection.index') }}">
+                        <i class="ri-bar-chart-box-line"></i> آمار انتخاب رشته اپراتورها
+                    </a>
+                @endcan
                 @can('view_slots')
                     <a class="nav-link {{ request()->routeIs('admin.slots.*') ? 'active' : '' }}"
                         href="{{ route('admin.slots.index') }}">
@@ -61,6 +67,12 @@
                     <a class="nav-link {{ request()->routeIs('admin.reservations.*') ? 'active' : '' }}"
                         href="{{ route('admin.reservations.index') }}">
                         <i class="ri-file-list-3-line"></i> رزروها
+                    </a>
+                @endcan
+                @can('view_reservation_requests')
+                    <a class="nav-link {{ request()->routeIs('admin.reservation-requests.*') ? 'active' : '' }}"
+                        href="{{ route('admin.reservation-requests.index') }}">
+                        <i class="ri-user-add-line"></i> درخواست‌های رزرو
                     </a>
                 @endcan
                 @can('view_payments')

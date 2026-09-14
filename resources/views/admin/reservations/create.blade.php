@@ -88,6 +88,10 @@
 
         <form method="post" action="{{ route('admin.reservations.store') }}">
 
+            @if($reservationRequest ?? null)
+                <input type="hidden" name="reservation_request_id" value="{{ $reservationRequest->id }}">
+            @endif
+
             @include('admin.reservations._form', [
                 'mode' => 'create'
             ])

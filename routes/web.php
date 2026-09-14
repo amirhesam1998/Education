@@ -2,8 +2,10 @@
 
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\FieldSelectionController;
+use App\Http\Controllers\Admin\OperatorFieldSelectionStatsController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\ReservationController;
+use App\Http\Controllers\Admin\ReservationRequestController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\SlotController;
@@ -11,9 +13,11 @@ use App\Http\Controllers\Admin\StudyProgramController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PublicAccess\PublicReservationController;
+use App\Http\Controllers\PublicAccess\PublicReservationRequestController;
 use Illuminate\Support\Facades\Route;
 
-Route::redirect('/', '/admin/dashboard');
+Route::get('/', [PublicReservationRequestController::class, 'create'])->name('public.reservation-requests.create');
+Route::post('/', [PublicReservationRequestController::class, 'store'])->name('public.reservation-requests.store');
 
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
@@ -28,6 +32,13 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function (): v
     Route::get('/dashboard', DashboardController::class)
         ->middleware('permission:view_dashboard')
         ->name('dashboard');
+
+    Route::get('/reports/operator-field-selection', [OperatorFieldSelectionStatsController::class, 'index'])
+        ->middleware('permission:view_operator_field_selection_stats')
+        ->name('reports.operator-field-selection.index');
+    Route::get('/reports/operator-field-selection/{operator}', [OperatorFieldSelectionStatsController::class, 'show'])
+        ->middleware('permission:view_operator_field_selection_stats')
+        ->name('reports.operator-field-selection.show');
 
     Route::post('slots/day-deletion-preview', [SlotController::class, 'previewDayDeletion'])
         ->middleware('permission:delete_slots')
@@ -48,6 +59,22 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function (): v
         ->middlewareFor(['index', 'show'], 'permission:view_reservations')
         ->middlewareFor(['create', 'store'], 'permission:create_reservations')
         ->middlewareFor(['edit', 'update'], 'permission:update_reservations');
+
+    Route::get('reservation-requests', [ReservationRequestController::class, 'index'])
+        ->middleware('permission:view_reservation_requests')
+        ->name('reservation-requests.index');
+    Route::get('reservation-requests/{reservationRequest}', [ReservationRequestController::class, 'show'])
+        ->middleware('permission:view_reservation_requests')
+        ->name('reservation-requests.show');
+    Route::post('reservation-requests/{reservationRequest}/approve', [ReservationRequestController::class, 'approve'])
+        ->middleware('permission:approve_reservation_requests')
+        ->name('reservation-requests.approve');
+    Route::post('reservation-requests/{reservationRequest}/reject', [ReservationRequestController::class, 'reject'])
+        ->middleware('permission:reject_reservation_requests')
+        ->name('reservation-requests.reject');
+    Route::post('reservation-requests/{reservationRequest}/convert', [ReservationRequestController::class, 'convert'])
+        ->middleware('permission:convert_reservation_requests')
+        ->name('reservation-requests.convert');
     Route::post('/reservations/{reservation}/cancel', [ReservationController::class, 'cancel'])
         ->middleware('permission:cancel_reservations')
         ->name('reservations.cancel');

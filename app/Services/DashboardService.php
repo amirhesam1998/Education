@@ -8,6 +8,7 @@ use App\Enums\SlotStatus;
 use App\Models\Reservation;
 use App\Models\ReservationPayment;
 use App\Models\ReservationSlot;
+use App\Models\ReservationRequest;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -113,6 +114,11 @@ class DashboardService
         return Reservation::query()
             ->whereIn('status', ReservationStatus::activeValues())
             ->count();
+    }
+
+    public function countPendingReservationRequests(): int
+    {
+        return ReservationRequest::query()->where('status', ReservationRequest::STATUS_PENDING)->count();
     }
 
     public function getCreatorPaymentSummary(User $user): array

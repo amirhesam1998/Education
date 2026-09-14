@@ -21,6 +21,10 @@ class PermissionRoleSeeder extends Seeder
         'view_reservations',
         'create_reservations',
         'update_reservations',
+        'view_reservation_requests',
+        'approve_reservation_requests',
+        'reject_reservation_requests',
+        'convert_reservation_requests',
         'manage_field_selection',
         'view_field_selection',
         'view_reservation_sensitive_info',
@@ -30,6 +34,7 @@ class PermissionRoleSeeder extends Seeder
         'view_student_public_link',
         'view_reservation_documents',
         'view_consultant_stats',
+        'view_operator_field_selection_stats',
         'cancel_reservations',
         'change_reservation_slot',
         'confirm_reservations',
@@ -68,6 +73,8 @@ class PermissionRoleSeeder extends Seeder
                 'view_reservations',
                 'create_reservations',
                 'update_reservations',
+                'view_reservation_requests',
+                'convert_reservation_requests',
                 'view_reservation_sensitive_info',
                 'view_student_personal_data',
                 'view_reservation_payment_info',
@@ -104,5 +111,8 @@ class PermissionRoleSeeder extends Seeder
 
             $role->syncPermissions($permissions);
         }
+
+        // This role is optional in installations that scope dashboards by creator.
+        Role::query()->where('name', 'Creator')->first()?->givePermissionTo('view_operator_field_selection_stats');
     }
 }

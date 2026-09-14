@@ -54,7 +54,7 @@ class FieldSelectionService
                 'updated_by' => $user->id,
             ]);
 
-            $this->activityLog->log('field_selection_plan_created', $reservation, $user, null, ['plan_id' => $plan->id, 'version' => $plan->version]);
+            $this->activityLog->log('field_selection_plan_created', $reservation, $user, null, $this->planActivityData($plan, ['version' => $plan->version]));
 
             return $plan;
         });
@@ -108,7 +108,7 @@ class FieldSelectionService
                 'updated_by' => $user->id,
             ]);
             $this->activityLog->log('field_selection_exam_type_selected', $reservation, $user, null, ['plan_id' => $plan->id, 'exam_type_key' => $examTypeKey]);
-            $this->activityLog->log('field_selection_plan_created', $reservation, $user, null, ['plan_id' => $plan->id, 'exam_type_key' => $examTypeKey]);
+            $this->activityLog->log('field_selection_plan_created', $reservation, $user, null, $this->planActivityData($plan));
 
             return $plan;
         });
@@ -147,7 +147,7 @@ class FieldSelectionService
 
             $item = $plan->items()->create([...$data, 'priority_order' => $count + 1]);
             $plan->forceFill(['updated_by' => $user->id])->save();
-            $this->activityLog->log('field_selection_item_added', $plan->reservation, $user, null, ['plan_id' => $plan->id, 'item_id' => $item->id]);
+            $this->activityLog->log('field_selection_item_added', $plan->reservation, $user, null, $this->planActivityData($plan, ['item_id' => $item->id]));
 
             return $item;
         });
@@ -169,7 +169,7 @@ class FieldSelectionService
         $old = $item->only(self::ITEM_FIELDS);
         $item->update($data);
         $item->plan->forceFill(['updated_by' => $user->id])->save();
-        $this->activityLog->log('field_selection_item_updated', $item->plan->reservation, $user, $old, $item->only(self::ITEM_FIELDS));
+        $this->activityLog->log('field_selection_item_updated', $item->plan->reservation, $user, $old, $this->planActivityData($item->plan, [...$item->only(self::ITEM_FIELDS), 'item_id' => $item->id]));
 
         return $item;
     }
@@ -204,11 +204,11 @@ class FieldSelectionService
 
                 $old = $item->only(array_keys($changes));
                 $item->update($changes);
-                $this->activityLog->log('field_selection_item_updated', $plan->reservation, $user, $old, $changes);
+                $this->activityLog->log('field_selection_item_updated', $plan->reservation, $user, $old, $this->planActivityData($plan, [...$changes, 'item_id' => $item->id]));
             }
 
             $plan->forceFill(['updated_by' => $user->id])->save();
-            $this->activityLog->log('field_selection_plan_updated', $plan->reservation, $user, null, ['plan_id' => $plan->id]);
+            $this->activityLog->log('field_selection_plan_updated', $plan->reservation, $user, null, $this->planActivityData($plan));
         });
     }
 
@@ -310,7 +310,7 @@ class FieldSelectionService
             $item->delete();
             $this->normalizeOrders($plan);
             $plan->forceFill(['updated_by' => $user->id])->save();
-            $this->activityLog->log('field_selection_item_deleted', $plan->reservation, $user, null, ['plan_id' => $plan->id, 'item_id' => $item->id]);
+            $this->activityLog->log('field_selection_item_deleted', $plan->reservation, $user, null, $this->planActivityData($plan, ['item_id' => $item->id]));
         });
     }
 
@@ -336,7 +336,7 @@ class FieldSelectionService
             }
 
             $plan->forceFill(['updated_by' => $user->id])->save();
-            $this->activityLog->log('field_selection_reordered', $plan->reservation, $user, null, ['plan_id' => $plan->id]);
+            $this->activityLog->log('field_selection_reordered', $plan->reservation, $user, null, $this->planActivityData($plan));
         });
     }
 
@@ -472,7 +472,7 @@ class FieldSelectionService
                 $newPlan->items()->create($item->only(['priority_order', ...self::ITEM_FIELDS]));
             }
 
-            $this->activityLog->log('field_selection_new_version_created', $plan->reservation, $user, null, ['plan_id' => $newPlan->id, 'version' => $newPlan->version]);
+            $this->activityLog->log('field_selection_new_version_created', $plan->reservation, $user, null, $this->planActivityData($newPlan, ['version' => $newPlan->version]));
 
             return $newPlan;
         });
@@ -485,6 +485,12 @@ class FieldSelectionService
             ->map(fn ($value) => is_string($value) ? trim($value) : $value)
             ->map(fn ($value) => $value === '' ? null : $value)
             ->all();
+    }
+
+    /** @return array<string, mixed> */
+    private function planActivityData(FieldSelectionPlan $plan, array $data = []): array
+    {
+        return [...$data, 'plan_id' => $plan->id, 'exam_type_key' => $plan->exam_type_key];
     }
 
     private function programUniversityType(StudyProgram $program): ?string

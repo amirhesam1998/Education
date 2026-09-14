@@ -167,6 +167,16 @@
             </div>
             <div class="stat-icon tone-danger"><i class="ri-user-heart-line"></i></div>
         </div>
+        @can('view_reservation_requests')
+            <a class="stat-card text-decoration-none" href="{{ route('admin.reservation-requests.index', ['status' => 'pending']) }}">
+                <div>
+                    <div class="stat-value">{{ \App\Support\PersianDate::number($pendingReservationRequests) }}</div>
+                    <div class="stat-label">درخواست‌های رزرو در انتظار بررسی</div>
+                    <div class="stat-trend neutral"><i class="ri-arrow-left-line"></i> مشاهده درخواست‌ها</div>
+                </div>
+                <div class="stat-icon tone-warn"><i class="ri-user-add-line"></i></div>
+            </a>
+        @endcan
     </div>
 
     @if($canViewPaymentInfo)<div class="card mb-4">
@@ -184,6 +194,13 @@
         <div class="card-header"><i class="ri-bar-chart-grouped-line align-middle text-muted me-1"></i> آمار مشاوره‌های انجام‌شده</div>
         <div class="table-responsive"><table class="table mb-0"><thead><tr><th>مشاور</th><th>تعداد مشاوره انجام‌شده</th></tr></thead><tbody>@forelse($completedConsultationStats as $stat)<tr><td>{{ $stat['advisor_name'] }}</td><td>{{ \App\Support\PersianDate::number($stat['completed_count']) }}</td></tr>@empty<tr><td colspan="2" class="text-center text-muted py-4">هنوز مشاوره انجام‌شده‌ای ثبت نشده است.</td></tr>@endforelse</tbody></table></div>
     </div>
+
+    @can('view_operator_field_selection_stats')
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center"><span><i class="ri-bar-chart-box-line align-middle text-muted me-1"></i> آمار انتخاب رشته اپراتورها</span><a href="{{ route('admin.reports.operator-field-selection.index') }}" class="small">مشاهده گزارش کامل</a></div>
+            <div class="card-body"><div class="stat-grid mb-0"><div class="stat-card"><div><div class="stat-value">{{ \App\Support\PersianDate::number(collect($operatorFieldSelectionStats)->sum('created_plans_count')) }}</div><div class="stat-label">ایجاد شده</div></div><div class="stat-icon tone-brand"><i class="ri-add-circle-line"></i></div></div><div class="stat-card"><div><div class="stat-value">{{ \App\Support\PersianDate::number(collect($operatorFieldSelectionStats)->sum('edit_actions_count')) }}</div><div class="stat-label">ویرایش شده</div></div><div class="stat-icon tone-info"><i class="ri-edit-line"></i></div></div></div></div>
+        </div>
+    @endcan
 
     <div class="panel-row">
         {{-- Recent reservations table --}}
