@@ -40,7 +40,7 @@ class StorePublicReservationRequest extends FormRequest
             'exam_type.*' => array_filter(['required', 'string', 'max:255', $examTypes ? Rule::in($examTypes) : null]),
             'region' => ['required', Rule::in(['منطقه یک', 'منطقه دو', 'منطقه سه', 'اطلاعی ندارم'])],
             'region_quota' => ['nullable', Rule::in(array_keys(ReservationRequest::regionQuotaOptions()))],
-            'special_quota' => ['nullable', Rule::in(['خیر، سهمیه خاص ندارم', 'ایثارگران ۵٪', 'ایثارگران ۲۵٪', 'رزمندگان', 'خانواده شهدا', 'بهیاران', 'سایر', 'اطلاعی ندارم'])],
+            'special_quota' => ['nullable', 'string', 'max:100'],
             'special_quota_other' => ['nullable', 'string', 'max:60', Rule::requiredIf($this->input('special_quota') === 'سایر')],
             'captcha' => ['required', 'integer', function (string $attribute, mixed $value, \Closure $fail): void {
                 if ((int) $value !== (int) session('public_reservation_request_captcha')) {
