@@ -396,7 +396,8 @@
 
         /* longer labels (سهمیه خاص) need roomier chips */
         .choice-grid--wide {
-            grid-template-columns: repeat(auto-fill, minmax(158px, 1fr));
+            /* grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); */
+            grid-template-columns: repeat(4, minmax(0, 1fr));
         }
 
         .choice {
@@ -913,7 +914,7 @@
                     <div class="field field--full">
                         <label class="field__label">آیا دارای سهمیه خاص هستید؟ <span class="field__hint">(یک مورد را انتخاب کنید)</span></label>
                         <div class="choice-grid choice-grid--wide">
-                            @foreach(['خیر، سهمیه خاص ندارم', 'ایثارگران ۵٪', 'ایثارگران ۲۵٪', 'رزمندگان', 'خانواده شهدا', 'بهیاران', 'سایر', 'اطلاعی ندارم'] as $quota)<label class="choice"><input type="radio" name="special_quota" value="{{ $quota }}" data-quota-other @checked(old('special_quota') === $quota)><span class="choice__box">{{ $quota }}</span></label>@endforeach
+                            @foreach([' سهمیه خاص ندارم', ' ۵٪', ' ۲۵٪', 'سایر'] as $quota)<label class="choice"><input type="radio" name="special_quota" value="{{ $quota }}" data-quota-other @checked(old('special_quota') === $quota)><span class="choice__box">{{ $quota }}</span></label>@endforeach
                         </div>
                         <div class="field-reveal" data-quota-other-wrap hidden>
                             <label class="field__label" for="special_quota_other">عنوان سهمیه را وارد کنید</label>
