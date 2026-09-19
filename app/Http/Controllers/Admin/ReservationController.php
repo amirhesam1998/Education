@@ -12,6 +12,7 @@ use App\Http\Requests\Admin\ChangeReservationSlotRequest;
 use App\Http\Requests\Admin\StoreReservationFollowUpRequest;
 use App\Http\Requests\Admin\StoreReservationRequest;
 use App\Http\Requests\Admin\UpdateReservationRequest;
+use App\Http\Requests\Admin\UpdateReservationExtraInfoRequest;
 use App\Models\Advisor;
 use App\Models\PaymentCard;
 use App\Models\Reservation;
@@ -24,6 +25,7 @@ use App\Models\ReservationSlot;
 use App\Services\PaymentApprovalService;
 use App\Services\PublicReservationLinkService;
 use App\Services\ReservationService;
+use App\Services\ReservationExtraInfoService;
 use App\Services\ReservationRequestService;
 use App\Services\ReservationDocumentService;
 use App\Services\ReservationFollowUpService;
@@ -145,7 +147,7 @@ class ReservationController extends Controller
         );
     }
 
-    public function show(Reservation $reservation, SlotAvailabilityService $availability, StudentPrivacyService $privacy): View
+    public function show(Reservation $reservation, SlotAvailabilityService $availability, StudentPrivacyService $privacy, SettingsService $settings): View
     {
         $user = request()->user();
         $canViewReservationSensitiveInfo = $privacy->canViewReservationSensitiveInfo($user);
@@ -166,6 +168,7 @@ class ReservationController extends Controller
             $canViewReservationSensitiveInfo ? 'activityLogs.user' : null,
             'fieldSelectionPlans.items',
             'fieldSelectionPlans.creator',
+            'academicInfo',
         ]));
         $slots = $this->bookableSlots($reservation->slot);
         $followUp = $reservation->activeFollowUp;
@@ -186,7 +189,22 @@ class ReservationController extends Controller
             'canViewReservationDocuments' => $canViewReservationDocuments,
             'educationalSummary' => $privacy->educationalSummary($reservation, $user),
             'publicUrl' => $canViewStudentPublicLink ? route('public.reservations.show', $reservation->public_token) : null,
+            'majors' => $settings->get('majors', []),
         ]);
+    }
+
+    public function updateExtraInfo(UpdateReservationExtraInfoRequest $request, Reservation $reservation, ReservationExtraInfoService $extraInfo, StudentPrivacyService $privacy): RedirectResponse
+    {
+        $data = $request->validated();
+        $canUpdatePhone = $privacy->canViewStudentContactData($request->user());
+
+        if (! $canUpdatePhone) {
+            unset($data['phone']);
+        }
+
+        $extraInfo->updateForReservation($reservation, $data, $request->user(), $canUpdatePhone);
+
+        return back()->with('success', 'اطلاعات تکمیلی با موفقیت ذخیره شد.');
     }
 
     public function edit(Reservation $reservation, SettingsService $settings, SlotAvailabilityService $availability): View

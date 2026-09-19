@@ -612,6 +612,55 @@
                 </div>
             </div>
 
+            {{-- Student extra information --}}
+            @php
+                $student = $reservation->student;
+                $academicInfo = $reservation->academicInfo;
+                $displayValue = fn ($value) => filled($value) ? $value : 'ثبت نشده';
+            @endphp
+            <div class="card card-section">
+                <div class="card-header"><i class="ri-profile-line"></i> اطلاعات تکمیلی دانش‌آموز</div>
+                <div class="card-body">
+                    <div class="info-grid">
+                        <div class="info-item"><div class="info-label">نام و نام خانوادگی</div><div class="info-value">{{ $displayValue($student?->full_name) }}</div></div>
+                        <div class="info-item"><div class="info-label">رشته</div><div class="info-value">{{ $displayValue($student?->major) }}</div></div>
+                        <div class="info-item"><div class="info-label">رتبه</div><div class="info-value">{{ $displayValue($academicInfo?->rank) }}</div></div>
+                        <div class="info-item"><div class="info-label">منطقه</div><div class="info-value">{{ $displayValue($student?->region) }}</div></div>
+                        <div class="info-item"><div class="info-label">رتبه کشوری</div><div class="info-value">{{ $displayValue($academicInfo?->national_rank) }}</div></div>
+                        <div class="info-item"><div class="info-label">نمره کل</div><div class="info-value">{{ $displayValue($academicInfo?->total_score) }}</div></div>
+                        <div class="info-item"><div class="info-label">تراز کنکور</div><div class="info-value">{{ $displayValue($student?->score) }}</div></div>
+                        <div class="info-item"><div class="info-label">تراز نهایی</div><div class="info-value">{{ $displayValue($academicInfo?->final_score) }}</div></div>
+                        @if($canViewPersonalData)<div class="info-item"><div class="info-label">تلفن</div><div class="info-value ltr">{{ $displayValue($student?->primaryPhone()?->phone) }}</div></div>@endif
+                        <div class="info-item"><div class="info-label">رشته قبولی سراسری</div><div class="info-value">{{ $displayValue($academicInfo?->accepted_national_field) }}</div></div>
+                        <div class="info-item"><div class="info-label">رشته قبولی آزاد / غیرانتفاعی / پیام نور</div><div class="info-value">{{ $displayValue($academicInfo?->accepted_azad_other_field) }}</div></div>
+                    </div>
+                    @unless($canViewPersonalData)<div class="text-muted small mt-3">شما دسترسی مشاهده اطلاعات تماس دانش‌آموز را ندارید.</div>@endunless
+
+                    @can('update_reservations')
+                        <details class="mt-3">
+                            <summary class="btn btn-outline-primary">ویرایش اطلاعات تکمیلی</summary>
+                            <form method="post" action="{{ route('admin.reservations.extra-info.update', $reservation) }}" class="mt-3">
+                                @csrf @method('put')
+                                <div class="row g-3">
+                                    <div class="col-md-4"><label class="form-label">نام و نام خانوادگی</label><input name="full_name" value="{{ old('full_name', $student?->full_name) }}" class="form-control"></div>
+                                    <div class="col-md-4"><label class="form-label">رشته</label>@if(! empty($majors))<select name="major" class="form-select"><option value="">انتخاب کنید</option>@foreach($majors as $major)<option value="{{ $major }}" @selected(old('major', $student?->major) === $major)>{{ $major }}</option>@endforeach</select>@else<input name="major" value="{{ old('major', $student?->major) }}" class="form-control">@endif</div>
+                                    <div class="col-md-4"><label class="form-label">رتبه</label><input name="rank" value="{{ old('rank', $academicInfo?->rank) }}" class="form-control"></div>
+                                    <div class="col-md-4"><label class="form-label">منطقه</label><select name="region" class="form-select"><option value="">انتخاب کنید</option>@foreach(\App\Models\Student::regionOptions() as $region)<option value="{{ $region }}" @selected(old('region', $student?->region) === $region)>{{ $region }}</option>@endforeach</select></div>
+                                    <div class="col-md-4"><label class="form-label">رتبه کشوری</label><input name="national_rank" value="{{ old('national_rank', $academicInfo?->national_rank) }}" class="form-control"></div>
+                                    <div class="col-md-4"><label class="form-label">نمره کل</label><input name="total_score" value="{{ old('total_score', $academicInfo?->total_score) }}" class="form-control"></div>
+                                    <div class="col-md-4"><label class="form-label">تراز کنکور</label><input name="konkur_score" value="{{ old('konkur_score', $student?->score) }}" class="form-control"></div>
+                                    <div class="col-md-4"><label class="form-label">تراز نهایی</label><input name="final_score" value="{{ old('final_score', $academicInfo?->final_score) }}" class="form-control"></div>
+                                    @if($canViewPersonalData)<div class="col-md-4"><label class="form-label">تلفن</label><input name="phone" value="{{ old('phone', $student?->primaryPhone()?->phone) }}" class="form-control ltr"></div>@endif
+                                    <div class="col-md-6"><label class="form-label">رشته قبولی سراسری</label><input name="accepted_national_field" value="{{ old('accepted_national_field', $academicInfo?->accepted_national_field) }}" class="form-control"></div>
+                                    <div class="col-md-6"><label class="form-label">رشته قبولی آزاد / غیرانتفاعی / پیام نور</label><input name="accepted_azad_other_field" value="{{ old('accepted_azad_other_field', $academicInfo?->accepted_azad_other_field) }}" class="form-control"></div>
+                                </div>
+                                <div class="d-flex gap-2 mt-3"><button class="btn btn-primary">ذخیره اطلاعات</button><a class="btn btn-outline-secondary" href="{{ route('admin.reservations.show', $reservation) }}">انصراف</a></div>
+                            </form>
+                        </details>
+                    @endcan
+                </div>
+            </div>
+
             @if(in_array($reservation->status, [\App\Enums\ReservationStatus::Confirmed, \App\Enums\ReservationStatus::Completed], true))
                 @php($selectionPlans = $reservation->fieldSelectionPlans->whereNull('deleted_at'))
                 <div class="card card-section">

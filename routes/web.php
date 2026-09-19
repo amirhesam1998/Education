@@ -82,6 +82,9 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function (): v
     Route::post('/reservations/{reservation}/change-slot', [ReservationController::class, 'changeSlot'])
         ->middleware('permission:change_reservation_slot')
         ->name('reservations.change-slot');
+    Route::put('/reservations/{reservation}/extra-info', [ReservationController::class, 'updateExtraInfo'])
+        ->middleware('permission:update_reservations')
+        ->name('reservations.extra-info.update');
     Route::post('/reservations/{reservation}/follow-up', [ReservationController::class, 'storeFollowUp'])
         ->middleware('permission:update_reservations')
         ->name('reservations.follow-up.store');

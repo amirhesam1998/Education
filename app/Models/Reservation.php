@@ -62,6 +62,11 @@ class Reservation extends Model
         return $this->belongsTo(PaymentCard::class);
     }
 
+    public function academicInfo(): HasOne
+    {
+        return $this->hasOne(StudentAcademicInfo::class);
+    }
+
     public function activityLogs(): HasMany
     {
         return $this->hasMany(ActivityLog::class);

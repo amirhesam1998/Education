@@ -1,0 +1,241 @@
+name: Laravel CI and production deploy
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: Validate and test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_sqlite, sqlite3
+          coverage: none
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Prepare Laravel environment
+        run: |
+          cp .env.example .env
+
+      - name: Install PHP dependencies
+        run: |
+          composer install \
+            --no-interaction \
+            --prefer-dist \
+            --no-progress
+
+      - name: Generate application key
+        run: php artisan key:generate --force
+
+      - name: Validate PHP syntax
+        run: |
+          find app bootstrap config database routes tests \
+            -name '*.php' \
+            -print0 | xargs -0 -n1 php -l
+
+      - name: Run tests
+        env:
+          APP_ENV: testing
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ':memory:'
+        run: php artisan test
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Vite assets
+        run: npm run build
+
+      - name: Upload Vite build
+        uses: actions/upload-artifact@v4
+        with:
+          name: vite-build
+          path: public/build
+          if-no-files-found: error
+          retention-days: 1
+
+  deploy:
+    name: Deploy to production
+    needs: ci
+    runs-on: ubuntu-latest
+
+    environment:
+      name: production
+      url: https://moshaver-moradi.ir
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Download Vite build
+        uses: actions/download-artifact@v4
+        with:
+          name: vite-build
+          path: public/build
+
+      - name: Configure SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+
+          install -m 700 -d ~/.ssh
+
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Create deployment package
+        run: |
+          set -euo pipefail
+
+          tar \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='.env' \
+            --exclude='node_modules' \
+            --exclude='vendor' \
+            --exclude='storage/logs/*' \
+            --exclude='storage/framework/cache/*' \
+            --exclude='storage/framework/sessions/*' \
+            --exclude='storage/framework/views/*' \
+            -czf /tmp/moshaver-deploy.tar.gz .
+
+      - name: Upload deployment package
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+
+          scp \
+            -P "$DEPLOY_PORT" \
+            -o BatchMode=yes \
+            /tmp/moshaver-deploy.tar.gz \
+            "$DEPLOY_USER@$DEPLOY_HOST:/tmp/moshaver-deploy.tar.gz"
+
+      - name: Deploy application
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+
+          ssh \
+            -p "$DEPLOY_PORT" \
+            -o BatchMode=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "DEPLOY_PATH='$DEPLOY_PATH' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          cd "$DEPLOY_PATH"
+
+          cleanup() {
+            php artisan up >/dev/null 2>&1 || true
+          }
+
+          trap cleanup EXIT
+
+          echo "========================================"
+          echo "Putting application into maintenance..."
+          echo "========================================"
+
+          php artisan down || true
+
+          echo "========================================"
+          echo "Extracting new application files..."
+          echo "========================================"
+
+          tar -xzf /tmp/moshaver-deploy.tar.gz -C "$DEPLOY_PATH"
+          rm -f /tmp/moshaver-deploy.tar.gz
+
+          echo "========================================"
+          echo "Installing production dependencies..."
+          echo "========================================"
+
+          composer install \
+            --no-dev \
+            --no-interaction \
+            --prefer-dist \
+            --no-progress \
+            --optimize-autoloader
+
+          echo "========================================"
+          echo "Clearing old Laravel caches..."
+          echo "========================================"
+
+          php artisan optimize:clear
+
+          echo "========================================"
+          echo "Creating storage link..."
+          echo "========================================"
+
+          php artisan storage:link || true
+
+          echo "========================================"
+          echo "Rebuilding Laravel caches..."
+          echo "========================================"
+
+          php artisan optimize
+
+          echo "========================================"
+          echo "Restarting queue workers..."
+          echo "========================================"
+
+          php artisan queue:restart || true
+
+          echo "========================================"
+          echo "Bringing website online..."
+          echo "========================================"
+
+          php artisan up
+
+          trap - EXIT
+
+          echo "========================================"
+          echo "Running migrations and default seeders..."
+          echo "========================================"
+
+          php artisan migrate --seed --force
+
+          echo "========================================"
+          echo "Running StudyProgramsSnapshotSeeder..."
+          echo "========================================"
+
+          php artisan db:seed \
+            --class=StudyProgramsSnapshotSeeder \
+            --force
+
+          echo "========================================"
+          echo "Deployment completed successfully."
+          echo "========================================"
+          REMOTE
