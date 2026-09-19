@@ -348,7 +348,9 @@
 @section('content')
     <div class="row g-3">
         <div class="col-lg-8">
-            @php($payment = ($canViewPaymentInfo || $canViewReceipt) ? $reservation->payment : null)
+            @php
+                $payment = ($canViewPaymentInfo || $canViewReceipt) ? $reservation->payment : null;
+            @endphp
 
             {{-- Reservation info --}}
             <div class="card card-section">
@@ -616,23 +618,22 @@
             @php
                 $student = $reservation->student;
                 $academicInfo = $reservation->academicInfo;
-                $displayValue = fn ($value) => filled($value) ? $value : 'ثبت نشده';
             @endphp
             <div class="card card-section">
                 <div class="card-header"><i class="ri-profile-line"></i> اطلاعات تکمیلی دانش‌آموز</div>
                 <div class="card-body">
                     <div class="info-grid">
-                        <div class="info-item"><div class="info-label">نام و نام خانوادگی</div><div class="info-value">{{ $displayValue($student?->full_name) }}</div></div>
-                        <div class="info-item"><div class="info-label">رشته</div><div class="info-value">{{ $displayValue($student?->major) }}</div></div>
-                        <div class="info-item"><div class="info-label">رتبه</div><div class="info-value">{{ $displayValue($academicInfo?->rank) }}</div></div>
-                        <div class="info-item"><div class="info-label">منطقه</div><div class="info-value">{{ $displayValue($student?->region) }}</div></div>
-                        <div class="info-item"><div class="info-label">رتبه کشوری</div><div class="info-value">{{ $displayValue($academicInfo?->national_rank) }}</div></div>
-                        <div class="info-item"><div class="info-label">نمره کل</div><div class="info-value">{{ $displayValue($academicInfo?->total_score) }}</div></div>
-                        <div class="info-item"><div class="info-label">تراز کنکور</div><div class="info-value">{{ $displayValue($student?->score) }}</div></div>
-                        <div class="info-item"><div class="info-label">تراز نهایی</div><div class="info-value">{{ $displayValue($academicInfo?->final_score) }}</div></div>
-                        @if($canViewPersonalData)<div class="info-item"><div class="info-label">تلفن</div><div class="info-value ltr">{{ $displayValue($student?->primaryPhone()?->phone) }}</div></div>@endif
-                        <div class="info-item"><div class="info-label">رشته قبولی سراسری</div><div class="info-value">{{ $displayValue($academicInfo?->accepted_national_field) }}</div></div>
-                        <div class="info-item"><div class="info-label">رشته قبولی آزاد / غیرانتفاعی / پیام نور</div><div class="info-value">{{ $displayValue($academicInfo?->accepted_azad_other_field) }}</div></div>
+                        <div class="info-item"><div class="info-label">نام و نام خانوادگی</div><div class="info-value">{{ filled($student?->full_name) ? $student->full_name : 'ثبت نشده' }}</div></div>
+                        <div class="info-item"><div class="info-label">رشته</div><div class="info-value">{{ filled($student?->major) ? $student->major : 'ثبت نشده' }}</div></div>
+                        <div class="info-item"><div class="info-label">رتبه</div><div class="info-value">{{ filled($academicInfo?->rank) ? $academicInfo->rank : 'ثبت نشده' }}</div></div>
+                        <div class="info-item"><div class="info-label">منطقه</div><div class="info-value">{{ filled($student?->region) ? $student->region : 'ثبت نشده' }}</div></div>
+                        <div class="info-item"><div class="info-label">رتبه کشوری</div><div class="info-value">{{ filled($academicInfo?->national_rank) ? $academicInfo->national_rank : 'ثبت نشده' }}</div></div>
+                        <div class="info-item"><div class="info-label">نمره کل</div><div class="info-value">{{ filled($academicInfo?->total_score) ? $academicInfo->total_score : 'ثبت نشده' }}</div></div>
+                        <div class="info-item"><div class="info-label">تراز کنکور</div><div class="info-value">{{ filled($student?->score) ? $student->score : 'ثبت نشده' }}</div></div>
+                        <div class="info-item"><div class="info-label">تراز نهایی</div><div class="info-value">{{ filled($academicInfo?->final_score) ? $academicInfo->final_score : 'ثبت نشده' }}</div></div>
+                        @if($canViewPersonalData)<div class="info-item"><div class="info-label">تلفن</div><div class="info-value ltr">{{ filled($student?->primaryPhone()?->phone) ? $student->primaryPhone()->phone : 'ثبت نشده' }}</div></div>@endif
+                        <div class="info-item"><div class="info-label">رشته قبولی سراسری</div><div class="info-value">{{ filled($academicInfo?->accepted_national_field) ? $academicInfo->accepted_national_field : 'ثبت نشده' }}</div></div>
+                        <div class="info-item"><div class="info-label">رشته قبولی آزاد / غیرانتفاعی / پیام نور</div><div class="info-value">{{ filled($academicInfo?->accepted_azad_other_field) ? $academicInfo->accepted_azad_other_field : 'ثبت نشده' }}</div></div>
                     </div>
                     @unless($canViewPersonalData)<div class="text-muted small mt-3">شما دسترسی مشاهده اطلاعات تماس دانش‌آموز را ندارید.</div>@endunless
 
@@ -662,7 +663,9 @@
             </div>
 
             @if(in_array($reservation->status, [\App\Enums\ReservationStatus::Confirmed, \App\Enums\ReservationStatus::Completed], true))
-                @php($selectionPlans = $reservation->fieldSelectionPlans->whereNull('deleted_at'))
+                @php
+                    $selectionPlans = $reservation->fieldSelectionPlans->whereNull('deleted_at');
+                @endphp
                 <div class="card card-section">
                     <div class="card-header d-flex justify-content-between align-items-center"><span><i class="ri-list-ordered"></i> انتخاب رشته</span>
                         @can('manage_field_selection')
@@ -780,7 +783,9 @@
                                 <select name="slot_id" id="change_slot_id" class="form-select mb-3 d-none" required>
                                     <option value="">انتخاب کنید</option>
                                     @foreach($availableSlots as $slot)
-                                        @php($hasAvailableInterval = collect($slotIntervals[$slot->id] ?? [])->contains('available', true))
+                                        @php
+                                            $hasAvailableInterval = collect($slotIntervals[$slot->id] ?? [])->contains('available', true);
+                                        @endphp
                                         <option value="{{ $slot->id }}" @selected($reservation->slot_id == $slot->id) @disabled(! $hasAvailableInterval && $reservation->slot_id != $slot->id)>
                                             {{ \App\Support\PersianDate::date($slot->date) }}
                                             - {{ \App\Support\PersianDate::time($slot->start_time) }} تا {{ \App\Support\PersianDate::time($slot->end_time) }}
