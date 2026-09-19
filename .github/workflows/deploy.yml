@@ -18,57 +18,81 @@ jobs:
   ci:
     name: Validate and test
     runs-on: ubuntu-latest
-
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: testing
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+        
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: testing
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+    
     steps:
       - name: Check out source
         uses: actions/checkout@v4
-
+    
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-          extensions: mbstring, pdo_sqlite, sqlite3
+          extensions: mbstring, pdo_mysql
           coverage: none
-
+        
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: npm
-
+        
       - name: Prepare Laravel environment
-        run: |
-          cp .env.example .env
-
+        run: cp .env.example .env
+        
       - name: Install PHP dependencies
         run: |
           composer install \
             --no-interaction \
             --prefer-dist \
             --no-progress
-
+        
       - name: Generate application key
         run: php artisan key:generate --force
-
+        
+      - name: Run test database migrations
+        run: php artisan migrate --force
+        
       - name: Validate PHP syntax
         run: |
           find app bootstrap config database routes tests \
             -name '*.php' \
             -print0 | xargs -0 -n1 php -l
-
+        
       - name: Run tests
-        env:
-          APP_ENV: testing
-          DB_CONNECTION: sqlite
-          DB_DATABASE: ':memory:'
         run: php artisan test
-
+        
       - name: Install frontend dependencies
         run: npm ci
-
+        
       - name: Build Vite assets
         run: npm run build
-
+        
       - name: Upload Vite build
         uses: actions/upload-artifact@v4
         with:
