@@ -54,9 +54,7 @@ class FieldSelectionController extends Controller
                     'selectedExamType' => '',
                     'selectedExamTypeLabel' => 'انتخاب رشته ثبت‌شده',
                     'canViewStudentPersonalInfo' => $this->canViewStudentPersonalInfo($request->user()),
-                    'catalogProvinces' => collect(),
-                    'catalogCourseTypes' => collect(),
-                    'catalogBooklets' => collect(),
+                    ...$this->catalogFilterData(),
                 ]);
             }
         }
@@ -79,21 +77,7 @@ class FieldSelectionController extends Controller
             'selectedExamType' => $selectedExamType,
             'selectedExamTypeLabel' => $examTypeOptions[$selectedExamType] ?? $selectedExamType,
             'canViewStudentPersonalInfo' => $this->canViewStudentPersonalInfo($request->user()),
-            'catalogProvinces' => Province::query()
-                ->whereIn('id', StudyProgram::query()->select('province_id')->whereNotNull('province_id')->where('validation_status', 'validated'))
-                ->orderBy('normalized_name')
-                ->get(['id', 'name']),
-            'catalogCourseTypes' => CourseType::query()
-                ->whereIn('id', StudyProgram::query()->select('course_type_id')->whereNotNull('course_type_id')->where('validation_status', 'validated'))
-                ->orderBy('name')
-                ->get(['id', 'name']),
-            'catalogBooklets' => StudyProgram::query()
-                ->where('validation_status', 'validated')
-                ->where('is_active', true)
-                ->whereNotNull('source_file')
-                ->distinct()
-                ->orderBy('source_file')
-                ->pluck('source_file'),
+            ...$this->catalogFilterData(),
         ]);
     }
 
@@ -293,6 +277,27 @@ class FieldSelectionController extends Controller
     private function canViewStudentPersonalInfo(User $user): bool
     {
         return app(StudentPrivacyService::class)->canViewPersonalData($user);
+    }
+
+    private function catalogFilterData(): array
+    {
+        return [
+            'catalogProvinces' => Province::query()
+                ->whereIn('id', StudyProgram::query()->select('province_id')->whereNotNull('province_id')->where('validation_status', 'validated'))
+                ->orderBy('normalized_name')
+                ->get(['id', 'name']),
+            'catalogCourseTypes' => CourseType::query()
+                ->whereIn('id', StudyProgram::query()->select('course_type_id')->whereNotNull('course_type_id')->where('validation_status', 'validated'))
+                ->orderBy('name')
+                ->get(['id', 'name']),
+            'catalogBooklets' => StudyProgram::query()
+                ->where('validation_status', 'validated')
+                ->where('is_active', true)
+                ->whereNotNull('source_file')
+                ->distinct()
+                ->orderBy('source_file')
+                ->pluck('source_file'),
+        ];
     }
 
     private function normalizeDigits(string $value): string

@@ -65,7 +65,7 @@ class FieldSelectionTest extends TestCase
         $this->actingAs($user)
             ->get(route('admin.reservations.field-selection.show', [$reservation, 'plan' => $plan]))
             ->assertOk()
-            ->assertSee('جستجوی رشتهمحل از دیتابیس')
+            ->assertSee('جستجوی رشته')
             ->assertSee('نوع دانشگاه / دوره')
             ->assertSee('گیلان')
             ->assertSee('غیرانتفاعی');

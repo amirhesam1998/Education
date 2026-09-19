@@ -39,7 +39,7 @@ class ReservationSlot extends Model
     protected function casts(): array
     {
         return [
-            'date' => 'date',
+            'date' => 'date:Y-m-d',
             'duration_minutes' => 'integer',
             'capacity' => 'integer',
             'status' => SlotStatus::class,

@@ -78,7 +78,7 @@ class PublicFieldSelectionVisibilityTest extends TestCase
         $this->get(route('public.reservations.field-selection.show', $reservation->public_token))
             ->assertOk()
             ->assertSee('20202')
-            ->assertSee('نسخه‌های قابل مشاهده')
+            ->assertSee('انتخاب رشته‌های قابل مشاهده')
             ->assertDontSee('30303');
         $this->get(route('public.reservations.field-selection.plan.show', [$reservation->public_token, $first]))
             ->assertOk()

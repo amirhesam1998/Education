@@ -2280,7 +2280,7 @@
 
                 <div class="hero-actions">
 
-                    {{-- @if($publishedFieldSelectionPlan)
+                    @if($publishedFieldSelectionPlan)
 
                     <a href="{{ route(
                                     'public.reservations.field-selection.show',
@@ -2291,7 +2291,7 @@
                         مشاهده انتخاب رشته
                     </a>
 
-                    @endif --}}
+                    @endif
 
 
                     @if($contactPhoneHref)
@@ -2356,7 +2356,7 @@
                                     <div class="plan-card__actions">
                                         <a class="plan-btn plan-btn--primary"
                                             href="{{ route('public.reservations.field-selection.plan.show', [$reservation->public_token, $visiblePlan]) }}">
-                                            <i class="ri-eye-line"></i> مشاهده
+                                            <i class="ri-eye-line"></i> مشاهده انتخاب رشته
                                         </a>
                                         <a class="plan-btn plan-btn--ghost" target="_blank"
                                             href="{{ route('public.reservations.field-selection.plan.print', [$reservation->public_token, $visiblePlan]) }}">
