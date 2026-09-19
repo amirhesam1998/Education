@@ -249,15 +249,12 @@ jobs:
           echo "Running migrations and default seeders..."
           echo "========================================"
 
-          php artisan migrate --seed --force
+          php artisan migrate --force
 
           echo "========================================"
           echo "Running StudyProgramsSnapshotSeeder..."
           echo "========================================"
 
-          php artisan db:seed \
-            --class=StudyProgramsSnapshotSeeder \
-            --force
 
           echo "========================================"
           echo "Deployment completed successfully."
