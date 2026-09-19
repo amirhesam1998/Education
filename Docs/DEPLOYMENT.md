@@ -1,13 +1,14 @@
 # Production deployment
 
 This repository deploys from the `main` branch through GitHub Actions to
-`https://moshaver-moradi.ir` (`62.60.128.175`). The application stays on the
-server; the workflow connects with SSH and runs `scripts/deploy-production.sh`.
+`https://moshaver-moradi.ir` (`62.60.128.175`). GitHub Actions packages only
+application code and compiled Vite assets, then extracts them over SSH without
+touching production `.env`, `storage`, or user uploads.
 
 ## One-time server setup
 
-1. Create a non-root deployment user and clone this repository to a permanent
-   path, for example `/var/www/moshaver-moradi.ir`.
+1. Create a non-root deployment user and create a permanent application path,
+   for example `/var/www/moshaver-moradi.ir`.
 2. On the server, create the production `.env`. Set at least:
 
    ```dotenv
@@ -19,16 +20,14 @@ server; the workflow connects with SSH and runs `scripts/deploy-production.sh`.
    Keep the existing production database credentials and `APP_KEY` in this
    file. It is never copied from GitHub and is not replaced during deploys.
 3. Install PHP 8.3 (including SQLite/MySQL driver used by the production
-   database), Composer, Git, Node.js 20, and NPM. Give the web-server user
+   database) and Composer. Give the web-server user
    write access to `storage` and `bootstrap/cache`.
 4. Configure Nginx/Apache so the document root is
    `/var/www/moshaver-moradi.ir/public`, then issue the TLS certificate for
    `moshaver-moradi.ir`.
-5. Give the deployment user read access to this GitHub repository (normally a
-   repository deploy key on the server), so `git pull` can run there.
-
-The deploy script uses `git pull --ff-only`; it intentionally stops if the
-server checkout has local changes instead of overwriting them.
+5. Ensure the deployment user owns the application path. It does not need a
+   GitHub token or deploy key: GitHub Actions sends the verified release package
+   over SSH.
 
 ## GitHub Actions secrets
 
@@ -55,13 +54,31 @@ secret avoids accepting a changed server key automatically.
 
 ## What each deployment does
 
-After CI validation and isolated SQLite tests pass, GitHub Actions connects to
+After CI validation and isolated MySQL test-database migrations/tests pass, GitHub Actions connects to
 the server and runs:
 
-1. Fast-forward update from `main`.
-2. Production Composer install and Vite build (creates `public/build/manifest.json`).
+1. Isolated CI migrations/tests, then a Vite build (creates `public/build/manifest.json`).
+2. Production Composer install and stale-cache clear while in maintenance mode.
 3. `php artisan migrate --force` for pending additive migrations only.
-4. Laravel cache rebuild and queue worker restart.
+4. Run the explicit, add-only `ProductionSeeder` for missing permissions and
+   default settings. It never invokes demo data or the study-program snapshot.
+5. Laravel cache rebuild and queue worker restart.
 
-No seed, reset, truncate, import, or database-wipe command is part of this
-deployment process.
+`StudyProgramsSnapshotSeeder` is deliberately not part of automatic deploys.
+It can be run manually only when the catalogue needs updating; it matches rows
+by natural keys/identity hashes, preserves manual catalogue records, and never
+deletes a table.
+
+No reset, truncate, import replacement, or database-wipe command is part of
+this deployment process.
+
+## Optional pre-deploy backup
+
+Take database backups through the server/hosting backup system before a
+schema-changing release. For MySQL, a deployment user can run `mysqldump` with
+the existing `DB_HOST`, `DB_DATABASE`, `DB_USERNAME`, and `DB_PASSWORD` from
+the production environment, writing the timestamped compressed file outside
+`public/` (for example `/var/backups/moshaver-moradi/`). Retain the latest 10
+backups. This is intentionally an infrastructure step, not a required workflow
+step: a missing backup utility must never cause GitHub Actions to handle or log
+database credentials.

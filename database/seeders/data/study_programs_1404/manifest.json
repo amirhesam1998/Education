@@ -5,8 +5,8 @@
     "source_database": "mysql",
     "notes": [
         "Snapshot generated after conservative academic_fields.name cleanup was applied to the production study_programs table.",
-        "Use php artisan db:seed --class=StudyProgramsSnapshotSeeder to upsert this snapshot.",
-        "Use STUDY_PROGRAM_SNAPSHOT_REPLACE=true for a destructive replace of only the study-program catalog tables."
+        "Use php artisan db:seed --class=StudyProgramsSnapshotSeeder to safely add or update this snapshot.",
+        "Snapshot seeding never deletes catalogue tables, resets ids, or overwrites rows marked as manual."
     ],
     "tables": {
         "exam_years": {

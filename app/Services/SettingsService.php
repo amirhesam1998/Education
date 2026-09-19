@@ -25,6 +25,32 @@ class SettingsService
 
     public function set(string $key, mixed $value, string $type = 'string'): Setting
     {
+        [$value, $type] = $this->valueForStorage($value, $type);
+
+        return Setting::query()->updateOrCreate(
+            ['key' => $key],
+            ['value' => $value, 'type' => $type],
+        );
+    }
+
+    /**
+     * Add a default without changing a value configured by production staff.
+     */
+    public function setIfMissing(string $key, mixed $value, string $type = 'string'): Setting
+    {
+        [$value, $type] = $this->valueForStorage($value, $type);
+
+        return Setting::query()->firstOrCreate(
+            ['key' => $key],
+            ['value' => $value, 'type' => $type],
+        );
+    }
+
+    /**
+     * @return array{0:mixed,1:string}
+     */
+    private function valueForStorage(mixed $value, string $type): array
+    {
         if ($type === 'json') {
             $value = json_encode($value, JSON_UNESCAPED_UNICODE);
         } elseif (is_array($value)) {
@@ -32,10 +58,7 @@ class SettingsService
             $type = 'array';
         }
 
-        return Setting::query()->updateOrCreate(
-            ['key' => $key],
-            ['value' => $value, 'type' => $type],
-        );
+        return [$value, $type];
     }
 
     public function receiptMaxKilobytes(): int

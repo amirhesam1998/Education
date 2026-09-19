@@ -6,6 +6,7 @@ use App\Models\Advisor;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -16,17 +17,18 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call([
-            PermissionRoleSeeder::class,
-            SettingsSeeder::class,
-        ]);
+        $this->call(ProductionSeeder::class);
 
-        $admin = User::query()->updateOrCreate(
+        if (app()->environment('production')) {
+            return;
+        }
+
+        $admin = User::query()->firstOrCreate(
             ['phone' => '09120000000'],
             [
                 'name' => 'مدیر کل',
                 'email' => 'admin@example.com',
-                'password' => 'password',
+                'password' => Hash::make('password'),
                 'status' => 'active',
             ],
         );

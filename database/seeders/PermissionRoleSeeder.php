@@ -109,7 +109,8 @@ class PermissionRoleSeeder extends Seeder
                 'guard_name' => 'web',
             ]);
 
-            $role->syncPermissions($permissions);
+            // Keep permissions explicitly granted by production administrators.
+            $role->givePermissionTo($permissions);
         }
 
         // This role is optional in installations that scope dashboards by creator.

@@ -54,7 +54,7 @@ class StudyProgramAdminService
             return;
         }
 
-        $studyProgram->update(['is_active' => false]);
+        $studyProgram->update(['is_active' => false, 'source_type' => 'manual']);
         $this->activityLog->log('study_program_deleted_or_deactivated_manually', null, $user, ['is_active' => true], ['study_program_id' => $studyProgram->id, 'is_active' => false]);
     }
 
@@ -96,7 +96,9 @@ class StudyProgramAdminService
             'original_course_type' => $relations['course'],
             'original_admission_type' => $relations['admission'],
             'source_file' => $existing?->source_file ?: 'manual',
-            'source_type' => $existing?->source_type ?: 'manual',
+            // An admin edit takes ownership of this catalogue row; snapshots must
+            // not overwrite it on later production-safe imports.
+            'source_type' => 'manual',
             'source_hash' => hash('sha256', json_encode($values, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)),
             'identity_hash' => $identityHash,
             'validation_status' => 'validated',
