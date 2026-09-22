@@ -74,6 +74,41 @@
         align-items: start;
     }
 
+    /* greeting shown to users who only hold the Operator role */
+    .operator-welcome{
+        border: 1px solid var(--brand-200);
+        background: linear-gradient(135deg, var(--brand-50), var(--surface) 60%);
+    }
+    .operator-welcome .card-body{
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    .operator-welcome__icon{
+        width: 52px; height: 52px;
+        flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+        border-radius: 14px;
+        background: var(--brand-100);
+        color: var(--brand-700);
+        font-size: 1.5rem;
+    }
+    .operator-welcome__title{
+        font-size: 1.02rem;
+        font-weight: 700;
+        color: var(--ink-900);
+        line-height: 1.7;
+    }
+    .operator-welcome__text{
+        font-size: .84rem;
+        color: var(--ink-500);
+        line-height: 1.9;
+    }
+
+    @media (max-width: 575.98px){
+        .operator-welcome .card-body{ flex-direction: column; text-align: center; }
+    }
+
     .empty-state{
         text-align: center;
         padding: 2.5rem 1rem;
@@ -117,6 +152,48 @@
 @endpush
 
 @section('content')
+
+    @if($operatorOnly)
+        {{-- Operator-only view: greeting plus their own two counters. --}}
+        <div class="card operator-welcome mb-4">
+            <div class="card-body">
+                <div class="operator-welcome__icon"><i class="ri-hand-heart-line"></i></div>
+                <div>
+                    <div class="operator-welcome__title">{{ auth()->user()->name }} عزیز، خوش آمدید</div>
+                    <div class="operator-welcome__text">
+                        خلاصه‌ای از کارهایی که روی انتخاب رشته انجام داده‌اید در پایین آمده است.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if($ownFieldSelectionSummary)
+            <div class="card">
+                <div class="card-header">
+                    <i class="ri-user-star-line align-middle text-muted me-1"></i> عملکرد انتخاب رشته شما
+                </div>
+                <div class="card-body">
+                    <div class="stat-grid mb-0">
+                        <div class="stat-card">
+                            <div>
+                                <div class="stat-value">{{ \App\Support\PersianDate::number($ownFieldSelectionSummary['students_count']) }}</div>
+                                <div class="stat-label">دانش‌آموزی که برایشان انتخاب رشته کرده‌اید</div>
+                            </div>
+                            <div class="stat-icon tone-brand"><i class="ri-graduation-cap-line"></i></div>
+                        </div>
+                        <div class="stat-card">
+                            <div>
+                                <div class="stat-value">{{ \App\Support\PersianDate::number($ownFieldSelectionSummary['edit_actions_count']) }}</div>
+                                <div class="stat-label">ویرایش انجام‌شده روی انتخاب رشته‌ها</div>
+                            </div>
+                            <div class="stat-icon tone-info"><i class="ri-edit-line"></i></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+
+    @else
 
     {{-- Stat cards --}}
     <div class="stat-grid">
@@ -194,6 +271,32 @@
         <div class="card-header"><i class="ri-bar-chart-grouped-line align-middle text-muted me-1"></i> آمار مشاوره‌های انجام‌شده</div>
         <div class="table-responsive"><table class="table mb-0"><thead><tr><th>مشاور</th><th>تعداد مشاوره انجام‌شده</th></tr></thead><tbody>@forelse($completedConsultationStats as $stat)<tr><td>{{ $stat['advisor_name'] }}</td><td>{{ \App\Support\PersianDate::number($stat['completed_count']) }}</td></tr>@empty<tr><td colspan="2" class="text-center text-muted py-4">هنوز مشاوره انجام‌شده‌ای ثبت نشده است.</td></tr>@endforelse</tbody></table></div>
     </div>
+
+    @if($ownFieldSelectionSummary)
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="ri-user-star-line align-middle text-muted me-1"></i> عملکرد انتخاب رشته شما
+            </div>
+            <div class="card-body">
+                <div class="stat-grid mb-0">
+                    <div class="stat-card">
+                        <div>
+                            <div class="stat-value">{{ \App\Support\PersianDate::number($ownFieldSelectionSummary['students_count']) }}</div>
+                            <div class="stat-label">دانش‌آموزی که برایشان انتخاب رشته کرده‌اید</div>
+                        </div>
+                        <div class="stat-icon tone-brand"><i class="ri-graduation-cap-line"></i></div>
+                    </div>
+                    <div class="stat-card">
+                        <div>
+                            <div class="stat-value">{{ \App\Support\PersianDate::number($ownFieldSelectionSummary['edit_actions_count']) }}</div>
+                            <div class="stat-label">ویرایش انجام‌شده روی انتخاب رشته‌ها</div>
+                        </div>
+                        <div class="stat-icon tone-info"><i class="ri-edit-line"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 
     @can('view_operator_field_selection_stats')
         <div class="card mb-4">
@@ -307,5 +410,7 @@
             </div>
         </div>
     </div>
+
+    @endif
 
 @endsection

@@ -71,6 +71,36 @@ class OperatorFieldSelectionStatsService
         });
     }
 
+    /**
+     * What this one user did themselves — never other people's work.
+     *
+     * Deliberately independent of activityQuery(): that one scopes by who
+     * *created the reservation*, which is the right rule for the
+     * all-operators report but the wrong one for "what did I do".
+     *
+     * @return array{students_count:int, edit_actions_count:int}
+     */
+    public function getOwnSummary(User $user): array
+    {
+        $ownActivity = fn (array $actions) => ActivityLog::query()
+            ->where('user_id', $user->id)
+            ->whereIn('action', $actions);
+
+        // one student may hold several plans, so count each student once
+        $studentsCount = $ownActivity([...self::CREATED_ACTIONS, ...self::EDIT_ACTIONS])
+            ->join('reservations', 'activity_logs.reservation_id', '=', 'reservations.id')
+            ->distinct()
+            ->count('reservations.student_id');
+
+        // every edit counts, so three edits on one plan in a day read as three
+        $editActionsCount = $ownActivity(self::EDIT_ACTIONS)->count();
+
+        return [
+            'students_count' => (int) $studentsCount,
+            'edit_actions_count' => (int) $editActionsCount,
+        ];
+    }
+
     public function canViewGlobalStats(User $viewer): bool
     {
         return $viewer->hasAnyRole(['Super Admin', 'Admin / Branch Manager']);
