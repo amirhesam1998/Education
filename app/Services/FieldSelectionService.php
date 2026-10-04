@@ -234,7 +234,7 @@ class FieldSelectionService
 
     /**
      * @param  array{q?:string|null, province_id?:int|string|null, city_id?:int|string|null, course_type_id?:int|string|null}  $filters
-     * @return Collection<int, array{id:int, field_code:string, field_name:string, field_description:?string, city:string, province:?string, institution:?string, university_name:?string, university_type:?string, university_description:?string, course_type:?string, exam_group:?string, booklet_source:?string, source_file:?string, booklet_page:?int, booklet_section:?string, capacity:?int}>
+     * @return Collection<int, array{id:int, field_code:string, field_name:string, field_description:?string, city:string, province:?string, institution:?string, university_name:?string, university_type:?string, university_description:?string, course_type:?string, exam_group:?string, booklet_source:?string, source_file:?string, booklet_page:?int, booklet_section:?string, capacity:?int, female_capacity:?int, male_capacity:?int, accepts_female:bool, accepts_male:bool, admission_scope:?string, admission_period:?string, service_location:?string, section_note:?string}>
      */
     public function searchFieldCatalog(array $filters): Collection
     {
@@ -294,6 +294,14 @@ class FieldSelectionService
                     'booklet_page' => $program->booklet_page,
                     'booklet_section' => $program->booklet_section,
                     'capacity' => $capacity > 0 ? $capacity : null,
+                    'female_capacity' => $program->female_capacity,
+                    'male_capacity' => $program->male_capacity,
+                    'accepts_female' => (bool) $program->accepts_female,
+                    'accepts_male' => (bool) $program->accepts_male,
+                    'admission_scope' => $program->admission_scope,
+                    'admission_period' => $program->admission_period,
+                    'service_location' => $program->service_location,
+                    'section_note' => $program->section_note,
                 ];
             })
             ->filter(fn (array $field) => filled($field['field_code']) && filled($field['field_name']) && filled($field['city']))
@@ -495,7 +503,14 @@ class FieldSelectionService
 
     private function programUniversityType(StudyProgram $program): ?string
     {
-        return $program->courseType?->name ?: $program->original_course_type;
+        // A booklet row keeps the course exactly as printed (e.g. «پردیس خودگردان»); the course
+        // type is only its broader category, used for filtering. Admin-created rows store the slug.
+        $printed = $program->original_course_type;
+        if (filled($printed) && ! array_key_exists($printed, StudyProgramValueMapper::COURSE_TYPES)) {
+            return $printed;
+        }
+
+        return $program->courseType?->name ?: $printed;
     }
 
     private function programUniversityName(StudyProgram $program): ?string
@@ -520,6 +535,20 @@ class FieldSelectionService
     }
 
     private function programDescription(StudyProgram $program): ?string
+    {
+        // Who may apply, where graduates serve and when admission starts are printed in the
+        // booklet outside the notes column, but a student's list has to carry them too.
+        $parts = array_filter([
+            $this->programNotes($program),
+            $program->admission_scope,
+            filled($program->service_location) ? 'محل خدمت: '.$program->service_location : null,
+            filled($program->admission_period) ? 'پذیرش '.$program->admission_period : null,
+        ], filled(...));
+
+        return $parts !== [] ? implode('؛ ', array_map(fn ($part) => trim((string) $part), $parts)) : null;
+    }
+
+    private function programNotes(StudyProgram $program): ?string
     {
         if (filled($program->description)) {
             return trim((string) $program->description);

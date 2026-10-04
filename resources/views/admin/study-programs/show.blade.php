@@ -29,7 +29,12 @@
                     'جنس پذیرش' => collect([$program->accepts_male ? 'مرد' : null, $program->accepts_female ? 'زن' : null])->filter()->implode(' / '),
                     'ظرفیت نیمسال اول' => $program->first_semester_capacity,
                     'ظرفیت نیمسال دوم' => $program->second_semester_capacity,
+                    'ظرفیت زن' => $program->female_capacity,
+                    'ظرفیت مرد' => $program->male_capacity,
+                    'زمان پذیرش' => $program->admission_period,
+                    'محل خدمت' => $program->service_location,
                     'صفحه دفترچه' => $program->booklet_page,
+                    'صفحه چاپی دفترچه' => $program->raw_data['printed_page'] ?? null,
                     'بخش دفترچه' => $program->booklet_section,
                     'روش تشخیص شهر' => $program->city_detection_method,
                     'فایل منبع' => $program->source_file,
@@ -42,12 +47,20 @@
                         </div>
                     </div>
                 @endforeach
-                <div class="col-12">
-                    <div class="border rounded p-3">
-                        <div class="text-muted small mb-1">توضیحات</div>
-                        <div>{{ $program->description ?: '-' }}</div>
-                    </div>
-                </div>
+                @foreach([
+                    'توضیحات' => $program->description,
+                    'دامنه پذیرش' => $program->admission_scope,
+                    'یادداشت‌های جدول در دفترچه' => $program->section_note,
+                ] as $label => $value)
+                    @if($label === 'توضیحات' || filled($value))
+                        <div class="col-12">
+                            <div class="border rounded p-3">
+                                <div class="text-muted small mb-1">{{ $label }}</div>
+                                <div style="white-space: pre-line">{{ $value ?: '-' }}</div>
+                            </div>
+                        </div>
+                    @endif
+                @endforeach
             </div>
         </div>
     </div>
