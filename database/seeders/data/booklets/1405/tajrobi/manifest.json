@@ -1,0 +1,22 @@
+{
+  "format": "booklet-programs-v1",
+  "year": 1405,
+  "group": "tajrobi",
+  "group_name": "تجربی",
+  "source_file": "Tajrobi_v1.pdf",
+  "source_sha256": "89a723d2a5e13b88e4b83830b0459edcd0618fb8817437de8b36ee914edc3703",
+  "pages": [
+    47,
+    657
+  ],
+  "programs": 18726,
+  "programs_file": "programs.jsonl.gz",
+  "programs_sha256": "8126ac3052e913d161acf86a67cd36740be3e0bf3ef0aa341dcc91bf0e162016",
+  "counts": {
+    "provinces": 31,
+    "cities": 336,
+    "institutions": 398,
+    "campuses": 688,
+    "fields": 298
+  }
+}

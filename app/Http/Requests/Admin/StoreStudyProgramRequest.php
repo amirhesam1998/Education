@@ -27,7 +27,13 @@ class StoreStudyProgramRequest extends FormRequest
             'admission_type_id' => ['required', 'integer', 'exists:admission_types,id'],
             'first_semester_capacity' => ['nullable', 'integer', 'min:0'],
             'second_semester_capacity' => ['nullable', 'integer', 'min:0'],
+            'female_capacity' => ['nullable', 'integer', 'min:0'],
+            'male_capacity' => ['nullable', 'integer', 'min:0'],
+            'admission_period' => ['nullable', 'string', 'max:255'],
+            'admission_scope' => ['nullable', 'string', 'max:5000'],
+            'service_location' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
+            'section_note' => ['nullable', 'string', 'max:5000'],
             'is_active' => ['required', 'boolean'],
         ];
     }

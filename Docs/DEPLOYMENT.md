@@ -62,15 +62,28 @@ the server and runs:
 3. `php artisan migrate --force` for pending additive migrations only.
 4. Run the explicit, add-only `ProductionSeeder` for missing permissions and
    default settings. It never invokes demo data or the study-program snapshot.
-5. Laravel cache rebuild and queue worker restart.
+5. `php artisan education:import-booklets` loads each field-selection booklet in
+   `database/seeders/data/booklets/<year>/<group>/` (built by `tools/booklet`).
+   A booklet whose programs file is the one its last completed import loaded is
+   skipped. Otherwise a verified catalogue backup is written to
+   `storage/app/backups/study-programs/` first, then rows are matched by year,
+   group and code, admin-edited (`manual`) rows are kept, and codes that left
+   the booklet are removed. The step fails if it finds no booklet at all.
+6. `php artisan education:purge-exam-year 1404 --force` refuses to run unless
+   another year has active programs, writes another verified backup, then
+   deletes the 1404 programs, their import/review logs, the year, and the
+   provinces, cities, institutions, campuses and fields no remaining program
+   uses. Students' field-selection lists keep their own copies and are not
+   touched. Once 1404 is gone the step does nothing.
+7. Laravel cache rebuild and queue worker restart.
 
 `StudyProgramsSnapshotSeeder` is deliberately not part of automatic deploys.
 It can be run manually only when the catalogue needs updating; it matches rows
 by natural keys/identity hashes, preserves manual catalogue records, and never
 deletes a table.
 
-No reset, truncate, import replacement, or database-wipe command is part of
-this deployment process.
+Apart from the 1404 removal above, no reset, truncate, import replacement, or
+database-wipe command is part of this deployment process.
 
 ## Optional pre-deploy backup
 

@@ -90,11 +90,19 @@ class StudyProgramAdminService
             'description' => $data['description'] ?? null,
         ];
 
+        // A booklet row keeps the course and admission method exactly as printed unless the admin changes them.
+        $keepCourse = $existing && (int) $existing->course_type_id === (int) $data['course_type_id'] && filled($existing->original_course_type);
+        $keepAdmission = $existing && (int) $existing->admission_type_id === (int) $data['admission_type_id'] && filled($existing->original_admission_type);
+
         return [
-            ...collect($data)->only(['exam_year_id', 'exam_group_id', 'province_id', 'city_id', 'institution_id', 'institution_campus_id', 'academic_field_id', 'course_type_id', 'admission_type_id', 'first_semester_capacity', 'second_semester_capacity', 'description', 'is_active'])->all(),
+            ...collect($data)->only([
+                'exam_year_id', 'exam_group_id', 'province_id', 'city_id', 'institution_id', 'institution_campus_id', 'academic_field_id',
+                'course_type_id', 'admission_type_id', 'first_semester_capacity', 'second_semester_capacity', 'female_capacity', 'male_capacity',
+                'admission_period', 'admission_scope', 'service_location', 'description', 'section_note', 'is_active',
+            ])->all(),
             'code' => trim($data['code']),
-            'original_course_type' => $relations['course'],
-            'original_admission_type' => $relations['admission'],
+            'original_course_type' => $keepCourse ? $existing->original_course_type : $relations['course'],
+            'original_admission_type' => $keepAdmission ? $existing->original_admission_type : $relations['admission'],
             'source_file' => $existing?->source_file ?: 'manual',
             // An admin edit takes ownership of this catalogue row; snapshots must
             // not overwrite it on later production-safe imports.
@@ -102,7 +110,8 @@ class StudyProgramAdminService
             'source_hash' => hash('sha256', json_encode($values, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)),
             'identity_hash' => $identityHash,
             'validation_status' => 'validated',
-            'raw_data' => ['manual' => true],
+            // Keep where the row came from (booklet page, printed cells) for later review.
+            'raw_data' => ['manual' => true] + (is_array($existing?->raw_data) ? $existing->raw_data : []),
         ];
     }
 

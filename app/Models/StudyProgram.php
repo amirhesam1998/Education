@@ -23,7 +23,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'accepts_female',
     'first_semester_capacity',
     'second_semester_capacity',
+    'female_capacity',
+    'male_capacity',
+    'admission_period',
+    'admission_scope',
+    'service_location',
     'description',
+    'section_note',
     'booklet_page',
     'booklet_section',
     'city_detection_method',
@@ -58,6 +64,8 @@ class StudyProgram extends Model
             'accepts_female' => 'boolean',
             'first_semester_capacity' => 'integer',
             'second_semester_capacity' => 'integer',
+            'female_capacity' => 'integer',
+            'male_capacity' => 'integer',
             'is_active' => 'boolean',
         ];
     }

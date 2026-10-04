@@ -216,6 +216,21 @@ jobs:
           php artisan db:seed --class='Database\Seeders\ProductionSeeder' --force --no-interaction
 
           echo "========================================"
+          echo "Importing field-selection booklets..."
+          echo "========================================"
+
+          # Backs up the catalogue, then loads each booklet under database/seeders/data/booklets
+          # whose file changed since its last import. Fails when no booklet is found.
+          php artisan education:import-booklets --no-interaction
+
+          echo "========================================"
+          echo "Removing the 1404 catalogue..."
+          echo "========================================"
+
+          # Refuses unless another year has programs; backs up first. Does nothing once 1404 is gone.
+          php artisan education:purge-exam-year 1404 --force --no-interaction
+
+          echo "========================================"
           echo "Rebuilding Laravel caches..."
           echo "========================================"
 

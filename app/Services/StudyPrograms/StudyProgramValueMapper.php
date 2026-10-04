@@ -28,6 +28,8 @@ class StudyProgramValueMapper
         'nonprofit' => 'غیرانتفاعی',
         'payame_noor' => 'پیام نور',
         'virtual' => 'مجازی',
+        'azad' => 'دانشگاه آزاد اسلامی',
+        'teacher' => 'دانشجو - معلم',
         'joint' => 'مشترک',
         'other' => 'سایر',
     ];
