@@ -40,7 +40,7 @@ def province(text: str) -> str:
     return canonical
 
 
-# Every city a 1405 tajrobi program is studied in, in one spelling each.
+# Every city a 1405 booklet program (all groups) is studied in, in one spelling each.
 # Spelling: the official name of the city, with the ZWNJ the booklet itself
 # uses in most places (خرم‌آباد, not خرم آباد). Printed variants that differ
 # only in spaces, ZWNJ, madda or hamza seat (خرم آباد، میاندواب، نایین) are
@@ -104,7 +104,7 @@ CITIES: dict[str, list[str]] = {
         'مینودشت',
     ],
     'گیلان': [
-        'رشت', 'آستارا', 'آستانه اشرفیه', 'بندر انزلی', 'تالش', 'چابکسر', 'خمام', 'رستم‌آباد', 'رودسر',
+        'رشت', 'آستارا', 'آستانه اشرفیه', 'بندر انزلی', 'تالش', 'چابکسر', 'خمام', 'رستم‌آباد', 'رضوانشهر', 'رودسر',
         'سنگر', 'صومعه‌سرا', 'فومن', 'لاهیجان', 'لنگرود', 'منجیل',
     ],
     'لرستان': ['خرم‌آباد', 'ازنا', 'الشتر', 'الیگودرز', 'بروجرد', 'پلدختر', 'دورود', 'کوهدشت', 'نورآباد'],
@@ -161,6 +161,9 @@ CITY_OF: dict[tuple[str, str | None], tuple[str, str]] = {
     ('دانشگاه اطلاعات و امنیت ملی امام باقر(ع)', None): ('تهران', 'تهران'),
     ('آموزشکده فنی نقشه‌برداری - سازمان جغرافیایی نیروهای مسلح', None): ('تهران', 'تهران'),
     ('دانشگاه غیرانتفاعی عدالت', None): ('تهران', 'تهران'),
+    # riazi: the title names only the province; the centre is in Tehran (Mehrabad). Each row's notes
+    # name where its scholarship holder will work ("محل کار بورسیه شهر بندرعباس"), not where it is studied.
+    ('مرکز آموزش عالی هوانوردی و فرودگاهی کشور', None): ('تهران', 'تهران'),
     ('دانشگاه آزاد اسلامی', 'واحد علوم و تحقیقات'): ('تهران', 'تهران'),
     ('دانشگاه آزاد اسلامی', 'واحد آیت ا... آملی'): ('مازندران', 'آمل'),
     ('دانشگاه فرهنگیان', 'پردیس زینبیه پیشوا (ورامین)'): ('تهران', 'پیشوا'),
@@ -176,6 +179,7 @@ INFERRED = {
     ('دانشگاه محقق اردبیلی', 'دانشکده کشاورزی و منابع طبیعی مغان'),
     ('دانشگاه علوم پزشکی و خدمات بهداشتی درمانی بجنورد', 'مرکز آموزشی فوریت‌های پزشکی مانه و سملقان'),
     ('دانشگاه پیام نور', 'واحد بهارستان رباط‌کریم'),
+    ('مرکز آموزش عالی هوانوردی و فرودگاهی کشور', None),
 }
 
 # Printed institution names that hold " - " as part of the name.
@@ -185,7 +189,7 @@ NAMES_WITH_DASH = {
 }
 
 HONORIFIC = re.compile(r'\((?:ع|س|ص|ره|عج)\)')
-QUALIFIER = re.compile(r'\((?:ویژه|شامل|استان)[^()]*\)')
+QUALIFIER = re.compile(r'\((?:ویژه|شامل|استان|رشته‌های)[^()]*\)')
 
 
 def tidy(text: str) -> str:
@@ -313,7 +317,7 @@ class Places:
             city = self.city_at_end(province_name, campus)
             return (city, 'campus') if city else None
         if suffix:
-            city = self.city(province_name, suffix)
+            city = self.city(province_name, QUALIFIER.sub('', suffix).strip())
             return (city, 'title') if city else None
         city = self.city_at_end(province_name, institution)
         if city:

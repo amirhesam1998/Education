@@ -156,8 +156,12 @@ class BookletImporter
             $row = $this->row($program, $manifest, $sourceFile, $yearId, $groupId, $hash) + ['updated_at' => $now];
 
             if ($current) {
-                DB::table('study_programs')->where('id', $current->id)->update($row);
-                $counts['updated']++;
+                // The row is checked again on write: an admin edit saved since it was read wins.
+                if (DB::table('study_programs')->where('id', $current->id)->where('source_type', '<>', 'manual')->update($row)) {
+                    $counts['updated']++;
+                } else {
+                    $counts['kept_manual']++;
+                }
             } else {
                 $inserts[] = $row + ['created_at' => $now];
                 $counts['inserted']++;
@@ -179,7 +183,7 @@ class BookletImporter
             ->filter(fn ($row, $code) => ! isset($seen[(string) $code]) && $row->source_type === self::SOURCE_TYPE)
             ->pluck('id');
         foreach ($stale->chunk(self::CHUNK) as $ids) {
-            $counts['removed'] += DB::table('study_programs')->whereIn('id', $ids->all())->delete();
+            $counts['removed'] += DB::table('study_programs')->whereIn('id', $ids->all())->where('source_type', self::SOURCE_TYPE)->delete();
         }
 
         return $counts;

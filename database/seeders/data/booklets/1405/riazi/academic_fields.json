@@ -1,0 +1,1207 @@
+{
+ "source": "Riazi_v1.pdf، جدول رشته‌های تحصیلی صفحه‌های 38 تا 43 (شماره صفحه PDF)",
+ "star_note": null,
+ "transcribed_from": "PDF text layer, tools/booklet/field_list_1405.py",
+ "fields": [
+  {
+   "order": 1,
+   "degree_level": "دکتری پیوسته",
+   "name": "دکترای پیوسته بیوتکنولوژی",
+   "selection_type": "کشوری",
+   "field_row_code": 1,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 2,
+   "degree_level": "دکترای پیوسته",
+   "name": "دکترای پیوسته فیزیک",
+   "selection_type": "کشوری",
+   "field_row_code": 3,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 3,
+   "degree_level": "کارشناسی‌ارشد",
+   "name": "کارشناسی‌ارشد پیوسته معارف اسلامی و ارشاد",
+   "selection_type": "کشوری",
+   "field_row_code": 4,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 4,
+   "degree_level": "کارشناسی‌ارشد",
+   "name": "کارشناسی‌ارشد پیوسته علوم قضایی (با شش گرایش)",
+   "selection_type": "کشوری",
+   "field_row_code": 221,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 5,
+   "degree_level": "کارشناسی‌ارشد",
+   "name": "کارشناسی‌ارشد پیوسته مهندسی پزشکی",
+   "selection_type": "کشوری",
+   "field_row_code": 288,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 6,
+   "degree_level": "کارشناسی",
+   "name": "آمار",
+   "selection_type": "ناحیه‌ای",
+   "field_row_code": 7,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 7,
+   "degree_level": "کارشناسی",
+   "name": "آمار و سنجش آموزشی",
+   "selection_type": "کشوری",
+   "field_row_code": 197,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 8,
+   "degree_level": "کارشناسی",
+   "name": "ادیان و مذاهب",
+   "selection_type": "کشوری",
+   "field_row_code": 9,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 9,
+   "degree_level": "کارشناسی",
+   "name": "اقتصاد",
+   "selection_type": "قطبی",
+   "field_row_code": 32,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 10,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی اقتصاد کشاورزی",
+   "selection_type": "کشوری",
+   "field_row_code": 127,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 11,
+   "degree_level": "کارشناسی",
+   "name": "امنیت اطلاعات",
+   "selection_type": "کشوری",
+   "field_row_code": 234,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 12,
+   "degree_level": "کارشناسی",
+   "name": "امنیت اقتصادی",
+   "selection_type": "کشوری",
+   "field_row_code": 235,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 13,
+   "degree_level": "کارشناسی",
+   "name": "امنیت بین الملل",
+   "selection_type": "کشوری",
+   "field_row_code": 236,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 14,
+   "degree_level": "کارشناسی",
+   "name": "امنیت نرم",
+   "selection_type": "کشوری",
+   "field_row_code": 228,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 15,
+   "degree_level": "کارشناسی",
+   "name": "بیم سنجی",
+   "selection_type": "کشوری",
+   "field_row_code": 1241,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 16,
+   "degree_level": "کارشناسی",
+   "name": "پژوهشگری امنیت",
+   "selection_type": "کشوری",
+   "field_row_code": 232,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 17,
+   "degree_level": "کارشناسی",
+   "name": "تاریخ اسلام",
+   "selection_type": "کشوری",
+   "field_row_code": 14,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 18,
+   "degree_level": "کارشناسی",
+   "name": "تربیت مروج سیاسی",
+   "selection_type": "کشوری",
+   "field_row_code": 254,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 19,
+   "degree_level": "کارشناسی",
+   "name": "حسابداری",
+   "selection_type": "ناحیه‌ای",
+   "field_row_code": 18,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 20,
+   "degree_level": "کارشناسی",
+   "name": "حفاظت اطلاعات",
+   "selection_type": "کشوری",
+   "field_row_code": 233,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 21,
+   "degree_level": "کارشناسی",
+   "name": "روانشناسی",
+   "selection_type": "قطبی",
+   "field_row_code": 27,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 22,
+   "degree_level": "کارشناسی",
+   "name": "ریاضیات و کاربردها",
+   "selection_type": "قطبی",
+   "field_row_code": 28,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 23,
+   "degree_level": "کارشناسی",
+   "name": "زبان و ادبیات عربی",
+   "selection_type": "ناحیه‌ای",
+   "field_row_code": 29,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 24,
+   "degree_level": "کارشناسی",
+   "name": "شیعه شناسی",
+   "selection_type": "کشوری",
+   "field_row_code": 220,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 25,
+   "degree_level": "کارشناسی",
+   "name": "شیمی کاربردی",
+   "selection_type": "ناحیه‌ای",
+   "field_row_code": 30,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 26,
+   "degree_level": "کارشناسی",
+   "name": "شیمی محض",
+   "selection_type": "ناحیه‌ای",
+   "field_row_code": 266,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 27,
+   "degree_level": "کارشناسی",
+   "name": "ضد تروریسم",
+   "selection_type": "کشوری",
+   "field_row_code": 227,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 28,
+   "degree_level": "کارشناسی",
+   "name": "علم اطلاعات و دانش شناسی",
+   "selection_type": "قطبی",
+   "field_row_code": 42,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 29,
+   "degree_level": "کارشناسی",
+   "name": "علوم تربیتی",
+   "selection_type": "کشوری",
+   "field_row_code": 217,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 30,
+   "degree_level": "کارشناسی",
+   "name": "علوم فنی امنیت",
+   "selection_type": "کشوری",
+   "field_row_code": 231,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 31,
+   "degree_level": "کارشناسی",
+   "name": "علوم قرآن و حدیث",
+   "selection_type": "کشوری",
+   "field_row_code": 174,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 32,
+   "degree_level": "کارشناسی",
+   "name": "علوم قضایی",
+   "selection_type": "کشوری",
+   "field_row_code": 36,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 33,
+   "degree_level": "کارشناسی",
+   "name": "علوم کامپیوتر",
+   "selection_type": "کشوری",
+   "field_row_code": 37,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 34,
+   "degree_level": "کارشناسی",
+   "name": "علوم و مهندسی آب",
+   "selection_type": "ناحیه‌ای",
+   "field_row_code": 152,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 35,
+   "degree_level": "کارشناسی",
+   "name": "علوم مهندسی",
+   "selection_type": "کشوری",
+   "field_row_code": 196,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 36,
+   "degree_level": "کارشناسی",
+   "name": "علوم ورزشی",
+   "selection_type": "کشوری",
+   "field_row_code": 15,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 37,
+   "degree_level": "کارشناسی",
+   "name": "فقه شافعی",
+   "selection_type": "کشوری",
+   "field_row_code": 183,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 38,
+   "degree_level": "کارشناسی",
+   "name": "فقه و حقوق اسلامی",
+   "selection_type": "کشوری",
+   "field_row_code": 165,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 39,
+   "degree_level": "کارشناسی",
+   "name": "فقه و حقوق امامی",
+   "selection_type": "کشوری",
+   "field_row_code": 155,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 40,
+   "degree_level": "کارشناسی",
+   "name": "فقه و حقوق حنفی",
+   "selection_type": "کشوری",
+   "field_row_code": 133,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 41,
+   "degree_level": "کارشناسی",
+   "name": "فقه و مبانی حقوق اسلامی",
+   "selection_type": "قطبی",
+   "field_row_code": 178,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 42,
+   "degree_level": "کارشناسی",
+   "name": "فلسفه و حکمت اسلامی",
+   "selection_type": "کشوری",
+   "field_row_code": 180,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 43,
+   "degree_level": "کارشناسی",
+   "name": "فلسفه و عرفان اسلامی",
+   "selection_type": "کشوری",
+   "field_row_code": 135,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 44,
+   "degree_level": "کارشناسی",
+   "name": "فلسفه و کلام اسلامی",
+   "selection_type": "کشوری",
+   "field_row_code": 179,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 45,
+   "degree_level": "کارشناسی",
+   "name": "فناوری اطلاعات و ارتباطات",
+   "selection_type": "کشوری",
+   "field_row_code": 230,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 46,
+   "degree_level": "کارشناسی",
+   "name": "فیزیک",
+   "selection_type": "ناحیه‌ای",
+   "field_row_code": 41,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 47,
+   "degree_level": "کارشناسی",
+   "name": "فیزیک مهندسی",
+   "selection_type": "کشوری",
+   "field_row_code": 211,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 48,
+   "degree_level": "کارشناسی",
+   "name": "گردشگری",
+   "selection_type": "کشوری",
+   "field_row_code": 142,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 49,
+   "degree_level": "کارشناسی",
+   "name": "مددکاری اجتماعی",
+   "selection_type": "کشوری",
+   "field_row_code": 44,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 50,
+   "degree_level": "کارشناسی",
+   "name": "مدیریت امور بانکی",
+   "selection_type": "کشوری",
+   "field_row_code": 139,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 51,
+   "degree_level": "کارشناسی",
+   "name": "مدیریت امور گمرکی",
+   "selection_type": "کشوری",
+   "field_row_code": 145,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 52,
+   "degree_level": "کارشناسی",
+   "name": "مدیریت بازرگانی",
+   "selection_type": "ناحیه‌ای",
+   "field_row_code": 137,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 53,
+   "degree_level": "کارشناسی",
+   "name": "مدیریت بیمه",
+   "selection_type": "کشوری",
+   "field_row_code": 140,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 54,
+   "degree_level": "کارشناسی",
+   "name": "مدیریت بیمه اکو",
+   "selection_type": "کشوری",
+   "field_row_code": 141,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 55,
+   "degree_level": "کارشناسی",
+   "name": "مدیریت دولتی",
+   "selection_type": "قطبی",
+   "field_row_code": 143,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 56,
+   "degree_level": "کارشناسی",
+   "name": "مدیریت صنعتی",
+   "selection_type": "قطبی",
+   "field_row_code": 144,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 57,
+   "degree_level": "کارشناسی",
+   "name": "مدیریت فرهنگی هنری",
+   "selection_type": "کشوری",
+   "field_row_code": 136,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 58,
+   "degree_level": "کارشناسی",
+   "name": "مدیریت کسب و کار",
+   "selection_type": "کشوری",
+   "field_row_code": 162,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 59,
+   "degree_level": "کارشناسی",
+   "name": "مدیریت مالی",
+   "selection_type": "کشوری",
+   "field_row_code": 151,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 60,
+   "degree_level": "کارشناسی",
+   "name": "مدیریت و بازرگانی دریایی",
+   "selection_type": "کشوری",
+   "field_row_code": 138,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 61,
+   "degree_level": "کارشناسی",
+   "name": "مربیگری عقیدتی",
+   "selection_type": "کشوری",
+   "field_row_code": 16,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 62,
+   "degree_level": "کارشناسی",
+   "name": "معارف اسلامی",
+   "selection_type": "کشوری",
+   "field_row_code": 47,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 63,
+   "degree_level": "کارشناسی",
+   "name": "معارف اسلامی و تبلیغ و ارتباطات",
+   "selection_type": "کشوری",
+   "field_row_code": 259,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 64,
+   "degree_level": "کارشناسی",
+   "name": "معارف اسلامی و اخلاق",
+   "selection_type": "کشوری",
+   "field_row_code": 247,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 65,
+   "degree_level": "کارشناسی",
+   "name": "معارف اسلامی و ادیان",
+   "selection_type": "کشوری",
+   "field_row_code": 264,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 66,
+   "degree_level": "کارشناسی",
+   "name": "معارف اسلامی و تاریخ",
+   "selection_type": "کشوری",
+   "field_row_code": 245,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 67,
+   "degree_level": "کارشناسی",
+   "name": "معارف اسلامی و علوم تربیتی",
+   "selection_type": "کشوری",
+   "field_row_code": 187,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 68,
+   "degree_level": "کارشناسی",
+   "name": "معارف اسلامی و علوم قرآنی",
+   "selection_type": "کشوری",
+   "field_row_code": 246,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 69,
+   "degree_level": "کارشناسی",
+   "name": "معارف اسلامی و کلام",
+   "selection_type": "کشوری",
+   "field_row_code": 244,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 70,
+   "degree_level": "کارشناسی",
+   "name": "معارف اسلامی و مدیریت",
+   "selection_type": "کشوری",
+   "field_row_code": 255,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 71,
+   "degree_level": "کارشناسی",
+   "name": "معماری داخلی",
+   "selection_type": "کشوری",
+   "field_row_code": 153,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 72,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی اپتیک و لیزر",
+   "selection_type": "کشوری",
+   "field_row_code": 48,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 73,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی الکترونیک هواپیمایی",
+   "selection_type": "کشوری",
+   "field_row_code": 262,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 74,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی انرژی",
+   "selection_type": "کشوری",
+   "field_row_code": 219,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 75,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی ایمنی و بازرسی فنی",
+   "selection_type": "کشوری",
+   "field_row_code": 268,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 76,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی اویونیک",
+   "selection_type": "کشوری",
+   "field_row_code": 276,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 77,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی برق",
+   "selection_type": "قطبی",
+   "field_row_code": 51,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 78,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی بهداشت حرفه‌ای و ایمنی کار",
+   "selection_type": "کشوری",
+   "field_row_code": 265,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 79,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی بهره برداری راه آهن",
+   "selection_type": "کشوری",
+   "field_row_code": 261,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 80,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی پزشکی",
+   "selection_type": "کشوری",
+   "field_row_code": 52,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 81,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی پلیمر",
+   "selection_type": "کشوری",
+   "field_row_code": 53,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 82,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی تعمیر و نگهداری هواپیما",
+   "selection_type": "کشوری",
+   "field_row_code": 54,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 83,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی حرفه ای کامپیوتر",
+   "selection_type": "ناحیه‌ای",
+   "field_row_code": 278,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 84,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی حرفه ای معماری",
+   "selection_type": "ناحیه‌ای",
+   "field_row_code": 279,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 85,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی حمل و نقل ریلی",
+   "selection_type": "کشوری",
+   "field_row_code": 55,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 86,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی خط و سازه‌های ریلی",
+   "selection_type": "کشوری",
+   "field_row_code": 58,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 87,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی دریا",
+   "selection_type": "کشوری",
+   "field_row_code": 202,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 88,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی دریانوردی",
+   "selection_type": "کشوری",
+   "field_row_code": 56,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 89,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی راه‌آهن",
+   "selection_type": "کشوری",
+   "field_row_code": 193,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 90,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی ساخت و تولید",
+   "selection_type": "کشوری",
+   "field_row_code": 260,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 91,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی شهرسازی",
+   "selection_type": "قطبی",
+   "field_row_code": 60,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 92,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی شیمی",
+   "selection_type": "کشوری",
+   "field_row_code": 61,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 93,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی صنایع و سیستمها",
+   "selection_type": "قطبی",
+   "field_row_code": 62,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 94,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی صنایع غذایی",
+   "selection_type": "کشوری",
+   "field_row_code": 267,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 95,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی صنایع و سیستم‌های مدیریت",
+   "selection_type": "کشوری",
+   "field_row_code": 270,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 96,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی عمران",
+   "selection_type": "ناحیه‌ای",
+   "field_row_code": 67,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 97,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی کامپیوتر",
+   "selection_type": "ناحیه‌ای",
+   "field_row_code": 70,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 98,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی کشتی (موتور)",
+   "selection_type": "کشوری",
+   "field_row_code": 269,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 99,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی ماشین آلات دریایی",
+   "selection_type": "کشوری",
+   "field_row_code": 239,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 100,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی ماشین‌های ریلی",
+   "selection_type": "کشوری",
+   "field_row_code": 73,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 101,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی ماشین‌های صنایع غذایی",
+   "selection_type": "کشوری",
+   "field_row_code": 223,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 102,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی مخابرات هواپیمایی",
+   "selection_type": "کشوری",
+   "field_row_code": 263,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 103,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی معدن",
+   "selection_type": "کشوری",
+   "field_row_code": 74,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 104,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی معماری",
+   "selection_type": "ناحیه‌ای",
+   "field_row_code": 75,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 105,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی مکانیزاسیون کشاورزی",
+   "selection_type": "کشوری",
+   "field_row_code": 129,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 106,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی مکانیک",
+   "selection_type": "ناحیه‌ای",
+   "field_row_code": 76,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 107,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی مکانیک بیوسیستم (کشاورزی)",
+   "selection_type": "ناحیه‌ای",
+   "field_row_code": 128,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 108,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی و علم مواد",
+   "selection_type": "قطبی",
+   "field_row_code": 77,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 109,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی نساجی",
+   "selection_type": "کشوری",
+   "field_row_code": 78,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 110,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی نفت و زمین‌انرژی",
+   "selection_type": "کشوری",
+   "field_row_code": 79,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 111,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی نقشه برداری",
+   "selection_type": "کشوری",
+   "field_row_code": 240,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 112,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی هسته‌ای",
+   "selection_type": "کشوری",
+   "field_row_code": 289,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 113,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی هوافضا",
+   "selection_type": "کشوری",
+   "field_row_code": 80,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 114,
+   "degree_level": "کارشناسی",
+   "name": "مهندسی هوانوردی و مراقبت پرواز",
+   "selection_type": "کشوری",
+   "field_row_code": 274,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 115,
+   "degree_level": "کارشناسی",
+   "name": "هتلداری",
+   "selection_type": "کشوری",
+   "field_row_code": 146,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 116,
+   "degree_level": "کارشناسی",
+   "name": "چند رسانه ای",
+   "selection_type": "کشوری",
+   "field_row_code": 189,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 117,
+   "degree_level": "کاردانی",
+   "name": "کاردان فنی الکترونیک",
+   "selection_type": "استانی",
+   "field_row_code": 273,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 118,
+   "degree_level": "کاردانی",
+   "name": "کاردانی ارتباطات و فناوری اطلاعات",
+   "selection_type": "استانی",
+   "field_row_code": 204,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 119,
+   "degree_level": "کاردانی",
+   "name": "کاردانی امور بانکی",
+   "selection_type": "استانی",
+   "field_row_code": 98,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 120,
+   "degree_level": "کاردانی",
+   "name": "کاردانی امور دولتی",
+   "selection_type": "استانی",
+   "field_row_code": 100,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 121,
+   "degree_level": "کاردانی",
+   "name": "کاردانی امور مالی و مالیاتی",
+   "selection_type": "استانی",
+   "field_row_code": 101,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 122,
+   "degree_level": "کاردانی",
+   "name": "کاردانی آمار",
+   "selection_type": "استانی",
+   "field_row_code": 97,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 123,
+   "degree_level": "کاردانی",
+   "name": "کاردانی آموزش و پرورش ابتدایی",
+   "selection_type": "استانی",
+   "field_row_code": 207,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 124,
+   "degree_level": "کاردانی",
+   "name": "کاردانی انتقال آب",
+   "selection_type": "استانی",
+   "field_row_code": 291,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 125,
+   "degree_level": "کاردانی",
+   "name": "کاردانی بهینه سازی مصرف انرژی",
+   "selection_type": "استانی",
+   "field_row_code": 212,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 126,
+   "degree_level": "کاردانی",
+   "name": "کاردانی بیمه",
+   "selection_type": "استانی",
+   "field_row_code": 99,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 127,
+   "degree_level": "کاردانی",
+   "name": "کاردانی پالایش گاز",
+   "selection_type": "استانی",
+   "field_row_code": 116,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 128,
+   "degree_level": "کاردانی",
+   "name": "کاردانی تربیت معلم قرآن کریم",
+   "selection_type": "استانی",
+   "field_row_code": 104,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 129,
+   "degree_level": "کاردانی",
+   "name": "کاردانی تکنولوژی آبیاری",
+   "selection_type": "استانی",
+   "field_row_code": 83,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 130,
+   "degree_level": "کاردانی",
+   "name": "کاردانی تکنولوژی ماشین های کشاورزی",
+   "selection_type": "استانی",
+   "field_row_code": 84,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 131,
+   "degree_level": "کاردانی",
+   "name": "کاردانی حسابداری",
+   "selection_type": "استانی",
+   "field_row_code": 107,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 132,
+   "degree_level": "کاردانی",
+   "name": "کاردانی خدمات اداری",
+   "selection_type": "استانی",
+   "field_row_code": 272,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 133,
+   "degree_level": "کاردانی",
+   "name": "کاردانی علوم ورزشی",
+   "selection_type": "استانی",
+   "field_row_code": 103,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 134,
+   "degree_level": "کاردانی",
+   "name": "کاردانی فناوری اطلاعات و ارتباطات",
+   "selection_type": "استانی",
+   "field_row_code": 118,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 135,
+   "degree_level": "کاردانی",
+   "name": "کاردانی فنی برق",
+   "selection_type": "استانی",
+   "field_row_code": 88,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 136,
+   "degree_level": "کاردانی",
+   "name": "کاردانی فنی برق و تاسیسات",
+   "selection_type": "استانی",
+   "field_row_code": 271,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 137,
+   "degree_level": "کاردانی",
+   "name": "کاردانی فنی خط و ابنیه",
+   "selection_type": "استانی",
+   "field_row_code": 216,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 138,
+   "degree_level": "کاردانی",
+   "name": "کاردانی فنی صنایع",
+   "selection_type": "استانی",
+   "field_row_code": 89,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 139,
+   "degree_level": "کاردانی",
+   "name": "کاردانی فنی عمران",
+   "selection_type": "استانی",
+   "field_row_code": 90,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 140,
+   "degree_level": "کاردانی",
+   "name": "کاردانی فنی عملیات پتروشیمی",
+   "selection_type": "استانی",
+   "field_row_code": 91,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 141,
+   "degree_level": "کاردانی",
+   "name": "کاردانی فنی معدن",
+   "selection_type": "استانی",
+   "field_row_code": 93,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 142,
+   "degree_level": "کاردانی",
+   "name": "کاردانی فنی مکانیک",
+   "selection_type": "استانی",
+   "field_row_code": 94,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 143,
+   "degree_level": "کاردانی",
+   "name": "کاردانی کارهای عمومی ساختمان",
+   "selection_type": "استانی",
+   "field_row_code": 285,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 144,
+   "degree_level": "کاردانی",
+   "name": "کاردانی فنی مخابرات",
+   "selection_type": "استانی",
+   "field_row_code": 114,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 145,
+   "degree_level": "کاردانی",
+   "name": "کاردانی مدیریت بازرگانی",
+   "selection_type": "استانی",
+   "field_row_code": 157,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 146,
+   "degree_level": "کاردانی",
+   "name": "کاردانی مدیریت صنعتی",
+   "selection_type": "استانی",
+   "field_row_code": 147,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 147,
+   "degree_level": "کاردانی",
+   "name": "کاردانی معماری",
+   "selection_type": "استانی",
+   "field_row_code": 161,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 148,
+   "degree_level": "کاردانی",
+   "name": "کاردانی معماری سنتی",
+   "selection_type": "استانی",
+   "field_row_code": 130,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 149,
+   "degree_level": "کاردانی",
+   "name": "کاردانی نقشه برداری",
+   "selection_type": "استانی",
+   "field_row_code": 252,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 150,
+   "degree_level": "کاردانی",
+   "name": "کاردانی هتلداری",
+   "selection_type": "استانی",
+   "field_row_code": 208,
+   "gender_min_30_percent_note": false
+  }
+ ]
+}
