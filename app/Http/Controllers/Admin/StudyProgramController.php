@@ -171,7 +171,7 @@ class StudyProgramController extends Controller
         $query->where('is_active', true)
             ->when($request->integer('exam_year_id'), fn ($q, $id) => $q->where('exam_year_id', $id))
             ->when($request->integer('exam_group_id'), fn ($q, $id) => $q->where('exam_group_id', $id))
-            ->when($request->integer('province_id'), fn ($q, $id) => $q->where('province_id', $id))
+            ->when($request->integer('province_id'), fn ($q, $id) => $q->where(fn ($nested) => $nested->where('province_id', $id)->orWhere('native_province_id', $id)))
             ->when($request->integer('city_id'), fn ($q, $id) => $q->where('city_id', $id))
             ->when($includeInstitution && $request->integer('institution_id'), fn ($q) => $q->where('institution_id', $request->integer('institution_id')));
     }

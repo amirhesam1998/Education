@@ -137,7 +137,7 @@
                         <td>{{ $program->academicField?->name ?: '-' }}</td>
                         <td>{{ $program->institution?->name ?: '-' }}</td>
                         <td>{{ $program->city?->name ?: '-' }}</td>
-                        <td>{{ $program->province?->name ?: '-' }}</td>
+                        <td>{{ $program->province?->name ?: '-' }}@if($program->native_province_id && $program->native_province_id !== $program->province_id)<small class="d-block text-muted">بومی: {{ $program->nativeProvince?->name }}</small>@endif</td>
                         <td><span class="badge bg-info">{{ $program->courseType?->name ?: '-' }}</span></td>
                         <td><span class="badge bg-secondary">{{ $program->admissionType?->name ?: '-' }}</span></td>
                         <td><span class="badge bg-{{ $program->is_active ? 'success' : 'secondary' }}">{{ $program->is_active ? 'فعال' : 'غیرفعال' }}</span></td>

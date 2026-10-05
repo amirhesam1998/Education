@@ -96,7 +96,7 @@ class StudyProgramAdminService
 
         return [
             ...collect($data)->only([
-                'exam_year_id', 'exam_group_id', 'province_id', 'city_id', 'institution_id', 'institution_campus_id', 'academic_field_id',
+                'exam_year_id', 'exam_group_id', 'province_id', 'native_province_id', 'city_id', 'institution_id', 'institution_campus_id', 'academic_field_id',
                 'course_type_id', 'admission_type_id', 'first_semester_capacity', 'second_semester_capacity', 'female_capacity', 'male_capacity',
                 'admission_period', 'admission_scope', 'service_location', 'description', 'section_note', 'is_active',
             ])->all(),

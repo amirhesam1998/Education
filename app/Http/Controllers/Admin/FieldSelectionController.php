@@ -283,7 +283,9 @@ class FieldSelectionController extends Controller
     {
         return [
             'catalogProvinces' => Province::query()
-                ->whereIn('id', StudyProgram::query()->select('province_id')->whereNotNull('province_id')->where('validation_status', 'validated'))
+                ->where(fn ($query) => $query
+                    ->whereIn('id', StudyProgram::query()->select('province_id')->whereNotNull('province_id')->where('validation_status', 'validated'))
+                    ->orWhereIn('id', StudyProgram::query()->select('native_province_id')->whereNotNull('native_province_id')->where('validation_status', 'validated')))
                 ->orderBy('normalized_name')
                 ->get(['id', 'name']),
             'catalogCourseTypes' => CourseType::query()

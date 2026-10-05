@@ -71,6 +71,28 @@ class StudyProgramAdminCrudTest extends TestCase
         $this->assertSame(1, StudyProgram::query()->count());
     }
 
+    #[Test]
+    public function an_admin_sets_the_native_province_and_the_list_of_that_province_shows_the_program(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('Super Admin');
+        $kurdistan = Province::query()->create(['name' => 'کردستان', 'normalized_name' => 'کردستان']);
+
+        $this->actingAs($user)->post(route('admin.study-programs.store'), [...$this->data(), 'native_province_id' => $kurdistan->id])->assertRedirect();
+        $program = StudyProgram::query()->firstOrFail();
+        $this->assertSame($kurdistan->id, $program->native_province_id);
+
+        $this->actingAs($user)->get(route('admin.study-programs.index', ['province_id' => $kurdistan->id]))
+            ->assertOk()
+            ->assertSee('12345')
+            ->assertSee('بومی: کردستان');
+        $this->actingAs($user)->get(route('admin.study-programs.show', $program))->assertOk()->assertSee('استان بومی / تعهد')->assertSee('کردستان');
+        $this->actingAs($user)->get(route('admin.study-programs.edit', $program))->assertOk()->assertSee('name="native_province_id"', false);
+
+        $this->actingAs($user)->put(route('admin.study-programs.update', $program), [...$program->only(['exam_year_id', 'exam_group_id', 'code', 'province_id', 'city_id', 'institution_id', 'academic_field_id', 'course_type_id', 'admission_type_id']), 'is_active' => 1, 'native_province_id' => ''])->assertSessionHas('success');
+        $this->assertNull($program->refresh()->native_province_id);
+    }
+
     private function data(): array
     {
         $year = ExamYear::query()->create(['year' => 1404, 'is_active' => true]);

@@ -196,6 +196,7 @@ class BookletImporter
             'exam_group_id' => $groupId,
             'code' => (string) $p['code'],
             'province_id' => $provinceId,
+            'native_province_id' => ($p['native_province'] ?? null) !== null ? $this->province($p['native_province']) : null,
             'city_id' => $cityId,
             'institution_id' => $institutionId,
             'institution_campus_id' => $campusId,
