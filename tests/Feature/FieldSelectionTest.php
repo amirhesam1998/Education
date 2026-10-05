@@ -159,6 +159,51 @@ class FieldSelectionTest extends TestCase
     }
 
     #[Test]
+    public function a_province_filter_offers_the_cities_where_programs_for_its_natives_are_studied(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('Super Admin');
+
+        $kurdistan = Province::query()->create(['name' => 'کردستان', 'normalized_name' => 'کردستان']);
+        $azarbaijan = Province::query()->create(['name' => 'آذربایجان شرقی', 'normalized_name' => 'آذربایجان شرقی']);
+        $sanandaj = City::query()->create(['province_id' => $kurdistan->id, 'name' => 'سنندج', 'normalized_name' => 'سنندج']);
+        $tabriz = City::query()->create(['province_id' => $azarbaijan->id, 'name' => 'تبریز', 'normalized_name' => 'تبریز']);
+        $commitment = CourseType::query()->create(['name' => 'تعهد خدمت', 'slug' => 'commitment']);
+        $medicine = AcademicField::query()->create(['name' => 'دکتری عمومی پزشکی', 'normalized_name' => 'دکتری عمومی پزشکی']);
+        $kurdistanUni = Institution::query()->create(['name' => 'دانشگاه کردستان', 'normalized_name' => 'دانشگاه کردستان', 'province_id' => $kurdistan->id, 'city_id' => $sanandaj->id]);
+        $tabrizUni = Institution::query()->create(['name' => 'دانشگاه تبریز', 'normalized_name' => 'دانشگاه تبریز', 'province_id' => $azarbaijan->id, 'city_id' => $tabriz->id]);
+
+        $this->studyProgram('38878', $kurdistan, $sanandaj, $kurdistanUni, $medicine, $commitment)->update(['native_province_id' => $kurdistan->id]);
+        $this->studyProgram('38873', $azarbaijan, $tabriz, $tabrizUni, $medicine, $commitment)->update(['native_province_id' => $kurdistan->id]);
+        $this->studyProgram('31601', $azarbaijan, $tabriz, $tabrizUni, $medicine, $commitment);
+
+        $this->actingAs($user)
+            ->getJson(route('admin.field-selection.filter-options.cities', ['province_id' => $kurdistan->id]))
+            ->assertOk()
+            ->assertExactJson([['id' => $sanandaj->id, 'name' => 'سنندج'], ['id' => $tabriz->id, 'name' => 'تبریز (آذربایجان شرقی)']]);
+        $this->actingAs($user)
+            ->getJson(route('admin.field-selection.filter-options.cities', ['province_id' => $azarbaijan->id]))
+            ->assertOk()
+            ->assertExactJson([['id' => $tabriz->id, 'name' => 'تبریز']]);
+
+        $this->actingAs($user)
+            ->getJson(route('admin.field-selection.search-fields', ['province_id' => $kurdistan->id, 'city_id' => $tabriz->id]))
+            ->assertOk()
+            ->assertJsonPath('count', 1)
+            ->assertJsonPath('items.0.field_code', '38873')
+            ->assertJsonPath('items.0.native_province', 'کردستان');
+
+        // The province list of the catalogue also offers a province that only programs' natives come from.
+        $reservation = $this->reservation();
+        $plan = app(FieldSelectionService::class)->createPlanForReservation($reservation, $user);
+        StudyProgram::query()->where('code', '38878')->delete();
+        $this->actingAs($user)
+            ->get(route('admin.reservations.field-selection.show', [$reservation, 'plan' => $plan]))
+            ->assertOk()
+            ->assertSee('<option value="'.$kurdistan->id.'">کردستان</option>', false);
+    }
+
+    #[Test]
     public function adding_a_catalog_field_persists_description_university_and_booklet_source(): void
     {
         $user = User::factory()->create();

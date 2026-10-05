@@ -19,6 +19,7 @@ class StoreStudyProgramRequest extends FormRequest
             'exam_group_id' => ['required', 'integer', 'exists:exam_groups,id'],
             'code' => ['required', 'string', 'max:32', 'regex:/^[0-9A-Za-z-]+$/'],
             'province_id' => ['required', 'integer', 'exists:provinces,id'],
+            'native_province_id' => ['nullable', 'integer', 'exists:provinces,id'],
             'city_id' => ['required', 'integer', 'exists:cities,id'],
             'institution_id' => ['required', 'integer', 'exists:institutions,id'],
             'institution_campus_id' => ['nullable', 'integer', 'exists:institution_campuses,id'],

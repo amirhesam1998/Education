@@ -91,6 +91,7 @@ class PurgeExamYear extends Command
             $deleted['provinces'] = DB::table('provinces')
                 ->whereNotIn('normalized_name', $official)
                 ->whereNotExists(fn ($q) => $q->selectRaw(1)->from('study_programs')->whereColumn('study_programs.province_id', 'provinces.id'))
+                ->whereNotExists(fn ($q) => $q->selectRaw(1)->from('study_programs')->whereColumn('study_programs.native_province_id', 'provinces.id'))
                 ->whereNotExists(fn ($q) => $q->selectRaw(1)->from('cities')->whereColumn('cities.province_id', 'provinces.id'))
                 ->whereNotExists(fn ($q) => $q->selectRaw(1)->from('institutions')->whereColumn('institutions.province_id', 'provinces.id'))
                 ->whereNotExists(fn ($q) => $q->selectRaw(1)->from('institution_campuses')->whereColumn('institution_campuses.province_id', 'provinces.id'))

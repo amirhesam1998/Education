@@ -25,6 +25,11 @@ from places_1405 import CITIES, PROVINCES, Place, Places, UnknownPlace, key, pro
 
 TITLE_PARTS = {'health', 'science', 'nonprofit', 'payame_noor'}
 INSTITUTION_CELL_PARTS = {'health_commitment_council', 'health_commitment_justice', 'health_commitment_native', 'quota'}
+# Parts whose sections are reserved for (or give priority to) the natives of one province,
+# who may study in another one: the service-commitment parts, the native quotas and Farhangian.
+NATIVE_PARTS = INSTITUTION_CELL_PARTS | {'teacher'}
+# Quota sections that name a county instead of its province.
+NATIVE_COUNTIES = {'بشاگرد': 'هرمزگان'}
 
 
 class BuildError(Exception):
@@ -43,6 +48,24 @@ def title_place(places: Places, title: str) -> Place:
     if study_place and campus:
         raise BuildError(f'two campuses in {title!r}')
     return places.locate(province(m.group(1)), institution, tidy(study_place) if study_place else campus, suffix)
+
+
+_LETTER = '[آ-ی]'
+_GAP = '[\\s\u200c]*'
+_PROVINCE_RE = re.compile(
+    rf'(?<!{_LETTER})استان[\s\u200c]+(?:محروم[\s\u200c]+)?('
+    + '|'.join(_GAP.join(map(re.escape, p.replace(' ', ''))) for p in sorted(PROVINCES, key=len, reverse=True))
+    + rf')(?!{_LETTER})')
+_COUNTY_RE = re.compile(rf'(?<!{_LETTER})شهرستان[\s\u200c]+({"|".join(NATIVE_COUNTIES)})(?!{_LETTER})')
+
+
+def native_province(title: str) -> str:
+    """The one province whose natives a section is reserved for or gives priority to, read from its title."""
+    found = {province(m.group(1)) for m in _PROVINCE_RE.finditer(title)}
+    found |= {NATIVE_COUNTIES[m.group(1)] for m in _COUNTY_RE.finditer(title)}
+    if len(found) != 1:
+        raise BuildError(f'section title names {sorted(found) or "no"} province(s): {title!r}')
+    return found.pop()
 
 
 class InstitutionCells:
@@ -309,6 +332,7 @@ def build_programs(raw: dict, field_list: FieldList) -> list[dict]:
     part_heading = {v: k for k, v in PART_HEADINGS.items()}
     sections = {s['id']: s for s in raw['sections']}
     by_code, extras = build_places(raw)
+    natives = {s['id']: native_province(tidy(s['title'])) for s in raw['sections'] if s['part'] in NATIVE_PARTS}
     programs: list[dict] = []
     errors: list[str] = []
     for n, r in enumerate(raw['rows'], 1):
@@ -359,6 +383,7 @@ def build_programs(raw: dict, field_list: FieldList) -> list[dict]:
             'subpart': s['subpart'],
             'section': fa(tidy(s['title'])),
             'province': place.province,
+            'native_province': natives.get(s['id']),
             'city': place.city,
             'city_how': CITY_HOW[place.how],
             'institution': place.institution,
