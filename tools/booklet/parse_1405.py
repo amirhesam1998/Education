@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 
 import pymupdf
 
-from booklet_pages import Band, Loose, read_page
+from booklet_pages import MERGED_CELLS, Band, Loose, read_page
 from pdf_cells import GlyphForms, normalize
 
 DIGITS = str.maketrans('۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩', '01234567890123456789')
@@ -267,7 +267,8 @@ def handle_line(it: Loose, ctx: Context, page: int) -> None:
         else:
             raise BookletError(f'page {page}: unknown heading {text!r} ({size})')
         return
-    if 8.5 <= size <= 10.5:
+    if 8.5 <= size <= 10.5 or (size < 8.5 and any(p.match(text) for p in SECTION_PATTERNS)):
+        # a long section title is sometimes set in small type to fit one line (riazi p. 67)
         if text.startswith('نکته:') or text in REMARK_ENDINGS or text.startswith('متقاضیان پس از مطالعه کامل'):
             return  # part-level remarks printed in title size
         if ctx.small_print and not ctx.title_lines:
@@ -286,7 +287,7 @@ def main() -> None:
     sections, rows = parse(pdf, first, last)
     with open(out, 'w', encoding='utf-8') as fh:
         json.dump({'sections': [s.__dict__ for s in sections], 'rows': rows}, fh, ensure_ascii=False, indent=0)
-    print(len(sections), 'sections', len(rows), 'rows', 'pages without header', HEADERLESS)
+    print(len(sections), 'sections', len(rows), 'rows', 'pages without header', HEADERLESS, 'merged cells', MERGED_CELLS)
 
 
 if __name__ == '__main__':

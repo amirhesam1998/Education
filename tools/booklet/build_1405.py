@@ -574,7 +574,8 @@ def read_committed(year_dir: str) -> dict[str, list[dict]]:
 
 def check_groups(groups: dict[str, list[dict]]) -> None:
     """The catalogue shares cities, institutions, campuses and fields between the groups of a year:
-    each needs one spelling, a campus one city and an institution one home city in every booklet."""
+    each needs one spelling, a campus one city and an institution one home city in every booklet.
+    A code printed in several booklets (the records-only codes are in all of them) is one study place."""
     errors: list[str] = []
     rows = [(group, p) for group, programs in sorted(groups.items()) for p in programs]
 
@@ -598,6 +599,10 @@ def check_groups(groups: dict[str, list[dict]]) -> None:
             where[(p['institution'], p['campus'])].setdefault((p['province'], p['city']), group)
         homes[p['institution']].setdefault((p['institution_province'], p['institution_city']), group)
     errors += [f'campus {k} in {v}' for k, v in where.items() if len(v) > 1]
+    places: dict[str, dict[tuple, str]] = collections.defaultdict(dict)
+    for group, p in rows:
+        places[p['code']].setdefault((p['province'], p['city'], p['institution'], p['campus']), group)
+    errors += [f'code {k} is at {v}' for k, v in places.items() if len(v) > 1]
     errors += [f'institution {k} has home cities {v}' for k, v in homes.items() if len(v) > 1]
     if errors:
         raise BuildError('\n'.join(errors) + '\n(build the groups that disagree together, with --and)')
