@@ -28,6 +28,46 @@ class Loose:
     size: float
 
 
+# (page, column, first row y, rows) of every cell that spans several table rows
+MERGED_CELLS: list[tuple[int, int, float, int]] = []
+
+
+def merge_spanning_cells(bands: list[Band], horizontals: list[Rule], forms: GlyphForms | None) -> None:
+    """Give a cell that spans several rows (no border between them in its column) to each of those rows.
+
+    Rows are cut at every horizontal line of the page, so the text of a merged cell would otherwise be
+    split by height over the rows it spans (ensani pp. 417-418, where one note covers twelve codes).
+    """
+    def bordered(y: float, lo: float, hi: float) -> bool:
+        lo, hi = lo + 1, hi - 1
+        covered = sum(max(0.0, min(hi, h.hi) - max(lo, h.lo)) for h in horizontals if abs(h.a - y) <= 1.0)
+        return covered >= (hi - lo) / 2
+
+    runs: list[list[Band]] = []
+    for band in bands:
+        prev = runs[-1][-1] if runs else None
+        if (prev is not None and prev.y1 == band.y0 and len(prev.edges) == len(band.edges)
+                and max(abs(a - b) for a, b in zip(prev.edges, band.edges)) <= 1.2):
+            runs[-1].append(band)
+        else:
+            runs.append([band])
+    for run in runs:
+        for ci in range(len(run[0].edges) - 1):
+            start = 0
+            for i in range(1, len(run) + 1):
+                if i < len(run) and not bordered(run[i].y0, run[i].edges[ci + 1], run[i].edges[ci]):
+                    continue
+                group = run[start:i]
+                if len(group) > 1:
+                    glyphs = [g for band in group for g in band.glyphs[ci]]
+                    text = cell_text(glyphs, forms)
+                    for band in group:
+                        band.cells[ci] = text
+                        band.glyphs[ci] = glyphs
+                    MERGED_CELLS.append((group[0].page, ci, round(group[0].y0, 1), len(group)))
+                start = i
+
+
 def read_page(doc: pymupdf.Document, index: int, forms: GlyphForms | None = None) -> list[Band | Loose]:
     page = doc[index]
     glyphs = page_glyphs(page)
@@ -53,6 +93,7 @@ def read_page(doc: pymupdf.Document, index: int, forms: GlyphForms | None = None
                     used.add(gi)
                     break
         items.append(Band(index + 1, top, bottom, [cell_text(c, forms) for c in cells], edges, cells))
+    merge_spanning_cells([it for it in items if isinstance(it, Band)], horizontals, forms)
     loose = [g for gi, g in enumerate(glyphs) if gi not in used]
     for line in split_lines(loose, tol=3.0):
         text = normalize(logical_text(line, forms))
