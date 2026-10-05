@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'exam_group_id',
     'code',
     'province_id',
+    'native_province_id',
     'city_id',
     'institution_id',
     'institution_campus_id',
@@ -47,6 +48,7 @@ class StudyProgram extends Model
     public function examYear(): BelongsTo { return $this->belongsTo(ExamYear::class); }
     public function examGroup(): BelongsTo { return $this->belongsTo(ExamGroup::class); }
     public function province(): BelongsTo { return $this->belongsTo(Province::class); }
+    public function nativeProvince(): BelongsTo { return $this->belongsTo(Province::class, 'native_province_id'); }
     public function city(): BelongsTo { return $this->belongsTo(City::class); }
     public function institution(): BelongsTo { return $this->belongsTo(Institution::class); }
     public function institutionCampus(): BelongsTo { return $this->belongsTo(InstitutionCampus::class); }

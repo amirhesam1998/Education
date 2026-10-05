@@ -40,6 +40,7 @@ class PurgeExamYearTest extends TestCase
         $gilan = $this->row('provinces', ['name' => 'گیلان', 'normalized_name' => 'گیلان']);
         $tehran = $this->row('provinces', ['name' => 'تهران', 'normalized_name' => 'تهران']);
         $typo = $this->row('provinces', ['name' => 'گيلان شرقي', 'normalized_name' => 'گیلان شرقی']);
+        $nativeOnly = $this->row('provinces', ['name' => 'استان آزمایشی', 'normalized_name' => 'استان آزمایشی']);
         $rasht = $this->row('cities', ['province_id' => $gilan, 'name' => 'رشت', 'normalized_name' => 'رشت']);
         $lahijan = $this->row('cities', ['province_id' => $typo, 'name' => 'لاهيجان', 'normalized_name' => 'لاهیجان']);
         $shared = $this->row('institutions', ['name' => 'دانشگاه گیلان', 'normalized_name' => 'دانشگاه گیلان', 'province_id' => $gilan, 'city_id' => $rasht]);
@@ -48,7 +49,7 @@ class PurgeExamYearTest extends TestCase
         $nursing = $this->row('academic_fields', ['name' => 'پرستاری', 'normalized_name' => 'پرستاری']);
         $oldField = $this->row('academic_fields', ['name' => 'پرستاری (قدیم)', 'normalized_name' => 'پرستاری (قدیم)']);
 
-        $this->program($new, $group, '1', ['province_id' => $gilan, 'city_id' => $rasht, 'institution_id' => $shared, 'academic_field_id' => $nursing]);
+        $this->program($new, $group, '1', ['province_id' => $gilan, 'native_province_id' => $nativeOnly, 'city_id' => $rasht, 'institution_id' => $shared, 'academic_field_id' => $nursing]);
         $this->program($old, $group, '1', ['province_id' => $gilan, 'city_id' => $rasht, 'institution_id' => $shared, 'academic_field_id' => $nursing]);
         $this->program($old, $group, '2', ['province_id' => $typo, 'city_id' => $lahijan, 'institution_id' => $oldOnly, 'institution_campus_id' => $oldCampus, 'academic_field_id' => $oldField]);
         $this->program($old, $group, '3', ['source_type' => 'manual']);
@@ -67,8 +68,8 @@ class PurgeExamYearTest extends TestCase
         $this->assertSame([$shared], $this->ids('institutions'));
         $this->assertSame([], $this->ids('institution_campuses'));
         $this->assertSame([$nursing], $this->ids('academic_fields'));
-        // Official provinces stay even with no programs; the misspelled one goes.
-        $this->assertSame([$gilan, $tehran], $this->ids('provinces'));
+        // Official provinces stay even with no programs, and so does one a program names as its native province; the misspelled one goes.
+        $this->assertSame([$gilan, $tehran, $nativeOnly], $this->ids('provinces'));
 
         $backups = glob($this->storage.'/app/backups/study-programs/*/backup-manifest.json');
         $this->assertCount(1, $backups);

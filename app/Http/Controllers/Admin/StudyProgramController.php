@@ -34,7 +34,9 @@ class StudyProgramController extends Controller
             'years' => ExamYear::query()->orderByDesc('year')->get(),
             'groups' => ExamGroup::query()->orderBy('id')->get(),
             'provinces' => Province::query()->orderBy('name')->get(),
-            'cities' => City::query()->when($request->integer('province_id'), fn ($q, $id) => $q->where('province_id', $id))->whereHas('programs', fn ($q) => $q->where('validation_status', 'validated'))->orderBy('normalized_name')->get(),
+            'cities' => $request->integer('province_id')
+                ? $query->provinceCities($request->integer('province_id'), $query->inProvinces(StudyProgram::query()->where('validation_status', 'validated'), [$request->integer('province_id')]))
+                : City::query()->whereHas('programs', fn ($q) => $q->where('validation_status', 'validated'))->orderBy('normalized_name')->get(['id', 'name'])->map(fn (City $city) => ['id' => $city->id, 'name' => $city->name]),
             'selectedInstitution' => Institution::query()->find($request->integer('institution_id')),
             'selectedAcademicField' => AcademicField::query()->find($request->integer('academic_field_id')),
             'courseTypes' => CourseType::query()->orderBy('name')->get(),
@@ -96,9 +98,16 @@ class StudyProgramController extends Controller
         ]);
     }
 
-    public function cities(Request $request): JsonResponse
+    public function cities(Request $request, StudyProgramQuery $query): JsonResponse
     {
         $provinceId = $request->integer('province_id');
+
+        if ($provinceId && $request->boolean('only_with_programs')) {
+            $programs = StudyProgram::query()->where('validation_status', 'validated');
+            $this->filterPrograms($programs, $request);
+
+            return response()->json($query->provinceCities($provinceId, $programs));
+        }
 
         return response()->json(City::query()
             ->where('province_id', $provinceId)
@@ -171,7 +180,7 @@ class StudyProgramController extends Controller
         $query->where('is_active', true)
             ->when($request->integer('exam_year_id'), fn ($q, $id) => $q->where('exam_year_id', $id))
             ->when($request->integer('exam_group_id'), fn ($q, $id) => $q->where('exam_group_id', $id))
-            ->when($request->integer('province_id'), fn ($q, $id) => $q->where('province_id', $id))
+            ->when($request->integer('province_id'), fn ($q, $id) => $q->where(fn ($nested) => $nested->where('province_id', $id)->orWhere('native_province_id', $id)))
             ->when($request->integer('city_id'), fn ($q, $id) => $q->where('city_id', $id))
             ->when($includeInstitution && $request->integer('institution_id'), fn ($q) => $q->where('institution_id', $request->integer('institution_id')));
     }

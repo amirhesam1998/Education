@@ -6,6 +6,7 @@ use App\Models\StudyProgram;
 use App\Models\User;
 use App\Services\FieldSelectionService;
 use App\Services\StudyPrograms\StudyProgramAdminService;
+use App\Services\StudyPrograms\StudyProgramQuery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -147,7 +148,7 @@ class BookletImportTest extends TestCase
         $program = StudyProgram::query()->where('code', '31650')->firstOrFail();
 
         app(StudyProgramAdminService::class)->updateManual($program, [
-            ...$program->only(['exam_year_id', 'exam_group_id', 'code', 'province_id', 'city_id', 'institution_id', 'institution_campus_id', 'academic_field_id', 'course_type_id', 'admission_type_id', 'second_semester_capacity', 'female_capacity', 'male_capacity', 'admission_period', 'admission_scope', 'service_location', 'description', 'section_note']),
+            ...$program->only(['exam_year_id', 'exam_group_id', 'code', 'province_id', 'native_province_id', 'city_id', 'institution_id', 'institution_campus_id', 'academic_field_id', 'course_type_id', 'admission_type_id', 'second_semester_capacity', 'female_capacity', 'male_capacity', 'admission_period', 'admission_scope', 'service_location', 'description', 'section_note']),
             'first_semester_capacity' => 6,
             'male_capacity' => 3,
             'is_active' => true,
@@ -206,6 +207,65 @@ class BookletImportTest extends TestCase
     }
 
     #[Test]
+    public function a_commitment_program_is_found_under_both_its_study_province_and_its_native_province(): void
+    {
+        $scope = 'پذیرش از تمام متقاضیان سراسر کشور، با اولویت متقاضیان بومی استان کردستان';
+        $kurdistan = [
+            'province' => 'کردستان',
+            'city' => 'سنندج',
+            'institution' => 'دانشگاه علوم پزشکی و خدمات بهداشتی درمانی کردستان',
+            'institution_province' => 'کردستان',
+            'institution_city' => 'سنندج',
+        ];
+        $commitment = ['part' => 'health_commitment_council', 'course' => null, 'course_type' => 'commitment', 'section' => $scope, 'admission_scope' => $scope, 'native_province' => 'کردستان'];
+        $this->writeBooklet([
+            $this->program('31601'),
+            $this->program('38873', $commitment),
+            $this->program('38878', $kurdistan + $commitment),
+            $this->program('38879', $kurdistan),
+        ]);
+        $this->artisan('education:import-booklets', ['--path' => $this->root])->assertSuccessful();
+
+        $province = fn (string $name) => (int) DB::table('provinces')->where('name', $name)->value('id');
+        $codes = fn ($rows) => collect($rows)->pluck('field_code')->sort()->values()->all();
+        $catalog = app(FieldSelectionService::class);
+
+        // 38873 is studied in Tabriz and kept for Kurdistan natives: both provinces find it.
+        $this->assertSame(['38873', '38878', '38879'], $codes($catalog->searchFieldCatalog(['province_id' => $province('کردستان')])));
+        $this->assertSame(['31601', '38873'], $codes($catalog->searchFieldCatalog(['province_id' => $province('آذربایجان شرقی')])));
+        $this->assertSame(['38873', '38878', '38879'], $codes($catalog->searchFieldCatalog(['province_ids' => [$province('کردستان')]])));
+        $this->assertSame(['38873', '38878', '38879'], $codes($catalog->searchFieldCatalog(['q' => 'پزشکی', 'province_ids' => ['', $province('کردستان')]])));
+        // A city is where the program is studied.
+        $sanandaj = (int) DB::table('cities')->where('name', 'سنندج')->value('id');
+        $this->assertSame(['38878', '38879'], $codes($catalog->searchFieldCatalog(['province_id' => $province('کردستان'), 'city_id' => $sanandaj])));
+
+        $row = $catalog->searchFieldCatalog(['q' => '38873'])->firstWhere('field_code', '38873');
+        $this->assertSame(['آذربایجان شرقی', 'کردستان', 'تبریز'], [$row['province'], $row['native_province'], $row['city']]);
+        $this->assertNull($catalog->searchFieldCatalog(['q' => '31601'])->firstWhere('field_code', '31601')['native_province']);
+
+        // The admin catalogue list filters the same way.
+        $this->assertSame(['38873', '38878', '38879'], app(StudyProgramQuery::class)->base(['province_id' => $province('کردستان')])->orderBy('code')->pluck('code')->all());
+    }
+
+    #[Test]
+    public function a_row_an_admin_edited_before_native_provinces_existed_still_gets_its_native_province(): void
+    {
+        $this->writeBooklet([$this->program('38873'), $this->program('38874')]);
+        $this->artisan('education:import-booklets', ['--path' => $this->root])->assertSuccessful();
+        DB::table('study_programs')->where('code', '38873')->update(['source_type' => 'manual', 'description' => 'ویرایش مدیر']);
+        // 38874 was saved on the form with "no native province" chosen.
+        DB::table('study_programs')->where('code', '38874')->update(['source_type' => 'manual', 'raw_data' => json_encode(['manual' => true, 'native_province_by_admin' => true])]);
+
+        $this->writeBooklet([$this->program('38873', ['native_province' => 'کردستان']), $this->program('38874', ['native_province' => 'کردستان'])]);
+        $this->artisan('education:import-booklets', ['--path' => $this->root])->assertSuccessful();
+
+        $program = StudyProgram::query()->with('nativeProvince')->where('code', '38873')->firstOrFail();
+        $this->assertSame('کردستان', $program->nativeProvince?->name);
+        $this->assertSame('ویرایش مدیر', $program->description);
+        $this->assertNull(StudyProgram::query()->where('code', '38874')->value('native_province_id'));
+    }
+
+    #[Test]
     public function a_programs_file_that_does_not_match_its_manifest_is_refused(): void
     {
         $dir = $this->writeBooklet([$this->program('1')]);
@@ -258,6 +318,7 @@ class BookletImportTest extends TestCase
             'subpart' => null,
             'section' => 'استان آذربایجان شرقی - دانشگاه علوم پزشکی و خدمات بهداشتی درمانی تبریز',
             'province' => 'آذربایجان شرقی',
+            'native_province' => null,
             'city' => 'تبریز',
             'city_how' => 'از نام دانشگاه',
             'institution' => 'دانشگاه علوم پزشکی و خدمات بهداشتی درمانی تبریز',

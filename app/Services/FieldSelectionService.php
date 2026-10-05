@@ -234,7 +234,7 @@ class FieldSelectionService
 
     /**
      * @param  array{q?:string|null, province_id?:int|string|null, city_id?:int|string|null, course_type_id?:int|string|null}  $filters
-     * @return Collection<int, array{id:int, field_code:string, field_name:string, field_description:?string, city:string, province:?string, institution:?string, university_name:?string, university_type:?string, university_description:?string, course_type:?string, exam_group:?string, booklet_source:?string, source_file:?string, booklet_page:?int, booklet_section:?string, capacity:?int, female_capacity:?int, male_capacity:?int, accepts_female:bool, accepts_male:bool, admission_scope:?string, admission_period:?string, service_location:?string, section_note:?string}>
+     * @return Collection<int, array{id:int, field_code:string, field_name:string, field_description:?string, city:string, province:?string, native_province:?string, institution:?string, university_name:?string, university_type:?string, university_description:?string, course_type:?string, exam_group:?string, booklet_source:?string, source_file:?string, booklet_page:?int, booklet_section:?string, capacity:?int, female_capacity:?int, male_capacity:?int, accepts_female:bool, accepts_male:bool, admission_scope:?string, admission_period:?string, service_location:?string, section_note:?string}>
      */
     public function searchFieldCatalog(array $filters): Collection
     {
@@ -283,6 +283,7 @@ class FieldSelectionService
                     'field_description' => $description,
                     'city' => $program->city?->name,
                     'province' => $program->province?->name,
+                    'native_province' => $program->nativeProvince?->name,
                     'institution' => $program->institution?->name,
                     'university_name' => $universityName,
                     'university_type' => $universityType,

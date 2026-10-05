@@ -2,9 +2,11 @@
 
 namespace App\Services\StudyPrograms;
 
+use App\Models\City;
 use App\Models\StudyProgram;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 class StudyProgramQuery
 {
@@ -24,7 +26,7 @@ class StudyProgramQuery
         $isActive = array_key_exists('is_active', $filters) ? $filters['is_active'] : true;
 
         return StudyProgram::query()
-            ->with(['examYear', 'examGroup', 'province', 'city', 'institution', 'institutionCampus', 'academicField', 'courseType', 'admissionType'])
+            ->with(['examYear', 'examGroup', 'province', 'nativeProvince', 'city', 'institution', 'institutionCampus', 'academicField', 'courseType', 'admissionType'])
             ->where('validation_status', $filters['validation_status'] ?? 'validated')
             ->when($isActive !== null && $isActive !== '', fn (Builder $query) => $query->where('is_active', in_array($isActive, [false, 0, '0'], true) ? false : true))
             ->when($filters['exam_year_id'] ?? null, fn (Builder $query, $id) => $query->where('exam_year_id', $id))
@@ -32,8 +34,8 @@ class StudyProgramQuery
             ->when($filters['year'] ?? null, fn (Builder $query, $year) => $query->whereHas('examYear', fn ($q) => $q->where('year', $year)))
             ->when($filters['group'] ?? null, fn (Builder $query, $group) => $query->whereHas('examGroup', fn ($q) => $q->where('slug', $group)))
             ->when($filters['code'] ?? null, fn (Builder $query, $code) => $query->where('code', (string) $code))
-            ->when($filters['province_id'] ?? null, fn (Builder $query, $id) => $query->where('province_id', $id))
-            ->when($filters['province_ids'] ?? null, fn (Builder $query, $ids) => $query->whereIn('province_id', array_filter((array) $ids)))
+            ->when($filters['province_id'] ?? null, fn (Builder $query, $id) => $this->inProvinces($query, [$id]))
+            ->when(array_filter((array) ($filters['province_ids'] ?? [])), fn (Builder $query, $ids) => $this->inProvinces($query, $ids))
             ->when($filters['city_id'] ?? null, fn (Builder $query, $id) => $query->where('city_id', $id))
             ->when($filters['institution_id'] ?? null, fn (Builder $query, $id) => $query->where('institution_id', $id))
             ->when($filters['institution_campus_id'] ?? null, fn (Builder $query, $id) => $query->where('institution_campus_id', $id))
@@ -57,6 +59,39 @@ class StudyProgramQuery
             ->when($filters['search'] ?? null, function (Builder $query, $search): void {
                 $this->applySearch($query, (string) $search);
             });
+    }
+
+    /**
+     * A program belongs to the province it is studied in and, for service-commitment and native-quota
+     * programs, to the province whose natives it is for (38873 is studied in Tabriz for Kurdistan natives).
+     */
+    public function inProvinces(Builder $query, array $ids): Builder
+    {
+        return $query->where(fn (Builder $nested) => $nested
+            ->whereIn('province_id', $ids)
+            ->orWhereIn('native_province_id', $ids));
+    }
+
+    /**
+     * The cities a province filter can be narrowed to: the province's own cities, then the cities where
+     * the programs kept for its natives are studied, named with their province ("تبریز (آذربایجان شرقی)").
+     *
+     * @param  Builder  $programs  study programs already limited to the province with inProvinces()
+     * @return Collection<int, array{id:int, name:string}>
+     */
+    public function provinceCities(int $provinceId, Builder $programs): Collection
+    {
+        return City::query()
+            ->with('province:id,name')
+            ->whereIn('id', $programs->select('city_id')->whereNotNull('city_id'))
+            ->orderByRaw('case when province_id = ? then 0 else 1 end', [$provinceId])
+            ->orderBy('normalized_name')
+            ->get(['id', 'name', 'province_id'])
+            ->map(fn (City $city): array => [
+                'id' => $city->id,
+                'name' => (int) $city->province_id === $provinceId ? $city->name : $city->name.' ('.$city->province?->name.')',
+            ])
+            ->values();
     }
 
     public function applySearch(Builder $query, string $search): Builder
@@ -92,7 +127,8 @@ class StudyProgramQuery
             return true;
         }
 
-        return \App\Models\City::query()->whereKey($cityId)->where('province_id', $provinceId)->exists();
+        return City::query()->whereKey($cityId)->where('province_id', $provinceId)->exists()
+            || StudyProgram::query()->where('city_id', $cityId)->where('native_province_id', $provinceId)->exists();
     }
 
     private function normalizedSearch(string $value): string

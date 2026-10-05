@@ -125,7 +125,7 @@ class BookletImporter
         $sourceFile = $this->bookletId($manifest).'/'.$manifest['source_file'];
         $existing = [];
         foreach (DB::table('study_programs')->where('exam_year_id', $yearId)->where('exam_group_id', $groupId)
-            ->get(['id', 'code', 'source_type', 'source_hash']) as $row) {
+            ->get(['id', 'code', 'source_type', 'source_hash', 'native_province_id']) as $row) {
             $existing[$row->code] = $row;
         }
 
@@ -143,6 +143,7 @@ class BookletImporter
             $current = $existing[$code] ?? null;
 
             if ($current && $current->source_type === 'manual') {
+                $this->fillNativeProvince($current, $program);
                 $counts['kept_manual']++;
                 continue;
             }
@@ -196,6 +197,7 @@ class BookletImporter
             'exam_group_id' => $groupId,
             'code' => (string) $p['code'],
             'province_id' => $provinceId,
+            'native_province_id' => ($p['native_province'] ?? null) !== null ? $this->province($p['native_province']) : null,
             'city_id' => $cityId,
             'institution_id' => $institutionId,
             'institution_campus_id' => $campusId,
@@ -245,6 +247,24 @@ class BookletImporter
                 'cells' => $p['cells'],
             ], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
         ];
+    }
+
+    /**
+     * An admin edit keeps every column it saved. A row edited before programs had a native province
+     * still takes the booklet's one, unless an admin has since chosen it on the form.
+     */
+    private function fillNativeProvince(object $current, array $program): void
+    {
+        if ($current->native_province_id !== null || ($program['native_province'] ?? null) === null) {
+            return;
+        }
+
+        $raw = json_decode((string) DB::table('study_programs')->where('id', $current->id)->value('raw_data'), true);
+        if (is_array($raw) && array_key_exists('native_province_by_admin', $raw)) {
+            return;
+        }
+
+        DB::table('study_programs')->where('id', $current->id)->update(['native_province_id' => $this->province($program['native_province'])]);
     }
 
     private function province(string $name): int

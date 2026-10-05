@@ -96,7 +96,7 @@ class StudyProgramAdminService
 
         return [
             ...collect($data)->only([
-                'exam_year_id', 'exam_group_id', 'province_id', 'city_id', 'institution_id', 'institution_campus_id', 'academic_field_id',
+                'exam_year_id', 'exam_group_id', 'province_id', 'native_province_id', 'city_id', 'institution_id', 'institution_campus_id', 'academic_field_id',
                 'course_type_id', 'admission_type_id', 'first_semester_capacity', 'second_semester_capacity', 'female_capacity', 'male_capacity',
                 'admission_period', 'admission_scope', 'service_location', 'description', 'section_note', 'is_active',
             ])->all(),
@@ -111,7 +111,10 @@ class StudyProgramAdminService
             'identity_hash' => $identityHash,
             'validation_status' => 'validated',
             // Keep where the row came from (booklet page, printed cells) for later review.
-            'raw_data' => ['manual' => true] + (is_array($existing?->raw_data) ? $existing->raw_data : []),
+            // native_province_by_admin: the admin chose the native province, so booklet imports leave it alone.
+            'raw_data' => ['manual' => true]
+                + (array_key_exists('native_province_id', $data) ? ['native_province_by_admin' => true] : [])
+                + (is_array($existing?->raw_data) ? $existing->raw_data : []),
         ];
     }
 

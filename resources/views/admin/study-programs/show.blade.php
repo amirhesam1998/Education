@@ -19,6 +19,7 @@
                     'سال' => $program->examYear?->year,
                     'گروه' => $program->examGroup?->name,
                     'استان' => $program->province?->name,
+                    'استان بومی / تعهد' => $program->nativeProvince?->name,
                     'شهر' => $program->city?->name,
                     'دانشگاه / مؤسسه' => $program->institution?->name,
                     'دانشکده / محل تحصیل' => $program->institutionCampus?->name,
