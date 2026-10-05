@@ -111,7 +111,10 @@ class StudyProgramAdminService
             'identity_hash' => $identityHash,
             'validation_status' => 'validated',
             // Keep where the row came from (booklet page, printed cells) for later review.
-            'raw_data' => ['manual' => true] + (is_array($existing?->raw_data) ? $existing->raw_data : []),
+            // native_province_by_admin: the admin chose the native province, so booklet imports leave it alone.
+            'raw_data' => ['manual' => true]
+                + (array_key_exists('native_province_id', $data) ? ['native_province_by_admin' => true] : [])
+                + (is_array($existing?->raw_data) ? $existing->raw_data : []),
         ];
     }
 

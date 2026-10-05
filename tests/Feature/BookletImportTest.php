@@ -248,6 +248,24 @@ class BookletImportTest extends TestCase
     }
 
     #[Test]
+    public function a_row_an_admin_edited_before_native_provinces_existed_still_gets_its_native_province(): void
+    {
+        $this->writeBooklet([$this->program('38873'), $this->program('38874')]);
+        $this->artisan('education:import-booklets', ['--path' => $this->root])->assertSuccessful();
+        DB::table('study_programs')->where('code', '38873')->update(['source_type' => 'manual', 'description' => 'ویرایش مدیر']);
+        // 38874 was saved on the form with "no native province" chosen.
+        DB::table('study_programs')->where('code', '38874')->update(['source_type' => 'manual', 'raw_data' => json_encode(['manual' => true, 'native_province_by_admin' => true])]);
+
+        $this->writeBooklet([$this->program('38873', ['native_province' => 'کردستان']), $this->program('38874', ['native_province' => 'کردستان'])]);
+        $this->artisan('education:import-booklets', ['--path' => $this->root])->assertSuccessful();
+
+        $program = StudyProgram::query()->with('nativeProvince')->where('code', '38873')->firstOrFail();
+        $this->assertSame('کردستان', $program->nativeProvince?->name);
+        $this->assertSame('ویرایش مدیر', $program->description);
+        $this->assertNull(StudyProgram::query()->where('code', '38874')->value('native_province_id'));
+    }
+
+    #[Test]
     public function a_programs_file_that_does_not_match_its_manifest_is_refused(): void
     {
         $dir = $this->writeBooklet([$this->program('1')]);

@@ -2,9 +2,11 @@
 
 namespace App\Services\StudyPrograms;
 
+use App\Models\City;
 use App\Models\StudyProgram;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 class StudyProgramQuery
 {
@@ -70,6 +72,28 @@ class StudyProgramQuery
             ->orWhereIn('native_province_id', $ids));
     }
 
+    /**
+     * The cities a province filter can be narrowed to: the province's own cities, then the cities where
+     * the programs kept for its natives are studied, named with their province ("تبریز (آذربایجان شرقی)").
+     *
+     * @param  Builder  $programs  study programs already limited to the province with inProvinces()
+     * @return Collection<int, array{id:int, name:string}>
+     */
+    public function provinceCities(int $provinceId, Builder $programs): Collection
+    {
+        return City::query()
+            ->with('province:id,name')
+            ->whereIn('id', $programs->select('city_id')->whereNotNull('city_id'))
+            ->orderByRaw('case when province_id = ? then 0 else 1 end', [$provinceId])
+            ->orderBy('normalized_name')
+            ->get(['id', 'name', 'province_id'])
+            ->map(fn (City $city): array => [
+                'id' => $city->id,
+                'name' => (int) $city->province_id === $provinceId ? $city->name : $city->name.' ('.$city->province?->name.')',
+            ])
+            ->values();
+    }
+
     public function applySearch(Builder $query, string $search): Builder
     {
         $search = $this->normalizedSearch($search);
@@ -103,7 +127,8 @@ class StudyProgramQuery
             return true;
         }
 
-        return \App\Models\City::query()->whereKey($cityId)->where('province_id', $provinceId)->exists();
+        return City::query()->whereKey($cityId)->where('province_id', $provinceId)->exists()
+            || StudyProgram::query()->where('city_id', $cityId)->where('native_province_id', $provinceId)->exists();
     }
 
     private function normalizedSearch(string $value): string

@@ -77,15 +77,28 @@ class StudyProgramAdminCrudTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('Super Admin');
         $kurdistan = Province::query()->create(['name' => 'کردستان', 'normalized_name' => 'کردستان']);
+        $data = $this->data();
 
-        $this->actingAs($user)->post(route('admin.study-programs.store'), [...$this->data(), 'native_province_id' => $kurdistan->id])->assertRedirect();
-        $program = StudyProgram::query()->firstOrFail();
+        $this->actingAs($user)->post(route('admin.study-programs.store'), [...$data, 'native_province_id' => $kurdistan->id])->assertRedirect();
+        $this->actingAs($user)->post(route('admin.study-programs.store'), [...$data, 'code' => '12399'])->assertRedirect();
+        $program = StudyProgram::query()->where('code', '12345')->firstOrFail();
         $this->assertSame($kurdistan->id, $program->native_province_id);
+        $this->assertTrue($program->raw_data['native_province_by_admin']);
 
         $this->actingAs($user)->get(route('admin.study-programs.index', ['province_id' => $kurdistan->id]))
             ->assertOk()
             ->assertSee('12345')
-            ->assertSee('بومی: کردستان');
+            ->assertDontSee('12399')
+            ->assertSee('بومی: کردستان')
+            ->assertSee('رشت (گیلان)');
+        $this->actingAs($user)->get(route('admin.study-programs.index', ['province_id' => $kurdistan->id, 'city_id' => $data['city_id']]))
+            ->assertOk()
+            ->assertSee('12345')
+            ->assertDontSee('12399');
+        $this->actingAs($user)->getJson(route('admin.study-programs.filter-options.cities', ['province_id' => $kurdistan->id, 'only_with_programs' => 1]))
+            ->assertExactJson([['id' => $data['city_id'], 'name' => 'رشت (گیلان)']]);
+        $this->actingAs($user)->getJson(route('admin.study-programs.filter-options.institutions', ['province_id' => $kurdistan->id]))
+            ->assertJsonPath('results.0.text', 'دانشگاه گیلان');
         $this->actingAs($user)->get(route('admin.study-programs.show', $program))->assertOk()->assertSee('استان بومی / تعهد')->assertSee('کردستان');
         $this->actingAs($user)->get(route('admin.study-programs.edit', $program))->assertOk()->assertSee('name="native_province_id"', false);
 

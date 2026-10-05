@@ -50,7 +50,7 @@
                     <select name="city_id" id="citySelect" class="form-select" @disabled(! request('province_id'))>
                         <option value="">همه شهرها</option>
                         @foreach($cities as $city)
-                            <option value="{{ $city->id }}" @selected((int) request('city_id') === $city->id)>{{ $city->name }}</option>
+                            <option value="{{ $city['id'] }}" @selected((int) request('city_id') === $city['id'])>{{ $city['name'] }}</option>
                         @endforeach
                     </select>
                 </div>

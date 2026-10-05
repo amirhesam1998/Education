@@ -20,6 +20,7 @@ use App\Models\StudyProgram;
 use App\Models\User;
 use App\Services\FieldSelectionService;
 use App\Services\StudentPrivacyService;
+use App\Services\StudyPrograms\StudyProgramQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -137,7 +138,7 @@ class FieldSelectionController extends Controller
         ]);
     }
 
-    public function filterCities(Request $request): JsonResponse
+    public function filterCities(Request $request, StudyProgramQuery $studyPrograms): JsonResponse
     {
         $provinceId = $request->integer('province_id');
 
@@ -149,7 +150,7 @@ class FieldSelectionController extends Controller
             ->select('city_id')
             ->whereNotNull('city_id')
             ->where('validation_status', 'validated')
-            ->where('province_id', $provinceId)
+            ->tap(fn ($query) => $studyPrograms->inProvinces($query, [$provinceId]))
             ->when($request->integer('course_type_id'), fn ($query, $id) => $query->where('course_type_id', $id));
 
         $search = trim($request->string('q')->toString());
@@ -170,11 +171,7 @@ class FieldSelectionController extends Controller
                 });
         }
 
-        return response()->json(City::query()
-            ->where('province_id', $provinceId)
-            ->whereIn('id', $programIds)
-            ->orderBy('normalized_name')
-            ->get(['id', 'name']));
+        return response()->json($studyPrograms->provinceCities($provinceId, $programIds));
     }
 
     public function deleteItem(Request $request, FieldSelectionItem $item, FieldSelectionService $fieldSelections): RedirectResponse|JsonResponse
