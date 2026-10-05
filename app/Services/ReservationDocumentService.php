@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Reservation;
 use App\Models\ReservationDocument;
 use App\Models\User;
+use App\Support\UploadStorage;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -44,12 +45,12 @@ class ReservationDocumentService
         return DB::transaction(function () use ($reservation, $file, $source, $uploadedByType, $uploadedById): ReservationDocument {
             $reservation = Reservation::query()->whereKey($reservation->id)->lockForUpdate()->firstOrFail();
 
+            $path = UploadStorage::store($file, 'reservation-documents/'.$reservation->id.'/report-cards', 'report_card');
+
             $reservation->reportCards()->where('source', $source)->get()->each(function (ReservationDocument $document): void {
                 Storage::disk('local')->delete($document->file_path);
                 $document->delete();
             });
-
-            $path = $file->store('reservation-documents/'.$reservation->id.'/report-cards', 'local');
 
             return ReservationDocument::query()->create([
                 'reservation_id' => $reservation->id,
