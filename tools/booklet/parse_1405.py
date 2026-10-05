@@ -57,6 +57,9 @@ HEADING_CONTINUATIONS = {
     'دوره‌های روزانه، نوبت دوم، روزانه- غیردولتی، مجازی و پردیس‌خودگردان',
     'دوره‌های روزانه و شهریه‌پرداز',
     'رودبار جنوب، عنبرآباد، قلعه گنج، کهنوج و منوجان)',
+    # ensani
+    'جنوب، عنبرآباد، قلعه گنج، کهنوج و منوجان)',
+    'رشته‌محل‌های دوره‌های روزانه و شهریه‌پرداز',
 }
 PERIOD_HEADINGS = {
     'رشته‌محل‌های پذیرش نیم‌سال اول و دوم سال 1405 :': 'نیم‌سال اول و دوم سال 1405',
@@ -70,7 +73,12 @@ SUBPART_HEADINGS = {
     # riazi
     'رشته‌محل‌های سهمیه مناطق محروم': 'deprived',
     'سهمیه مخصوص متقاضیان بومی شهرستان‌های جنوب استان کرمان (شهرستان‌های جیرفت،': 'south_kerman',
+    # ensani
+    'سهمیه مخصوص متقاضیان بومی مناطق درگیر بلایای طبیعی (سیل، زلزله و...)': 'disaster',
+    'سهمیه مخصوص متقاضیان بومی شهرستان‌های جنوب استان کرمان (شهرستانهای جیرفت، رودبار': 'south_kerman',
 }
+# Second lines of the part-level "نکته:" remarks printed in title size.
+REMARK_ENDINGS = {'همین دفترچه راهنما مراجعه کنند.', 'مراجعه کنید.', 'همین دفترچه مراجعه کنند.'}
 IGNORED_LINES = {
     'متقاضیان به نکات ذیل توجه نمایند:',
     'مهمترین شرایط و ضوابط پذیرش این رشته‌ها به شرح ذیل است:',
@@ -174,7 +182,7 @@ def parse(pdf: str, first: int, last: int) -> tuple[list[Section], list[dict]]:
             if not any(c.strip() for c in it.cells):
                 continue
             if any('کدرشته' in c.replace(' ', '') for c in it.cells):
-                key = tuple(c.replace('کد رشته', 'کدرشته') for c in it.cells)
+                key = tuple(c.replace('کد رشته', 'کدرشته').replace('نیمسال', 'نیم‌سال') for c in it.cells)  # header spelling varies
                 if key not in LAYOUTS:
                     raise BookletError(f'page {page}: unknown header {key}')
                 ctx.layout = LAYOUTS[key]
@@ -260,7 +268,7 @@ def handle_line(it: Loose, ctx: Context, page: int) -> None:
             raise BookletError(f'page {page}: unknown heading {text!r} ({size})')
         return
     if 8.5 <= size <= 10.5:
-        if text.startswith('نکته:') or text in ('همین دفترچه راهنما مراجعه کنند.', 'مراجعه کنید.') or text.startswith('متقاضیان پس از مطالعه کامل'):
+        if text.startswith('نکته:') or text in REMARK_ENDINGS or text.startswith('متقاضیان پس از مطالعه کامل'):
             return  # part-level remarks printed in title size
         if ctx.small_print and not ctx.title_lines:
             close_title(ctx, [], page)  # small print after a table belongs to that table's section

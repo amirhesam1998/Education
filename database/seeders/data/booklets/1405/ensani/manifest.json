@@ -1,0 +1,22 @@
+{
+  "format": "booklet-programs-v1",
+  "year": 1405,
+  "group": "ensani",
+  "group_name": "انسانی",
+  "source_file": "ensani_v1.pdf",
+  "source_sha256": "dc53d8c1f61bfd2f9fcb6d8d1cf97ea134c46aa140e0ed7129c3a9f50b5b2d06",
+  "pages": [
+    42,
+    575
+  ],
+  "programs": 18325,
+  "programs_file": "programs.jsonl.gz",
+  "programs_sha256": "dc6bc5275f381587702ceda0304c5faf9011156e7737fd24ae6546a055f50aac",
+  "counts": {
+    "provinces": 31,
+    "cities": 330,
+    "institutions": 343,
+    "campuses": 565,
+    "fields": 264
+  }
+}
