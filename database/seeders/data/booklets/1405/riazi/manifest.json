@@ -1,0 +1,22 @@
+{
+  "format": "booklet-programs-v1",
+  "year": 1405,
+  "group": "riazi",
+  "group_name": "ریاضی",
+  "source_file": "Riazi_v1.pdf",
+  "source_sha256": "515003f7dc758a9c90807c0a2174604604dca93e85985f5831ef35ebc5e1e389",
+  "pages": [
+    44,
+    471
+  ],
+  "programs": 15155,
+  "programs_file": "programs.jsonl.gz",
+  "programs_sha256": "5dead942a0f8db3f12e2e1cbaae3a247843b5e3f7b5af5199848e90e9159f4b8",
+  "counts": {
+    "provinces": 31,
+    "cities": 331,
+    "institutions": 387,
+    "campuses": 587,
+    "fields": 281
+  }
+}

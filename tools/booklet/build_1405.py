@@ -1,14 +1,21 @@
 """Build the 1405 catalogue data from the parsed booklet.
 
 Usage: python3 build_1405.py <parsed.json> <booklet.pdf> <out_dir> [review_dir]
+                             [--and <parsed.json> <booklet.pdf> <out_dir> [review_dir]] ...
 
 <parsed.json> is the output of parse_1405.py. Every row gets its place
 (province, city, institution, campus), its field, course and admission type
 and its texts. Anything that cannot be resolved stops the build.
 
-<out_dir> holds academic_fields.json (the 149-field list of the group);
+<out_dir> is database/seeders/data/booklets/<year>/<group> and holds academic_fields.json
+(the group's field list, see field_list_1405.py);
 programs.jsonl.gz and manifest.json are written next to it and are what
 `php artisan education:import-booklets` loads.
+
+The groups of a year share cities, institutions, campuses and fields in the catalogue, so every
+build is checked against the other groups' committed booklets of the year (one spelling, one place,
+one home city per institution). A change to something they share (a CITY_OF entry, an alias, the
+place rules) has to be built for every group at once: name each group with --and.
 """
 from __future__ import annotations
 
@@ -74,10 +81,12 @@ class InstitutionCells:
     START = 'شروع تحصیل مهرماه 1406'
     UNITS = {'دانشگاه ملی مهارت', 'دانشگاه آزاد اسلامی'}   # "INSTITUTION - UNIT - notes"
 
-    def __init__(self, places: Places, known: dict[tuple[str, str | None], Place]) -> None:
+    def __init__(self, places: Places, known: dict[tuple[str, str | None], Place],
+                 siblings: dict[tuple[str, str | None], Place] | None = None) -> None:
         self.places = places
         self.known = known
-        names = {inst for inst, _ in known}
+        self.siblings = siblings or {}
+        names = {inst for inst, _ in known} | {inst for inst, _ in self.siblings}
         self.names = sorted(names, key=lambda n: -len(key(n)))
 
     def read(self, cell: str) -> tuple[Place, str | None]:
@@ -86,7 +95,11 @@ class InstitutionCells:
         if text.startswith(self.START):
             prefix, text = self.START, text[len(self.START):].lstrip(' -')
         institution, rest = self._institution(text)
-        campus = None
+        campus = city_text = None
+        m = re.match(r'^- ([^-()]+?) (\(محل تحصیل.*)$', rest)
+        if m:
+            # "INSTITUTION - CITY (محل تحصیل CAMPUS) - notes": the city of the study place, checked below
+            city_text, rest = m.group(1), m.group(2)
         if rest.startswith('(محل تحصیل'):
             _, campus = split_study_place(rest)
             rest = rest[rest.index(campus) + len(campus):].lstrip(') ')
@@ -103,11 +116,18 @@ class InstitutionCells:
             try:
                 place = self.places.locate(None, institution, campus, None)
             except UnknownPlace:
-                # a faculty named without its city ("دانشکده بهداشت") is in the institution's own city
+                # a faculty named without its city ("دانشکده بهداشت") is in the institution's own city;
+                # failing that, an institution only another group's titles name is where they put it
                 home = self.known.get((institution, None))
-                if campus is None or home is None or home.how == 'ambiguous':
+                sibling = self.siblings.get((institution, campus))
+                if campus is not None and home is not None and home.how != 'ambiguous':
+                    place = Place(home.province, home.city, institution, campus, 'institution')
+                elif sibling is not None and sibling.how != 'ambiguous':
+                    place = sibling
+                else:
                     raise
-                place = Place(home.province, home.city, institution, campus, 'institution')
+        if city_text and self.places.city(place.province, city_text) != place.city:
+            raise BuildError(f'{city_text!r} before the study place is not its city {place.city} in {cell!r}')
         return place, notes
 
     def _institution(self, text: str) -> tuple[str, str]:
@@ -128,8 +148,13 @@ class InstitutionCells:
         raise BuildError(f'no known institution at the start of {text!r}')
 
 
-def build_places(raw: dict) -> tuple[dict[str, Place], dict[str, dict]]:
-    """Place of every program, and the texts that came out of its place cell (notes, admission scope)."""
+def build_places(raw: dict, siblings: list[dict] = ()) -> tuple[dict[str, Place], dict[str, dict]]:
+    """Place of every program, and the texts that came out of its place cell (notes, admission scope).
+
+    A place cell is read against the institutions and campuses this booklet's own titles name. The
+    other groups' booklets of the year (siblings) are the last resort, for an institution that only
+    their titles name.
+    """
     places = Places()
     sections = {s['id']: s for s in raw['sections']}
     by_code: dict[str, Place] = {}
@@ -151,7 +176,14 @@ def build_places(raw: dict) -> tuple[dict[str, Place], dict[str, dict]]:
             known[k] = Place(p.province, p.city, p.institution, p.campus, 'ambiguous')
         else:
             known.setdefault(k, p)
-    cells = InstitutionCells(places, known)
+    sibling_cities: dict[tuple[str, str | None], set] = collections.defaultdict(set)
+    for p in siblings:
+        sibling_cities[(p['institution'], p['campus'])].add((p['province'], p['city']))
+    sibling_places = {
+        (inst, campus): Place(*min(where), inst, campus, 'sibling' if len(where) == 1 else 'ambiguous')
+        for (inst, campus), where in sibling_cities.items()
+    }
+    cells = InstitutionCells(places, known, sibling_places)
 
     extras: dict[str, dict] = {}
     for r in raw['rows']:
@@ -246,17 +278,46 @@ CITY_HOW = {
     'name': 'از نام دانشگاه',
     'hand': 'تعیین دستی (بررسی‌شده)',
     'institution': 'شهر مرکز دانشگاه',
+    'sibling': 'از دفترچه گروه دیگر',
 }
 
-# Printed table titles that name a field of the 149-field list differently.
-FIELD_LIST_ALIASES = {
+# A field the booklet prints in two spellings -> the spelling most of its tables use. The printed
+# title stays in the program's cells.
+FIELD_SPELLINGS = {
+    'مهندسی نقشه برداری': 'مهندسی نقشه‌برداری',       # riazi: the Farhangian/Rajaee tables only
+}
+
+# Exam groups: the folder name under database/seeders/data/booklets/<year>/ and the group's name.
+GROUPS = {'tajrobi': 'تجربی', 'riazi': 'ریاضی'}
+
+# Printed table titles that name a field of the group's field list differently (title -> order).
+FIELD_LIST_ALIASES = {'tajrobi': {
+    'کارشناسی ارشد پیوسته الهیات و معارف اسلامی و ارشاد گرایش فقه و مبانی حقوق اسلامی': 6,
+    'کارشناسی ارشد پیوسته الهیات و معارف اسلامی و ارشاد گرایش قرآن و حدیث': 6,
     'کارشناسی ارشد پیوسته علوم قضایی': 7,
     'علوم و مهندسی صنایع غذایی(این رشته متعلق به گروه کشاورزی است)': 62,
     'مددکاری اجتماعی (ویژه وزارت بهداشت)': 85,
     'کاردانی بهداشت عمومی گرایش بهداشت خانواده': 125,
     'کاردانی بهداشت عمومی گرایش مبارزه با بیماری‌ها': 125,
     'کاردانی فنی باغبانی - تولید و فرآوری خرما': 136,
-}
+}, 'riazi': {
+    'دکتری پیوسته بیوتکنولوژی': 1,
+    'دکتری پیوسته فیزیک': 2,
+    'کارشناسی ارشد پیوسته الهیات و معارف اسلامی و ارشاد گرایش فقه و مبانی حقوق اسلامی': 3,
+    'کارشناسی ارشد پیوسته الهیات و معارف اسلامی و ارشاد گرایش قرآن و حدیث': 3,
+    'کارشناسی ارشد پیوسته علوم قضایی': 4,
+    'کارشناسی ارشد پیوسته مهندسی پزشکی گرایش بیوالکتریک': 5,
+    'اقتصاد (برنامه درسی خاص دانشگاه)': 9,
+    'زبان و ادبیات عربی (برنامه درسی خاص دانشگاه)': 23,
+    'علوم قرآن و حدیث (برنامه درسی خاص دانشگاه)': 31,
+    'فقه و حقوق اسلامی (برنامه درسی خاص دانشگاه شهید مطهری)': 38,
+    'فقه و مبانی حقوق اسلامی (برنامه درسی خاص دانشگاه)': 41,
+    'فلسفه و کلام اسلامی (برنامه درسی خاص دانشگاه)': 44,
+    'مدیریت فرهنگی هنری (ویژه دانشکده آموزش عالی تربیت مربی عقیدتی سیاسی سپاه)': 57,
+    'مهندسی ایمنی و بازرسی فنی در صنایع نفت و گاز': 75,
+    'مهندسی مکانیک بیوسیستم (این رشته متعلق به گروه کشاورزی است)': 107,
+    'کاردانی نقشه‌برداری - ژئودزی': 149,
+}}
 
 PERSIAN_DIGITS = str.maketrans('0123456789٠١٢٣٤٥٦٧٨٩', '۰۱۲۳۴۵۶۷۸۹۰۱۲۳۴۵۶۷۸۹')
 ASCII_DIGITS = str.maketrans('۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩', '01234567890123456789')
@@ -307,10 +368,11 @@ def section_note(notes: list[str]) -> str | None:
 
 
 class FieldList:
-    """The 149 fields of the tajrobi group (academic_fields.json), matched to the printed table titles."""
+    """The field list of the group (academic_fields.json), matched to the printed table titles."""
 
-    def __init__(self, path: str) -> None:
+    def __init__(self, path: str, group: str) -> None:
         self.fields = json.load(open(path, encoding='utf-8'))['fields']
+        self.aliases = FIELD_LIST_ALIASES[group]
         self.by_key: dict[str, dict] = {}
         for f in self.fields:
             for name in (f['name'], f'{f["degree_level"]} {f["name"]}'):
@@ -322,16 +384,14 @@ class FieldList:
         return key(re.sub(r'[()]', '', name))
 
     def find(self, title: str) -> dict | None:
-        if title in FIELD_LIST_ALIASES:
-            return self.by_order[FIELD_LIST_ALIASES[title]]
+        if title in self.aliases:
+            return self.by_order[self.aliases[title]]
         return self.by_key.get(self._key(title))
 
 
-def build_programs(raw: dict, field_list: FieldList) -> list[dict]:
-    from parse_1405 import PART_HEADINGS
-    part_heading = {v: k for k, v in PART_HEADINGS.items()}
+def build_programs(raw: dict, field_list: FieldList, siblings: list[dict] = ()) -> list[dict]:
     sections = {s['id']: s for s in raw['sections']}
-    by_code, extras = build_places(raw)
+    by_code, extras = build_places(raw, siblings)
     natives = {s['id']: native_province(tidy(s['title'])) for s in raw['sections'] if s['part'] in NATIVE_PARTS}
     programs: list[dict] = []
     errors: list[str] = []
@@ -379,7 +439,7 @@ def build_programs(raw: dict, field_list: FieldList) -> list[dict]:
             'page': r['page'],
             'printed_page': r['printed_page'],
             'part': s['part'],
-            'part_heading': part_heading[s['part']],
+            'part_heading': s['part_heading'],
             'subpart': s['subpart'],
             'section': fa(tidy(s['title'])),
             'province': place.province,
@@ -388,7 +448,7 @@ def build_programs(raw: dict, field_list: FieldList) -> list[dict]:
             'city_how': CITY_HOW[place.how],
             'institution': place.institution,
             'campus': place.campus,
-            'field': c['title'],
+            'field': FIELD_SPELLINGS.get(c['title'], c['title']),
             'course': course,
             'course_type': course_type,
             'method': method,
@@ -462,7 +522,11 @@ def check(programs: list[dict]) -> dict[str, list]:
 
 
 def institution_homes(programs: list[dict]) -> dict[str, tuple[str, str] | None]:
-    """An institution's own city: where its programs without a campus are, when that is one city."""
+    """An institution's own city: where its programs without a campus are, when that is one city.
+
+    Called with the programs of every group of the year: the catalogue holds one row per
+    institution, which every booklet import rewrites, so all groups must give it the same city.
+    """
     own, every = collections.defaultdict(set), collections.defaultdict(set)
     for p in programs:
         every[p['institution']].add((p['province'], p['city']))
@@ -473,6 +537,53 @@ def institution_homes(programs: list[dict]) -> dict[str, tuple[str, str] | None]
         candidates = own[inst] or places
         homes[inst] = next(iter(candidates)) if len(candidates) == 1 else None
     return homes
+
+
+def read_committed(year_dir: str) -> dict[str, list[dict]]:
+    """Programs of every group's committed booklet of a year, checked against its manifest."""
+    groups: dict[str, list[dict]] = {}
+    for group in sorted(GROUPS):
+        folder = os.path.join(year_dir, group)
+        if not os.path.isfile(os.path.join(folder, 'manifest.json')):
+            continue
+        manifest = json.load(open(os.path.join(folder, 'manifest.json'), encoding='utf-8'))
+        path = os.path.join(folder, manifest['programs_file'])
+        if sha256(path) != manifest['programs_sha256']:
+            raise BuildError(f'{path} does not match its manifest')
+        with gzip.open(path, 'rt', encoding='utf-8') as fh:
+            groups[group] = [json.loads(line) for line in fh]
+    return groups
+
+
+def check_groups(groups: dict[str, list[dict]]) -> None:
+    """The catalogue shares cities, institutions, campuses and fields between the groups of a year:
+    each needs one spelling, a campus one city and an institution one home city in every booklet."""
+    errors: list[str] = []
+    rows = [(group, p) for group, programs in sorted(groups.items()) for p in programs]
+
+    def names(p: dict) -> list[tuple[str, tuple, str]]:
+        found = [('city', (p['province'], p['city']), p['city']), ('institution', (p['institution'],), p['institution']),
+                 ('field', (p['field'],), p['field'])]
+        if p['campus']:
+            found.append(('campus', (p['institution'], p['campus']), p['campus']))
+        return found
+
+    for normalize in (php_lookup, key):
+        seen: dict[tuple, dict[str, str]] = collections.defaultdict(dict)
+        for group, p in rows:
+            for label, k, name in names(p):
+                seen[(label, *map(normalize, k))].setdefault(name, group)
+        errors += [f'{k[0]} spelled {spellings}' for k, spellings in seen.items() if len(spellings) > 1]
+    where: dict[tuple, dict] = collections.defaultdict(dict)
+    homes: dict[str, dict] = collections.defaultdict(dict)
+    for group, p in rows:
+        if p['campus']:
+            where[(p['institution'], p['campus'])].setdefault((p['province'], p['city']), group)
+        homes[p['institution']].setdefault((p['institution_province'], p['institution_city']), group)
+    errors += [f'campus {k} in {v}' for k, v in where.items() if len(v) > 1]
+    errors += [f'institution {k} has home cities {v}' for k, v in homes.items() if len(v) > 1]
+    if errors:
+        raise BuildError('\n'.join(errors) + '\n(build the groups that disagree together, with --and)')
 
 
 def write_gzip_jsonl(path: str, rows: list[dict]) -> None:
@@ -490,29 +601,80 @@ def sha256(path: str) -> str:
     return h.hexdigest()
 
 
+def build(raw: dict, field_list: FieldList, siblings: list[dict]) -> tuple[list[dict], dict]:
+    programs = build_programs(raw, field_list, siblings)
+    return programs, check(programs)
+
+
 def main() -> None:
-    parsed, pdf, out_dir = sys.argv[1:4]
-    review = sys.argv[4] if len(sys.argv) > 4 else None
-    raw = json.load(open(parsed, encoding='utf-8'))
-    field_list = FieldList(os.path.join(out_dir, 'academic_fields.json'))
+    jobs, args = [], sys.argv[1:]
+    while args:
+        if jobs:
+            if args[0] != '--and':
+                sys.exit(__doc__)
+            args = args[1:]
+        n = 4 if len(args) > 3 and args[3] != '--and' else 3
+        if len(args) < 3:
+            sys.exit(__doc__)
+        parsed, pdf, out_dir, review = (args[:n] + [None])[:4]
+        args = args[n:]
+        out_dir = os.path.normpath(out_dir)
+        group = os.path.basename(out_dir)
+        if group not in GROUPS:
+            sys.exit(f'unknown group folder {group!r}; known: {sorted(GROUPS)}')
+        jobs.append({'group': group, 'year_dir': os.path.dirname(out_dir), 'out_dir': out_dir, 'pdf': pdf, 'review': review,
+                     'raw': json.load(open(parsed, encoding='utf-8')),
+                     'field_list': FieldList(os.path.join(out_dir, 'academic_fields.json'), group)})
+    if not jobs:
+        sys.exit(__doc__)
+    year_dir = jobs[0]['year_dir']
+    if len({j['year_dir'] for j in jobs}) != 1 or len({j['group'] for j in jobs}) != len(jobs):
+        sys.exit('build each group of one year once')
+    year = int(os.path.basename(year_dir))
     try:
-        programs = build_programs(raw, field_list)
-        findings = check(programs)
+        groups = read_committed(year_dir)
+        # Each group's place cells may use the other groups' places, so build until the places settle.
+        built: dict[str, list[dict]] = {}
+        for _ in range(3):
+            fresh = {}
+            for job in jobs:
+                siblings = [p for g, programs in {**groups, **built}.items() if g != job['group'] for p in programs]
+                fresh[job['group']] = build(job['raw'], job['field_list'], siblings)
+            settled = built and all(fresh[g][0] == built[g] for g in built)
+            built = {g: programs for g, (programs, _) in fresh.items()}
+            findings = {g: f for g, (_, f) in fresh.items()}
+            if settled or len(jobs) == 1:
+                break
+        else:
+            raise BuildError('the groups\' places do not settle')
+        groups.update(built)
+        homes = institution_homes([p for programs in groups.values() for p in programs])
+        for programs in built.values():
+            for p in programs:
+                home = homes[p['institution']]
+                p['institution_province'], p['institution_city'] = home if home else (None, None)
+        check_groups(groups)
     except BuildError as e:
         print(e)
         sys.exit(1)
-    homes = institution_homes(programs)
-    for p in programs:
-        home = homes[p['institution']]
-        p['institution_province'], p['institution_city'] = home if home else (None, None)
 
+    for job in jobs:
+        programs = built[job['group']]
+        write_booklet(job, year, programs)
+        if job['review']:
+            write_review(job['review'], programs, findings[job['group']], job['field_list'])
+        print('capacity mismatches:', findings[job['group']]['capacity_mismatch'])
+
+
+def write_booklet(job: dict, year: int, programs: list[dict]) -> None:
+    raw, out_dir, pdf = job['raw'], job['out_dir'], job['pdf']
     data = os.path.join(out_dir, 'programs.jsonl.gz')
     write_gzip_jsonl(data, programs)
     manifest = {
         'format': 'booklet-programs-v1',
-        'year': 1405,
-        'group': 'tajrobi',
-        'group_name': 'تجربی',
+        'year': year,
+        'group': job['group'],
+        'group_name': GROUPS[job['group']],
         'source_file': os.path.basename(pdf),
         'source_sha256': sha256(pdf),
         'pages': [raw['rows'][0]['page'], raw['rows'][-1]['page']],
@@ -530,19 +692,18 @@ def main() -> None:
     with open(os.path.join(out_dir, 'manifest.json'), 'w', encoding='utf-8') as fh:
         json.dump(manifest, fh, ensure_ascii=False, indent=2)
         fh.write('\n')
-    if review:
-        write_review(review, programs, findings, field_list)
     print(json.dumps(manifest, ensure_ascii=False, indent=1))
-    print('capacity mismatches:', findings['capacity_mismatch'])
 
 
 def write_review(review: str, programs: list[dict], findings: dict, field_list: FieldList) -> None:
     import csv
+    from places_1405 import INFERRED
     places = collections.Counter((p['province'], p['city'], p['institution'], p['campus'] or '', p['city_how']) for p in programs)
     with open(os.path.join(review, 'places.tsv'), 'w', encoding='utf-8') as fh:
-        fh.write('province\tcity\tinstitution\tcampus\thow\tprograms\n')
+        fh.write('province\tcity\tinstitution\tcampus\thow\tinferred\tprograms\n')
         for (prov, city, inst, campus, how), n in sorted(places.items()):
-            fh.write(f'{prov}\t{city}\t{inst}\t{campus}\t{how}\t{n}\n')
+            inferred = 'inferred' if (inst, campus or None) in INFERRED else ''
+            fh.write(f'{prov}\t{city}\t{inst}\t{campus}\t{how}\t{inferred}\t{n}\n')
     cols = ['code', 'page', 'province', 'city', 'institution', 'campus', 'field', 'course', 'course_type', 'method',
             'admission_type', 'capacity_first', 'capacity_second', 'accepts_female', 'female_capacity', 'accepts_male',
             'male_capacity', 'description', 'admission_period', 'admission_scope', 'service_location', 'section', 'city_how']

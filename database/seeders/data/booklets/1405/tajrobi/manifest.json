@@ -11,12 +11,12 @@
   ],
   "programs": 18726,
   "programs_file": "programs.jsonl.gz",
-  "programs_sha256": "5b3095d47a71d0d18cd674a72b91be52741f80c6c3d61186287aa72bb8a6bb1e",
+  "programs_sha256": "0847c83d7f86ff0322514fd69ebbbbda63594ebaa5b41fd75dbd62544ef4fd63",
   "counts": {
     "provinces": 31,
     "cities": 336,
     "institutions": 398,
-    "campuses": 688,
+    "campuses": 696,
     "fields": 298
   }
 }

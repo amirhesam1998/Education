@@ -33,6 +33,10 @@ PART_HEADINGS = {
     'رشته‌محل‌های سهمیه مناطق محروم و رشته‌محل‌های مخصوص متقاضیان مناطق درگیر بلایای طبیعی': 'quota',
     'رشته‌محل‌های دانشگاه‌های فرهنگیان، تربیت دبیر شهید رجایی و تعدادی از دانشگاه‌های علوم': 'teacher',
     'رشته‌محل‌های دانشگاه پیام‌نور': 'payame_noor',
+    # riazi
+    'رشته‌محل‌های سهمیه بومی در رشته‌های کاردانی و کارشناسی دارای تعهد خدمت': 'health_commitment_native',
+    'رشته‌محل‌های مؤسسات آموزش عالی غیردولتی- غیرانتفاعی': 'nonprofit',
+    'رشته‌محل‌های دانشگاه‌های فرهنگیان و تربیت دبیر شهید رجایی': 'teacher',
 }
 # Second lines of the part headings above, and other headings that only describe the part.
 HEADING_CONTINUATIONS = {
@@ -49,6 +53,10 @@ HEADING_CONTINUATIONS = {
     'پزشکی وزارت بهداشت (رشته بهداشت مدارس)',
     'رشته‌های تحصیلی دانشگاه‌های فرهنگیان و تربیت دبیر شهید رجایی',
     '(شهرستان‌های جیرفت، رودبار جنوب، عنبرآباد، قلعه گنج، کهنوج و منوجان)',
+    # riazi
+    'دوره‌های روزانه، نوبت دوم، روزانه- غیردولتی، مجازی و پردیس‌خودگردان',
+    'دوره‌های روزانه و شهریه‌پرداز',
+    'رودبار جنوب، عنبرآباد، قلعه گنج، کهنوج و منوجان)',
 }
 PERIOD_HEADINGS = {
     'رشته‌محل‌های پذیرش نیم‌سال اول و دوم سال 1405 :': 'نیم‌سال اول و دوم سال 1405',
@@ -59,6 +67,9 @@ SUBPART_HEADINGS = {
     'سهمیه مخصوص متقاضیان بومی مناطق درگیر بلایای طبیعی (سیل، زلزله و ...)': 'disaster',
     'سهمیه مخصوص متقاضیان بومی شهرستان های جنوب استان کرمان': 'south_kerman',
     'سهمیه مخصوص متقاضیان بومی شهرستان بشاگرد': 'bashagard',
+    # riazi
+    'رشته‌محل‌های سهمیه مناطق محروم': 'deprived',
+    'سهمیه مخصوص متقاضیان بومی شهرستان‌های جنوب استان کرمان (شهرستان‌های جیرفت،': 'south_kerman',
 }
 IGNORED_LINES = {
     'متقاضیان به نکات ذیل توجه نمایند:',
@@ -101,6 +112,7 @@ class Section:
     id: int
     title: str
     part: str | None
+    part_heading: str | None
     period: str | None
     subpart: str | None
     first_page: int
@@ -161,8 +173,8 @@ def parse(pdf: str, first: int, last: int) -> tuple[list[Section], list[dict]]:
                 continue
             if not any(c.strip() for c in it.cells):
                 continue
-            if any('کدرشته' in c for c in it.cells):
-                key = tuple(it.cells)
+            if any('کدرشته' in c.replace(' ', '') for c in it.cells):
+                key = tuple(c.replace('کد رشته', 'کدرشته') for c in it.cells)
                 if key not in LAYOUTS:
                     raise BookletError(f'page {page}: unknown header {key}')
                 ctx.layout = LAYOUTS[key]
@@ -214,7 +226,7 @@ def close_title(ctx: Context, sections: list[Section], page: int) -> None:
         return
     if not any(p.match(title) for p in SECTION_PATTERNS):
         raise BookletError(f'page {page}: unrecognised section title {title!r}')
-    ctx.section = Section(len(sections) + 1, title, ctx.part, ctx.period, ctx.subpart, page, notes=small)
+    ctx.section = Section(len(sections) + 1, title, ctx.part, ctx.part_heading[0] if ctx.part_heading else None, ctx.period, ctx.subpart, page, notes=small)
     sections.append(ctx.section)
 
 
@@ -248,7 +260,7 @@ def handle_line(it: Loose, ctx: Context, page: int) -> None:
             raise BookletError(f'page {page}: unknown heading {text!r} ({size})')
         return
     if 8.5 <= size <= 10.5:
-        if text.startswith('نکته:') or text == 'همین دفترچه راهنما مراجعه کنند.' or text.startswith('متقاضیان پس از مطالعه کامل'):
+        if text.startswith('نکته:') or text in ('همین دفترچه راهنما مراجعه کنند.', 'مراجعه کنید.') or text.startswith('متقاضیان پس از مطالعه کامل'):
             return  # part-level remarks printed in title size
         if ctx.small_print and not ctx.title_lines:
             close_title(ctx, [], page)  # small print after a table belongs to that table's section

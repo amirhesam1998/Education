@@ -5,8 +5,10 @@ namespace Tests\Feature;
 use App\Models\StudyProgram;
 use App\Models\User;
 use App\Services\FieldSelectionService;
+use App\Services\StudyPrograms\BookletImporter;
 use App\Services\StudyPrograms\StudyProgramAdminService;
 use App\Services\StudyPrograms\StudyProgramQuery;
+use App\Services\StudyPrograms\StudyProgramValueMapper;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -277,6 +279,20 @@ class BookletImportTest extends TestCase
             $this->artisan('education:import-booklets', ['--path' => $this->root])->run();
         } finally {
             $this->assertSame(0, StudyProgram::query()->count());
+        }
+    }
+
+    #[Test]
+    public function every_committed_booklet_matches_its_manifest_and_its_folder(): void
+    {
+        $importer = app(BookletImporter::class);
+        $dirs = $importer->discover(database_path('seeders/data/booklets'));
+
+        $this->assertNotEmpty($dirs);
+        foreach ($dirs as $dir) {
+            $manifest = $importer->manifest($dir);
+            $this->assertSame(basename(dirname($dir)).'/'.basename($dir), $importer->bookletId($manifest));
+            $this->assertSame(StudyProgramValueMapper::EXAM_GROUPS[$manifest['group']], $manifest['group_name']);
         }
     }
 
