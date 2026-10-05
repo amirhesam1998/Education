@@ -7,6 +7,7 @@ use App\Enums\ReservationStatus;
 use App\Models\Reservation;
 use App\Models\ReservationPayment;
 use App\Models\User;
+use App\Support\UploadStorage;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -58,7 +59,7 @@ class PaymentApprovalService
                 ]);
             }
 
-            $path = $file->store('receipts/'.$reservation->id, 'local');
+            $path = UploadStorage::store($file, 'receipts/'.$reservation->id, 'receipt_image');
 
             $payment = $reservation->payment ?: new ReservationPayment(['reservation_id' => $reservation->id]);
             $payment->forceFill([
