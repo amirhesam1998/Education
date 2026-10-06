@@ -1,0 +1,22 @@
+{
+  "format": "booklet-programs-v1",
+  "year": 1405,
+  "group": "honar",
+  "group_name": "هنر",
+  "source_file": "honar_v1.pdf",
+  "source_sha256": "f5f5c86ab32f94e65088643ccac1d0088e55a42ef643d143de93764c59446bf8",
+  "pages": [
+    40,
+    317
+  ],
+  "programs": 10551,
+  "programs_file": "programs.jsonl.gz",
+  "programs_sha256": "8cb469f0820a013fd2f3552753ba06795b6c86456330f80ec09f593ff1ab743f",
+  "counts": {
+    "provinces": 31,
+    "cities": 329,
+    "institutions": 333,
+    "campuses": 467,
+    "fields": 228
+  }
+}

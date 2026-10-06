@@ -62,6 +62,8 @@ HEADING_CONTINUATIONS = {
     'رشته‌محل‌های دوره‌های روزانه و شهریه‌پرداز',
     # zaban
     'دوره‌های روزانه، نوبت دوم، مجازی و پردیس‌خودگردان دانشگاه‌ها و مؤسسات آموزش عالی',
+    # honar
+    'دوره‌های روزانه، نوبت‌دوم و مجازی دانشگاه‌ها و مؤسسات آموزش عالی',
 }
 PERIOD_HEADINGS = {
     'رشته‌محل‌های پذیرش نیم‌سال اول و دوم سال 1405 :': 'نیم‌سال اول و دوم سال 1405',
@@ -80,6 +82,8 @@ SUBPART_HEADINGS = {
     'سهمیه مخصوص متقاضیان بومی شهرستان‌های جنوب استان کرمان (شهرستانهای جیرفت، رودبار': 'south_kerman',
     # zaban
     'سهمیه مخصوص متقاضیان بومی شهرستان‌های جنوب استان کرمان (شهرستان‌های جیرفت، رودبار': 'south_kerman',
+    # honar
+    'سهمیه مخصوص متقاضیان بومی شهرستان های جنوب استان کرمان(شهرستان‌های جیرفت،': 'south_kerman',
 }
 # Second lines of the part-level "نکته:" remarks printed in title size.
 REMARK_ENDINGS = {'همین دفترچه راهنما مراجعه کنند.', 'مراجعه کنید.', 'همین دفترچه مراجعه کنند.'}
@@ -169,6 +173,7 @@ def check_sub_columns(header: Band, names: tuple[str, ...], edges: list[float], 
 
 HEADER_TAILS = {'محل', 'اول', 'دوم', 'زن', 'مرد'}
 SPLIT_HEADERS: list[int] = []
+OWN_GRID: list[tuple[int, str]] = []
 
 
 def join_header(header: Band, tail: Band, page: int) -> Band:
@@ -227,7 +232,12 @@ def parse(pdf: str, first: int, last: int) -> tuple[list[Section], list[dict]]:
                 if pending_header is None:
                     HEADERLESS.append(page)  # same layout continues on a new page without repeating the header
                 else:
-                    check_sub_columns(pending_header, ctx.layout, it.edges, page)
+                    try:
+                        check_sub_columns(pending_header, ctx.layout, it.edges, page)
+                    except BookletError:
+                        if all(any(abs(h - e) <= 1.5 for e in it.edges) for h in pending_header.edges):
+                            raise
+                        OWN_GRID.append((page, it.cells[ctx.layout.index('code')]))  # a table under a new title, drawn on its own grid without a header (honar p. 48)
                 ctx.edges = it.edges
             elif len(it.edges) != len(ctx.edges) or max(abs(a - b) for a, b in zip(ctx.edges, it.edges)) > 1.5:
                 raise BookletError(f'page {page}: row edges {it.edges} differ from table edges {ctx.edges}')
@@ -325,7 +335,7 @@ def main() -> None:
     sections, rows = parse(pdf, first, last)
     with open(out, 'w', encoding='utf-8') as fh:
         json.dump({'sections': [s.__dict__ for s in sections], 'rows': rows}, fh, ensure_ascii=False, indent=0)
-    print(len(sections), 'sections', len(rows), 'rows', 'pages without header', HEADERLESS, 'merged cells', MERGED_CELLS, 'split headers', SPLIT_HEADERS)
+    print(len(sections), 'sections', len(rows), 'rows', 'pages without header', HEADERLESS, 'merged cells', MERGED_CELLS, 'split headers', SPLIT_HEADERS, 'tables on their own grid', OWN_GRID)
 
 
 if __name__ == '__main__':
