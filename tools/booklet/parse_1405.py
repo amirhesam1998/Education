@@ -60,6 +60,8 @@ HEADING_CONTINUATIONS = {
     # ensani
     'جنوب، عنبرآباد، قلعه گنج، کهنوج و منوجان)',
     'رشته‌محل‌های دوره‌های روزانه و شهریه‌پرداز',
+    # zaban
+    'دوره‌های روزانه، نوبت دوم، مجازی و پردیس‌خودگردان دانشگاه‌ها و مؤسسات آموزش عالی',
 }
 PERIOD_HEADINGS = {
     'رشته‌محل‌های پذیرش نیم‌سال اول و دوم سال 1405 :': 'نیم‌سال اول و دوم سال 1405',
@@ -76,6 +78,8 @@ SUBPART_HEADINGS = {
     # ensani
     'سهمیه مخصوص متقاضیان بومی مناطق درگیر بلایای طبیعی (سیل، زلزله و...)': 'disaster',
     'سهمیه مخصوص متقاضیان بومی شهرستان‌های جنوب استان کرمان (شهرستانهای جیرفت، رودبار': 'south_kerman',
+    # zaban
+    'سهمیه مخصوص متقاضیان بومی شهرستان‌های جنوب استان کرمان (شهرستان‌های جیرفت، رودبار': 'south_kerman',
 }
 # Second lines of the part-level "نکته:" remarks printed in title size.
 REMARK_ENDINGS = {'همین دفترچه راهنما مراجعه کنند.', 'مراجعه کنید.', 'همین دفترچه مراجعه کنند.'}
@@ -163,6 +167,27 @@ def check_sub_columns(header: Band, names: tuple[str, ...], edges: list[float], 
             raise BookletError(f'page {page}: column {name} expected label {label!r}, header shows {inside!r}')
 
 
+HEADER_TAILS = {'محل', 'اول', 'دوم', 'زن', 'مرد'}
+SPLIT_HEADERS: list[int] = []
+
+
+def join_header(header: Band, tail: Band, page: int) -> Band:
+    """A header whose second line is ruled off (zaban p. 105): append each lower cell to the header cell above it."""
+    if abs(tail.y0 - header.y1) > 1 or any(c and c not in HEADER_TAILS for c in tail.cells):
+        raise BookletError(f'page {page}: unknown header {header.cells}')
+    cells = list(header.cells)
+    for ci, text in enumerate(tail.cells):
+        if not text:
+            continue
+        middle = (tail.edges[ci] + tail.edges[ci + 1]) / 2
+        above = [hi for hi in range(len(cells)) if header.edges[hi + 1] < middle < header.edges[hi]]
+        if len(above) != 1:
+            raise BookletError(f'page {page}: header line {text!r} is under no single header cell')
+        cells[above[0]] += ' ' + text
+    SPLIT_HEADERS.append(page)
+    return Band(page, header.y0, tail.y1, cells, header.edges, header.glyphs + tail.glyphs)
+
+
 def parse(pdf: str, first: int, last: int) -> tuple[list[Section], list[dict]]:
     doc = pymupdf.open(pdf)
     forms = GlyphForms(doc)
@@ -174,6 +199,7 @@ def parse(pdf: str, first: int, last: int) -> tuple[list[Section], list[dict]]:
         page = index + 1
         printed = page_number(items)
         pending_header: Band | None = None
+        split_header: Band | None = None
         ctx.edges = None  # every page draws its own grid
         for it in items:
             if isinstance(it, Loose):
@@ -181,8 +207,13 @@ def parse(pdf: str, first: int, last: int) -> tuple[list[Section], list[dict]]:
                 continue
             if not any(c.strip() for c in it.cells):
                 continue
+            if split_header is not None:
+                it, split_header = join_header(split_header, it, page), None
             if any('کدرشته' in c.replace(' ', '') for c in it.cells):
                 key = tuple(c.replace('کد رشته', 'کدرشته').replace('نیمسال', 'نیم‌سال') for c in it.cells)  # header spelling varies
+                if key not in LAYOUTS and it is not items[-1]:
+                    split_header = it  # its second line may be ruled off as a band of its own
+                    continue
                 if key not in LAYOUTS:
                     raise BookletError(f'page {page}: unknown header {key}')
                 ctx.layout = LAYOUTS[key]
@@ -215,6 +246,10 @@ def parse(pdf: str, first: int, last: int) -> tuple[list[Section], list[dict]]:
     return sections, rows
 
 
+def same_title(title: str) -> str:
+    return title.replace('–', '-')  # a continued title may print the en dash of the first page as a hyphen (zaban p. 157)
+
+
 def close_title(ctx: Context, sections: list[Section], page: int) -> None:
     """A section title (and the small print under it) ends where its table starts."""
     small, ctx.small_print = ctx.small_print, []
@@ -226,7 +261,7 @@ def close_title(ctx: Context, sections: list[Section], page: int) -> None:
     ctx.title_lines = []
     continued = re.match(r'^ادامه\s*(.*)$', title)
     if continued:
-        if ctx.section is None or continued.group(1) != ctx.section.title:
+        if ctx.section is None or same_title(continued.group(1)) != same_title(ctx.section.title):
             raise BookletError(f'page {page}: continuation {continued.group(1)!r} does not match open section {ctx.section.title if ctx.section else None!r}')
         for s in small:
             if s not in ctx.section.notes:
@@ -247,7 +282,7 @@ def handle_line(it: Loose, ctx: Context, page: int) -> None:
     if text in IGNORED_LINES:
         return
     size = it.size
-    if size >= 12.5:
+    if size >= 12.5 or (size > 10.5 and (text in SUBPART_HEADINGS or text in HEADING_CONTINUATIONS)):  # zaban p. 108 sets a quota heading in 12 pt
         if ctx.title_lines:
             raise BookletError(f'page {page}: heading {text!r} right after an unfinished title {ctx.title_lines}')
         if text in PART_HEADINGS:
@@ -287,7 +322,7 @@ def main() -> None:
     sections, rows = parse(pdf, first, last)
     with open(out, 'w', encoding='utf-8') as fh:
         json.dump({'sections': [s.__dict__ for s in sections], 'rows': rows}, fh, ensure_ascii=False, indent=0)
-    print(len(sections), 'sections', len(rows), 'rows', 'pages without header', HEADERLESS, 'merged cells', MERGED_CELLS)
+    print(len(sections), 'sections', len(rows), 'rows', 'pages without header', HEADERLESS, 'merged cells', MERGED_CELLS, 'split headers', SPLIT_HEADERS)
 
 
 if __name__ == '__main__':
