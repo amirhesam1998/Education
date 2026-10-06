@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'رشته‌محل‌ها')
+@section('title', 'رشته‌محل‌های دولتی')
 
 @section('actions')
     @can('create_study_programs')

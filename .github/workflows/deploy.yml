@@ -224,6 +224,14 @@ jobs:
           php artisan education:import-booklets --no-interaction
 
           echo "========================================"
+          echo "Importing Azad university programmes..."
+          echo "========================================"
+
+          # Separate from the state catalogue: loads database/seeders/data/azad/<year> into
+          # azad_programs when its file changed since the last import (backs up first).
+          php artisan education:import-azad-programs --no-interaction
+
+          echo "========================================"
           echo "Removing the 1404 catalogue..."
           echo "========================================"
 

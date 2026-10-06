@@ -2276,7 +2276,8 @@
             @endif
 
 
-            @if($contactPhone || $publishedFieldSelectionPlan)
+            @php($publishedAzadSelectionPlan = $visibleAzadSelectionPlans->first())
+            @if($contactPhone || $publishedFieldSelectionPlan || $publishedAzadSelectionPlan)
 
                 <div class="hero-actions">
 
@@ -2289,6 +2290,16 @@
                         <i class="ri-list-check-3"></i>
 
                         مشاهده انتخاب رشته
+                    </a>
+
+                    @endif
+
+                    @if($publishedAzadSelectionPlan)
+
+                    <a href="{{ route('public.reservations.azad-selection.show', [$reservation->public_token, $publishedAzadSelectionPlan]) }}" class="hero-action hero-action--primary">
+                        <i class="ri-building-4-line"></i>
+
+                        مشاهده انتخاب رشته آزاد
                     </a>
 
                     @endif
@@ -2308,7 +2319,7 @@
 
             @endif
 
-            @if($publishedFieldSelectionPlan)
+            @if($publishedFieldSelectionPlan || $publishedAzadSelectionPlan)
                 <div class="text-center mt-3 text-success fw-semibold">انتخاب رشته شما آماده است.</div>
             @else
                 <div class="text-center mt-3 text-muted">انتخاب رشته شما هنوز توسط آموزشگاه منتشر نشده است.</div>
@@ -2316,7 +2327,7 @@
 
         </section>
 
-        @if($visibleFieldSelectionPlans->isNotEmpty())
+        @if($visibleFieldSelectionPlans->isNotEmpty() || $visibleAzadSelectionPlans->isNotEmpty())
             <section class="reservation-progress-card">
 
                 <div class="progress-heading">
@@ -2325,7 +2336,7 @@
                         انتخاب رشته‌های ثبت‌شده برای شما
                     </div>
                     <div class="progress-heading__hint">
-                        {{ \App\Support\PersianDate::number($visibleFieldSelectionPlans->count()) }} مورد
+                        {{ \App\Support\PersianDate::number($visibleFieldSelectionPlans->count() + $visibleAzadSelectionPlans->count()) }} مورد
                     </div>
                 </div>
 
@@ -2367,6 +2378,44 @@
                             @endforeach
                         </div>
                     @endforeach
+
+                    @if($visibleAzadSelectionPlans->isNotEmpty())
+                        <div class="plan-group">
+                            <div class="plan-group__title">
+                                <i class="ri-building-4-line"></i>
+                                دانشگاه آزاد اسلامی
+                            </div>
+
+                            @foreach($visibleAzadSelectionPlans as $azadPlan)
+                                <article class="plan-card">
+                                    <div class="plan-card__info">
+                                        <div class="plan-card__name">انتخاب رشته دانشگاه آزاد ({{ \App\Support\PersianDate::number($azadPlan->items->count()) }} رشته‌محل)</div>
+                                        <div class="plan-card__meta">
+                                            <span class="plan-card__date">
+                                                <i class="ri-calendar-check-line"></i>
+                                                {{ \App\Support\PersianDate::dateTime($azadPlan->published_at) }}
+                                            </span>
+                                            <span class="plan-card__state">
+                                                <i class="ri-checkbox-circle-fill"></i>
+                                                منتشر شده
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="plan-card__actions">
+                                        <a class="plan-btn plan-btn--primary"
+                                            href="{{ route('public.reservations.azad-selection.show', [$reservation->public_token, $azadPlan]) }}">
+                                            <i class="ri-eye-line"></i> مشاهده انتخاب رشته آزاد
+                                        </a>
+                                        <a class="plan-btn plan-btn--ghost" target="_blank"
+                                            href="{{ route('public.reservations.azad-selection.print', [$reservation->public_token, $azadPlan]) }}">
+                                            <i class="ri-printer-line"></i> چاپ
+                                        </a>
+                                    </div>
+                                </article>
+                            @endforeach
+                        </div>
+                    @endif
                 </div>
 
             </section>

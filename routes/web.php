@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Admin\AzadProgramController;
+use App\Http\Controllers\Admin\AzadSelectionController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\FieldSelectionController;
 use App\Http\Controllers\Admin\OperatorFieldSelectionStatsController;
@@ -12,6 +14,7 @@ use App\Http\Controllers\Admin\SlotController;
 use App\Http\Controllers\Admin\StudyProgramController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\PublicAccess\PublicAzadSelectionController;
 use App\Http\Controllers\PublicAccess\PublicReservationController;
 use App\Http\Controllers\PublicAccess\PublicReservationRequestController;
 use Illuminate\Support\Facades\Route;
@@ -171,6 +174,46 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function (): v
         ->middleware('permission:view_field_selection')
         ->name('field-selection.filter-options.cities');
 
+    Route::get('/reservations/{reservation}/azad-selection', [AzadSelectionController::class, 'show'])
+        ->middleware('permission:view_azad_field_selection')
+        ->name('reservations.azad-selection.show');
+    Route::get('/azad-selection/lookup', [AzadSelectionController::class, 'lookup'])
+        ->middleware('permission:view_azad_field_selection')
+        ->name('azad-selection.lookup');
+    Route::get('/azad-selection/search', [AzadSelectionController::class, 'search'])
+        ->middleware('permission:view_azad_field_selection')
+        ->name('azad-selection.search');
+    Route::post('/azad-selection-plans/{plan}/items', [AzadSelectionController::class, 'addItem'])
+        ->middleware('permission:manage_azad_field_selection')
+        ->name('azad-selection-plans.items.store');
+    Route::post('/azad-selection-plans/{plan}/reorder', [AzadSelectionController::class, 'reorder'])
+        ->middleware('permission:manage_azad_field_selection')
+        ->name('azad-selection-plans.reorder');
+    Route::post('/azad-selection-plans/{plan}/publish', [AzadSelectionController::class, 'publish'])
+        ->middleware('permission:manage_azad_field_selection')
+        ->name('azad-selection-plans.publish');
+    Route::post('/azad-selection-plans/{plan}/show-to-student', [AzadSelectionController::class, 'showToStudent'])
+        ->middleware('permission:manage_azad_field_selection')
+        ->name('azad-selection-plans.show-to-student');
+    Route::post('/azad-selection-plans/{plan}/hide-from-student', [AzadSelectionController::class, 'hideFromStudent'])
+        ->middleware('permission:manage_azad_field_selection')
+        ->name('azad-selection-plans.hide-from-student');
+    Route::post('/azad-selection-plans/{plan}/archive', [AzadSelectionController::class, 'archive'])
+        ->middleware('permission:manage_azad_field_selection')
+        ->name('azad-selection-plans.archive');
+    Route::delete('/azad-selection-plans/{plan}', [AzadSelectionController::class, 'destroyPlan'])
+        ->middleware('permission:manage_azad_field_selection')
+        ->name('azad-selection-plans.destroy');
+    Route::get('/azad-selection-plans/{plan}/print', [AzadSelectionController::class, 'print'])
+        ->middleware('permission:view_azad_field_selection')
+        ->name('azad-selection-plans.print');
+    Route::put('/azad-selection-items/{item}', [AzadSelectionController::class, 'updateItem'])
+        ->middleware('permission:manage_azad_field_selection')
+        ->name('azad-selection-items.update');
+    Route::delete('/azad-selection-items/{item}', [AzadSelectionController::class, 'deleteItem'])
+        ->middleware('permission:manage_azad_field_selection')
+        ->name('azad-selection-items.destroy');
+
     Route::get('/payments', [PaymentController::class, 'index'])
         ->middleware('permission:view_reservation_payment_info')
         ->name('payments.index');
@@ -247,6 +290,31 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function (): v
     Route::delete('/study-programs/{studyProgram}', [StudyProgramController::class, 'destroy'])
         ->middleware('permission:delete_study_programs')
         ->name('study-programs.destroy');
+
+    Route::get('/azad-programs', [AzadProgramController::class, 'index'])
+        ->middleware('permission:view_azad_programs')
+        ->name('azad-programs.index');
+    Route::get('/azad-programs/cities', [AzadProgramController::class, 'cities'])
+        ->middleware('permission:view_azad_programs|view_azad_field_selection')
+        ->name('azad-programs.cities');
+    Route::get('/azad-programs/units', [AzadProgramController::class, 'units'])
+        ->middleware('permission:view_azad_programs|view_azad_field_selection')
+        ->name('azad-programs.units');
+    Route::get('/azad-programs/create', [AzadProgramController::class, 'create'])
+        ->middleware('permission:create_azad_programs')
+        ->name('azad-programs.create');
+    Route::post('/azad-programs', [AzadProgramController::class, 'store'])
+        ->middleware('permission:create_azad_programs')
+        ->name('azad-programs.store');
+    Route::get('/azad-programs/{azadProgram}/edit', [AzadProgramController::class, 'edit'])
+        ->middleware('permission:update_azad_programs')
+        ->name('azad-programs.edit');
+    Route::put('/azad-programs/{azadProgram}', [AzadProgramController::class, 'update'])
+        ->middleware('permission:update_azad_programs')
+        ->name('azad-programs.update');
+    Route::delete('/azad-programs/{azadProgram}', [AzadProgramController::class, 'destroy'])
+        ->middleware('permission:delete_azad_programs')
+        ->name('azad-programs.destroy');
 });
 
 Route::get('/reservation/access/{token}', [PublicReservationController::class, 'show'])->name('public.reservations.show');
@@ -254,6 +322,8 @@ Route::get('/reservation/access/{token}/field-selection', [PublicReservationCont
 Route::get('/reservation/access/{token}/field-selection/print', [PublicReservationController::class, 'fieldSelectionPrint'])->name('public.reservations.field-selection.print');
 Route::get('/reservation/access/{token}/field-selection/{plan}/print', [PublicReservationController::class, 'printFieldSelection'])->name('public.reservations.field-selection.plan.print');
 Route::get('/reservation/access/{token}/field-selection/{plan}', [PublicReservationController::class, 'showFieldSelection'])->name('public.reservations.field-selection.plan.show');
+Route::get('/reservation/access/{token}/azad-selection/{plan}/print', [PublicAzadSelectionController::class, 'print'])->name('public.reservations.azad-selection.print');
+Route::get('/reservation/access/{token}/azad-selection/{plan}', [PublicAzadSelectionController::class, 'show'])->name('public.reservations.azad-selection.show');
 Route::post('/reservation/access/{token}/complete', [PublicReservationController::class, 'complete'])->name('public.reservations.complete');
 Route::post('/reservation/access/{token}/upload-receipt', [PublicReservationController::class, 'uploadReceipt'])->name('public.reservations.upload-receipt');
 Route::post('/reservation/access/{token}/report-card', [PublicReservationController::class, 'uploadReportCard'])->name('public.reservations.report-card.store');

@@ -1,0 +1,80 @@
+{
+  "format": "azad-programs-v1",
+  "year": 1405,
+  "booklets": [
+    {
+      "key": "sarasari",
+      "label": "با آزمون سراسری",
+      "level": null,
+      "admission": "exam",
+      "source_file": "سراسری_ازاد.pdf",
+      "source_sha256": "4e33db53bed8b7bd6273bff0efb5a536406d7d70c2afd02a32eb2c4c208a0d12",
+      "pages": [
+        10,
+        64
+      ],
+      "programs": 970
+    },
+    {
+      "key": "kardani_napeyvaste",
+      "label": "کاردانی ناپیوسته - سوابق تحصیلی",
+      "level": "کاردانی ناپیوسته",
+      "admission": "records",
+      "source_file": "کاردانی_ناپیوسته_سوابق_تحصیلی.pdf",
+      "source_sha256": "26776287ce5a9753ef875be5e556d14c098aac1b59f9c5a5ebabd7c94d8e6e5a",
+      "pages": [
+        14,
+        172
+      ],
+      "programs": 4509
+    },
+    {
+      "key": "kardani_peyvaste",
+      "label": "کاردانی پیوسته - سوابق تحصیلی",
+      "level": "کاردانی پیوسته",
+      "admission": "records",
+      "source_file": "کاردانی_پیوسته_سوابق_تحصیلی.pdf",
+      "source_sha256": "90d599159ab51fea23d5661ce5be2871db23687c8d1825b45f0a23b9472feca9",
+      "pages": [
+        19,
+        155
+      ],
+      "programs": 3832
+    },
+    {
+      "key": "karshenasi_napeyvaste",
+      "label": "کارشناسی ناپیوسته - سوابق تحصیلی",
+      "level": "کارشناسی ناپیوسته",
+      "admission": "records",
+      "source_file": "کارشناسی_ناپیوسته_سوابق_تحصیلی.pdf",
+      "source_sha256": "c8f9265d6b04274f70b29e0af54851c95fbe8e561e62ab7d7eacb676ba87533f",
+      "pages": [
+        13,
+        156
+      ],
+      "programs": 3886
+    },
+    {
+      "key": "karshenasi_peyvaste",
+      "label": "کارشناسی پیوسته - سوابق تحصیلی",
+      "level": "کارشناسی پیوسته",
+      "admission": "records",
+      "source_file": "کارشناسی_پیوسته_سوابق_تحصیلی.pdf",
+      "source_sha256": "25a60fef6145a78daf3dc2e942e6c0f996fa7c579cbfd6d17c4478925a98e07b",
+      "pages": [
+        14,
+        205
+      ],
+      "programs": 5453
+    }
+  ],
+  "programs": 18650,
+  "programs_file": "programs.jsonl.gz",
+  "programs_sha256": "0394b7205b3832b0bdecfc40d474f03a37d09fc0984e2103e53e949f0381458c",
+  "counts": {
+    "provinces": 32,
+    "cities": 383,
+    "units": 502,
+    "fields": 651
+  }
+}

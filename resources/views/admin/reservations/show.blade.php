@@ -665,20 +665,29 @@
             @if(in_array($reservation->status, [\App\Enums\ReservationStatus::Confirmed, \App\Enums\ReservationStatus::Completed], true))
                 @php
                     $selectionPlans = $reservation->fieldSelectionPlans->whereNull('deleted_at');
+                    $azadPlan = $reservation->azadSelectionPlans->firstWhere('status', '!=', \App\Models\AzadSelectionPlan::STATUS_ARCHIVED);
                 @endphp
                 <div class="card card-section">
                     <div class="card-header d-flex justify-content-between align-items-center"><span><i class="ri-list-ordered"></i> انتخاب رشته</span>
-                        @can('manage_field_selection')
+                        @canany(['manage_field_selection', 'manage_azad_field_selection'])
                             <div class="d-flex flex-wrap gap-2">
-                                <a class="btn btn-sm btn-primary" href="{{ route('admin.reservations.field-selection.show', $reservation) }}">مدیریت انتخاب رشته</a>
+                                @can('manage_field_selection')
+                                    <a class="btn btn-sm btn-primary" href="{{ route('admin.reservations.field-selection.show', $reservation) }}">مدیریت انتخاب رشته</a>
+                                @endcan
+                                @can('manage_azad_field_selection')
+                                    <a class="btn btn-sm btn-outline-primary" href="{{ route('admin.reservations.azad-selection.show', $reservation) }}">مدیریت انتخاب رشته آزاد</a>
+                                @endcan
                             </div>
-                        @endcan
+                        @endcanany
                     </div>
                     <div class="card-body">
                         @if($selectionPlans->isNotEmpty())
                             <div class="info-grid"><div class="info-item"><div class="info-label">تعداد انتخاب رشته‌ها</div><div class="info-value">{{ \App\Support\PersianDate::number($selectionPlans->count()) }}</div></div><div class="info-item"><div class="info-label">منتشرشده</div><div class="info-value">{{ \App\Support\PersianDate::number($selectionPlans->where('status', 'published')->count()) }}</div></div></div>
                         @else
-                            <div class="empty-state">هنوز رشته‌ای برای این دانش‌آموز ثبت نشده است.</div>
+                            <div class="empty-state">{{ $azadPlan ? 'هنوز انتخاب رشته دولتی برای این دانش‌آموز ثبت نشده است.' : 'هنوز رشته‌ای برای این دانش‌آموز ثبت نشده است.' }}</div>
+                        @endif
+                        @if($azadPlan)
+                            <div class="info-grid mt-3"><div class="info-item"><div class="info-label">انتخاب رشته آزاد</div><div class="info-value">{{ \App\Support\PersianDate::number($azadPlan->items_count) }} رشته‌محل</div></div><div class="info-item"><div class="info-label">وضعیت انتخاب رشته آزاد</div><div class="info-value">{{ $azadPlan->statusLabel() }}@if($azadPlan->isPublished()) · {{ $azadPlan->is_public_visible ? 'قابل مشاهده برای دانش‌آموز' : 'مخفی از دانش‌آموز' }}@endif</div></div></div>
                         @endif
                     </div>
                 </div>

@@ -16,6 +16,7 @@ use App\Services\ReservationFlowService;
 use App\Services\ReservationService;
 use App\Services\SettingsService;
 use App\Services\FieldSelectionService;
+use App\Services\Azad\AzadSelectionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -23,7 +24,7 @@ use Illuminate\View\View;
 
 class PublicReservationController extends Controller
 {
-    public function show(string $token, PublicReservationLinkService $links, ReservationService $reservations, SettingsService $settings, ReservationFlowService $flow, FieldSelectionService $fieldSelections): View
+    public function show(string $token, PublicReservationLinkService $links, ReservationService $reservations, SettingsService $settings, ReservationFlowService $flow, FieldSelectionService $fieldSelections, AzadSelectionService $azadSelections): View
     {
         $reservation = $links->validateToken($token);
         $this->expireIfOverdue($reservation, $links, $reservations);
@@ -50,6 +51,7 @@ class PublicReservationController extends Controller
             'publishedFieldSelectionPlan' => $publishedFieldSelectionPlan,
             'visibleFieldSelectionPlans' => $visibleFieldSelectionPlans,
             'visibleFieldSelectionPlansByExamType' => $visibleFieldSelectionPlansByExamType,
+            'visibleAzadSelectionPlans' => $azadSelections->studentVisiblePlans($reservation),
         ]);
     }
 
