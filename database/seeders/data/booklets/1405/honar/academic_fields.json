@@ -1,0 +1,311 @@
+{
+ "source": "honar_v1.pdf، جدول رشته‌های تحصیلی صفحه‌های 37 تا 38 (شماره صفحه PDF)",
+ "star_note": null,
+ "transcribed_from": "PDF text layer, tools/booklet/field_list_1405.py",
+ "fields": [
+  {
+   "order": 1,
+   "degree_level": "کارشناسی",
+   "name": "آهنگسازی",
+   "selection_type": "کشوری",
+   "field_row_code": 64,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 2,
+   "degree_level": "کارشناسی",
+   "name": "ادبیات نمایشی",
+   "selection_type": "کشوری",
+   "field_row_code": 30,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 3,
+   "degree_level": "کارشناسی",
+   "name": "ارتباط تصویری",
+   "selection_type": "کشوری",
+   "field_row_code": 1,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 4,
+   "degree_level": "کارشناسی",
+   "name": "بازیگری",
+   "selection_type": "کشوری",
+   "field_row_code": 66,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 5,
+   "degree_level": "کارشناسی",
+   "name": "باستان شناسی",
+   "selection_type": "کشوری",
+   "field_row_code": 3,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 6,
+   "degree_level": "کارشناسی",
+   "name": "تلویزیون و هنرهای دیجیتال",
+   "selection_type": "کشوری",
+   "field_row_code": 4,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 7,
+   "degree_level": "کارشناسی",
+   "name": "چاپ",
+   "selection_type": "کشوری",
+   "field_row_code": 6,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 8,
+   "degree_level": "کارشناسی",
+   "name": "سینما",
+   "selection_type": "کشوری",
+   "field_row_code": 7,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 9,
+   "degree_level": "کارشناسی",
+   "name": "صنایع دستی",
+   "selection_type": "کشوری",
+   "field_row_code": 8,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 10,
+   "degree_level": "کارشناسی",
+   "name": "طراحی پارچه",
+   "selection_type": "کشوری",
+   "field_row_code": 62,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 11,
+   "degree_level": "کارشناسی",
+   "name": "طراحی صحنه",
+   "selection_type": "کشوری",
+   "field_row_code": 67,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 12,
+   "degree_level": "کارشناسی",
+   "name": "طراحی صنعتی",
+   "selection_type": "کشوری",
+   "field_row_code": 11,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 13,
+   "degree_level": "کارشناسی",
+   "name": "طراحی لباس",
+   "selection_type": "کشوری",
+   "field_row_code": 63,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 14,
+   "degree_level": "کارشناسی",
+   "name": "طراحی و چاپ پارچه",
+   "selection_type": "کشوری",
+   "field_row_code": 78,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 15,
+   "degree_level": "کارشناسی",
+   "name": "طراحی و ساخت طلا و جواهر",
+   "selection_type": "کشوری",
+   "field_row_code": 75,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 16,
+   "degree_level": "کارشناسی",
+   "name": "عکاسی",
+   "selection_type": "کشوری",
+   "field_row_code": 13,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 17,
+   "degree_level": "کارشناسی",
+   "name": "فرش",
+   "selection_type": "کشوری",
+   "field_row_code": 18,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 18,
+   "degree_level": "کارشناسی",
+   "name": "کارگردانی تلویزیون",
+   "selection_type": "کشوری",
+   "field_row_code": 19,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 19,
+   "degree_level": "کارشناسی",
+   "name": "کتاب‌آرایی",
+   "selection_type": "کشوری",
+   "field_row_code": 20,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 20,
+   "degree_level": "کارشناسی",
+   "name": "کارگردانی",
+   "selection_type": "کشوری",
+   "field_row_code": 80,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 21,
+   "degree_level": "کارشناسی",
+   "name": "گرافیک",
+   "selection_type": "کشوری",
+   "field_row_code": 79,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 22,
+   "degree_level": "کارشناسی",
+   "name": "مجسمه سازی",
+   "selection_type": "کشوری",
+   "field_row_code": 22,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 23,
+   "degree_level": "کارشناسی",
+   "name": "مرمت اشیاء فرهنگی و تاریخی",
+   "selection_type": "کشوری",
+   "field_row_code": 25,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 24,
+   "degree_level": "کارشناسی",
+   "name": "مرمت بناهای تاریخی",
+   "selection_type": "کشوری",
+   "field_row_code": 73,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 25,
+   "degree_level": "کارشناسی",
+   "name": "موزه",
+   "selection_type": "کشوری",
+   "field_row_code": 27,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 26,
+   "degree_level": "کارشناسی",
+   "name": "موسیقی نظامی",
+   "selection_type": "کشوری",
+   "field_row_code": 33,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 27,
+   "degree_level": "کارشناسی",
+   "name": "نقاشی",
+   "selection_type": "کشوری",
+   "field_row_code": 29,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 28,
+   "degree_level": "کارشناسی",
+   "name": "نقاشی ایرانی",
+   "selection_type": "کشوری",
+   "field_row_code": 76,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 29,
+   "degree_level": "کارشناسی",
+   "name": "نمایش عروسکی",
+   "selection_type": "کشوری",
+   "field_row_code": 68,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 30,
+   "degree_level": "کارشناسی",
+   "name": "نوازندگی موسیقی ایرانی",
+   "selection_type": "کشوری",
+   "field_row_code": 21,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 31,
+   "degree_level": "کارشناسی",
+   "name": "نوازندگی موسیقی جهانی",
+   "selection_type": "کشوری",
+   "field_row_code": 28,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 32,
+   "degree_level": "کارشناسی",
+   "name": "هنر اسلامی",
+   "selection_type": "کشوری",
+   "field_row_code": 31,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 33,
+   "degree_level": "کارشناسی",
+   "name": "هنرهای صناعی",
+   "selection_type": "کشوری",
+   "field_row_code": 53,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 34,
+   "degree_level": "کاردانی",
+   "name": "کاردانی باستان شناسی",
+   "selection_type": "کشوری",
+   "field_row_code": 34,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 35,
+   "degree_level": "کاردانی",
+   "name": "کاردانی حفاظت و مرمت آثار تاریخی",
+   "selection_type": "کشوری",
+   "field_row_code": 36,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 36,
+   "degree_level": "کاردانی",
+   "name": "کاردانی طراحی پوشاک",
+   "selection_type": "کشوری",
+   "field_row_code": 69,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 37,
+   "degree_level": "کاردانی",
+   "name": "کاردانی گرافیک",
+   "selection_type": "کشوری",
+   "field_row_code": 50,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 38,
+   "degree_level": "کاردانی",
+   "name": "کاردانی هنر سفالگری",
+   "selection_type": "کشوری",
+   "field_row_code": 70,
+   "gender_min_30_percent_note": false
+  }
+ ]
+}

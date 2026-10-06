@@ -302,7 +302,7 @@ FIELD_SPELLINGS = {
 }
 
 # Exam groups: the folder name under database/seeders/data/booklets/<year>/ and the group's name.
-GROUPS = {'tajrobi': 'تجربی', 'riazi': 'ریاضی', 'ensani': 'انسانی', 'zaban': 'زبان'}
+GROUPS = {'tajrobi': 'تجربی', 'riazi': 'ریاضی', 'ensani': 'انسانی', 'zaban': 'زبان', 'honar': 'هنر'}
 
 # Printed table titles that name a field of the group's field list differently (title -> order).
 FIELD_LIST_ALIASES = {'tajrobi': {
@@ -347,6 +347,7 @@ FIELD_LIST_ALIASES = {'tajrobi': {
     'مدیریت آموزشی(با رویکرد آموزش سازمانی)': 62,          # the list prints "مدیریت آموزشی/ رویکرد آموزش سازمانی/"
     'مدیریت فرهنگی هنری (ویژه دانشکده آموزش عالی تربیت مربی عقیدتی سیاسی سپاه)': 70,
 }, 'zaban': {
+}, 'honar': {
 }}
 
 PERSIAN_DIGITS = str.maketrans('0123456789٠١٢٣٤٥٦٧٨٩', '۰۱۲۳۴۵۶۷۸۹۰۱۲۳۴۵۶۷۸۹')
