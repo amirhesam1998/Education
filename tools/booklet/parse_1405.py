@@ -207,11 +207,12 @@ def parse(pdf: str, first: int, last: int) -> tuple[list[Section], list[dict]]:
                 continue
             if not any(c.strip() for c in it.cells):
                 continue
-            if split_header is not None:
+            joined = split_header is not None
+            if joined:
                 it, split_header = join_header(split_header, it, page), None
             if any('کدرشته' in c.replace(' ', '') for c in it.cells):
                 key = tuple(c.replace('کد رشته', 'کدرشته').replace('نیمسال', 'نیم‌سال') for c in it.cells)  # header spelling varies
-                if key not in LAYOUTS and it is not items[-1]:
+                if key not in LAYOUTS and not joined:
                     split_header = it  # its second line may be ruled off as a band of its own
                     continue
                 if key not in LAYOUTS:
@@ -242,6 +243,8 @@ def parse(pdf: str, first: int, last: int) -> tuple[list[Section], list[dict]]:
                 'cells': cells,
             })
             ctx.section.rows += 1
+        if split_header is not None:
+            raise BookletError(f'page {page}: unknown header {split_header.cells}')
     close_title(ctx, sections, last)
     return sections, rows
 

@@ -11,7 +11,7 @@
   ],
   "programs": 10455,
   "programs_file": "programs.jsonl.gz",
-  "programs_sha256": "1b3519ad4b6227748e92f071db6800891196ea0b3e284ecc9bdd28fb3afd215c",
+  "programs_sha256": "c509f63728c1d93c5f9c88fd1414a54543145db0ff72a149e1beb967855269f8",
   "counts": {
     "provinces": 31,
     "cities": 329,
