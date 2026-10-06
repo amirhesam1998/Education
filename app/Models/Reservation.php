@@ -92,6 +92,11 @@ class Reservation extends Model
         return $this->hasMany(FieldSelectionPlan::class)->orderByDesc('version');
     }
 
+    public function azadSelectionPlans(): HasMany
+    {
+        return $this->hasMany(AzadSelectionPlan::class)->orderByDesc('version');
+    }
+
     public function latestFieldSelectionPlan(): HasOne
     {
         return $this->hasOne(FieldSelectionPlan::class)->latestOfMany('version');

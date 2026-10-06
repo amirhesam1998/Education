@@ -46,6 +46,12 @@ class PermissionRoleSeeder extends Seeder
         'create_study_programs',
         'update_study_programs',
         'delete_study_programs',
+        'view_azad_programs',
+        'create_azad_programs',
+        'update_azad_programs',
+        'delete_azad_programs',
+        'view_azad_field_selection',
+        'manage_azad_field_selection',
         'manage_users',
         'manage_roles',
         'manage_settings',
@@ -83,6 +89,7 @@ class PermissionRoleSeeder extends Seeder
                 'view_reservation_documents',
                 'change_reservation_slot',
                 'view_field_selection',
+                'view_azad_field_selection',
             ],
             'Accountant' => [
                 'view_dashboard',
@@ -100,6 +107,8 @@ class PermissionRoleSeeder extends Seeder
                 'confirm_reservations',
                 'view_field_selection',
                 'manage_field_selection',
+                'view_azad_field_selection',
+                'manage_azad_field_selection',
             ],
         ];
 

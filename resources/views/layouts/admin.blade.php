@@ -84,7 +84,13 @@
                 @can('view_study_programs')
                     <a class="nav-link {{ request()->routeIs('admin.study-programs.*') ? 'active' : '' }}"
                         href="{{ route('admin.study-programs.index') }}">
-                        <i class="ri-graduation-cap-line"></i> رشته‌محل‌ها
+                        <i class="ri-graduation-cap-line"></i> رشته‌محل دولتی
+                    </a>
+                @endcan
+                @can('view_azad_programs')
+                    <a class="nav-link {{ request()->routeIs('admin.azad-programs.*') ? 'active' : '' }}"
+                        href="{{ route('admin.azad-programs.index') }}">
+                        <i class="ri-building-4-line"></i> رشته‌محل آزاد
                     </a>
                 @endcan
             </nav>

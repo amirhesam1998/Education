@@ -168,6 +168,7 @@ class ReservationController extends Controller
             $canViewReservationSensitiveInfo ? 'activityLogs.user' : null,
             'fieldSelectionPlans.items',
             'fieldSelectionPlans.creator',
+            'azadSelectionPlans' => fn ($query) => $query->withCount('items'),
             'academicInfo',
         ]));
         $slots = $this->bookableSlots($reservation->slot);
