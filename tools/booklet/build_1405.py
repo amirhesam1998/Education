@@ -108,7 +108,7 @@ class InstitutionCells:
             rest = '- ' + rest if rest else ''
         if rest and not rest.startswith('- '):
             raise BuildError(f'unexpected text after the institution in {cell!r}: {rest!r}')
-        notes = rest[2:].strip() if rest else None
+        notes = printed_tail(cell, rest[2:].strip()) if rest else None
         notes = ' - '.join(n for n in (prefix, notes) if n) or None
         campus = tidy(campus) if campus else None
         place = self.known.get((institution, campus))
@@ -209,11 +209,23 @@ def build_places(raw: dict, siblings: list[dict] = ()) -> tuple[dict[str, Place]
     return by_code, extras
 
 
+def printed_tail(cell: str, tail: str) -> str:
+    """The end of the printed cell that tidy() made into tail, with its dashes and spaces as printed (zaban p. 310 "ایرانشهر- ممنوعیت")."""
+    want, i = len(re.sub(r'\s', '', tail)), len(cell)
+    while want:
+        i -= 1
+        want -= not cell[i].isspace()
+    printed = cell[i:].strip()
+    if tidy(printed) != tail:
+        raise BuildError(f'cannot find {tail!r} at the end of {cell!r}')
+    return printed
+
+
 def drop_leading_city(places: Places, place: Place, notes: str | None) -> str | None:
     """"کرج - فاقد خوابگاه" after the institution: the city is the program's city, not a note."""
     if not notes:
         return notes
-    first, sep, rest = notes.partition(' - ')
+    first, rest = (notes, '') if (m := re.match(r'(.*?)\s*[–—-]\s*(.*)$', notes, re.S)) is None else m.groups()
     if len(first) <= 40 and places.city(place.province, first) is not None:
         if places.city(place.province, first) != place.city:
             raise BuildError(f'notes start with {first!r} but the program is in {place.city}')
@@ -290,7 +302,7 @@ FIELD_SPELLINGS = {
 }
 
 # Exam groups: the folder name under database/seeders/data/booklets/<year>/ and the group's name.
-GROUPS = {'tajrobi': 'تجربی', 'riazi': 'ریاضی', 'ensani': 'انسانی'}
+GROUPS = {'tajrobi': 'تجربی', 'riazi': 'ریاضی', 'ensani': 'انسانی', 'zaban': 'زبان'}
 
 # Printed table titles that name a field of the group's field list differently (title -> order).
 FIELD_LIST_ALIASES = {'tajrobi': {
@@ -334,6 +346,7 @@ FIELD_LIST_ALIASES = {'tajrobi': {
     'فلسفه و کلام اسلامی (برنامه درسی خاص این دانشگاه)': 57,
     'مدیریت آموزشی(با رویکرد آموزش سازمانی)': 62,          # the list prints "مدیریت آموزشی/ رویکرد آموزش سازمانی/"
     'مدیریت فرهنگی هنری (ویژه دانشکده آموزش عالی تربیت مربی عقیدتی سیاسی سپاه)': 70,
+}, 'zaban': {
 }}
 
 PERSIAN_DIGITS = str.maketrans('0123456789٠١٢٣٤٥٦٧٨٩', '۰۱۲۳۴۵۶۷۸۹۰۱۲۳۴۵۶۷۸۹')

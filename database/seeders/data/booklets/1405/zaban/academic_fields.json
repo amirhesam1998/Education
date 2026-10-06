@@ -1,0 +1,135 @@
+{
+ "source": "Zaban_v2.pdf، جدول رشته‌های تحصیلی صفحه‌های 37 تا 38 (شماره صفحه PDF)",
+ "star_note": null,
+ "transcribed_from": "PDF text layer, tools/booklet/field_list_1405.py",
+ "fields": [
+  {
+   "order": 1,
+   "degree_level": "کارشناسی",
+   "name": "آموزش زبان انگلیسی",
+   "selection_type": "کشوری",
+   "field_row_code": 27,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 2,
+   "degree_level": "کارشناسی",
+   "name": "زبان و ادبیات ایتالیایی",
+   "selection_type": "کشوری",
+   "field_row_code": 5,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 3,
+   "degree_level": "کارشناسی",
+   "name": "زبان چینی",
+   "selection_type": "کشوری",
+   "field_row_code": 7,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 4,
+   "degree_level": "کارشناسی",
+   "name": "زبان روسی",
+   "selection_type": "کشوری",
+   "field_row_code": 23,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 5,
+   "degree_level": "کارشناسی",
+   "name": "زبان و ادبیات آلمانی",
+   "selection_type": "کشوری",
+   "field_row_code": 24,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 6,
+   "degree_level": "کارشناسی",
+   "name": "زبان و ادبیات اردو",
+   "selection_type": "کشوری",
+   "field_row_code": 11,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 7,
+   "degree_level": "کارشناسی",
+   "name": "زبان و ادبیات ارمنی",
+   "selection_type": "کشوری",
+   "field_row_code": 12,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 8,
+   "degree_level": "کارشناسی",
+   "name": "زبان و ادبیات اسپانیایی",
+   "selection_type": "کشوری",
+   "field_row_code": 2,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 9,
+   "degree_level": "کارشناسی",
+   "name": "زبان و ادبیات انگلیسی",
+   "selection_type": "ناحیه ای",
+   "field_row_code": 25,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 10,
+   "degree_level": "کارشناسی",
+   "name": "زبان و ادبیات ترکی استانبولی",
+   "selection_type": "کشوری",
+   "field_row_code": 6,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 11,
+   "degree_level": "کارشناسی",
+   "name": "زبان و ادبیات ژاپنی",
+   "selection_type": "کشوری",
+   "field_row_code": 9,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 12,
+   "degree_level": "کارشناسی",
+   "name": "زبان و ادبیات فرانسه",
+   "selection_type": "کشوری",
+   "field_row_code": 10,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 13,
+   "degree_level": "کارشناسی",
+   "name": "مترجمی زبان آلمانی",
+   "selection_type": "کشوری",
+   "field_row_code": 20,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 14,
+   "degree_level": "کارشناسی",
+   "name": "مترجمی زبان انگلیسی",
+   "selection_type": "قطبی",
+   "field_row_code": 21,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 15,
+   "degree_level": "کاردانی",
+   "name": "کاردانی آموزش زبان انگلیسی",
+   "selection_type": "کشوری",
+   "field_row_code": 17,
+   "gender_min_30_percent_note": false
+  },
+  {
+   "order": 16,
+   "degree_level": "کاردانی",
+   "name": "کاردانی مترجمی زبان انگلیسی",
+   "selection_type": "کشوری",
+   "field_row_code": 19,
+   "gender_min_30_percent_note": false
+  }
+ ]
+}

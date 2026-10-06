@@ -1,0 +1,22 @@
+{
+  "format": "booklet-programs-v1",
+  "year": 1405,
+  "group": "zaban",
+  "group_name": "زبان",
+  "source_file": "Zaban_v2.pdf",
+  "source_sha256": "34276f59f1a85e217c64db0d1813bb43df8ffb33abc96298a3aeb7fb70d99bd2",
+  "pages": [
+    39,
+    311
+  ],
+  "programs": 10455,
+  "programs_file": "programs.jsonl.gz",
+  "programs_sha256": "c509f63728c1d93c5f9c88fd1414a54543145db0ff72a149e1beb967855269f8",
+  "counts": {
+    "provinces": 31,
+    "cities": 329,
+    "institutions": 330,
+    "campuses": 464,
+    "fields": 231
+  }
+}
