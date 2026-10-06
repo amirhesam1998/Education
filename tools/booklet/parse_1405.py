@@ -174,6 +174,9 @@ def check_sub_columns(header: Band, names: tuple[str, ...], edges: list[float], 
 HEADER_TAILS = {'محل', 'اول', 'دوم', 'زن', 'مرد'}
 SPLIT_HEADERS: list[int] = []
 OWN_GRID: list[tuple[int, str]] = []
+# First codes of tables that start under a new title with no header row and are drawn on their own grid,
+# each checked against the page image. Any other such table stops the parser.
+OWN_GRID_TABLES = {'35246'}  # honar p. 48, دانشگاه هنر ایران (محل تحصیل کرج)
 
 
 def join_header(header: Band, tail: Band, page: int) -> Band:
@@ -204,6 +207,7 @@ def parse(pdf: str, first: int, last: int) -> tuple[list[Section], list[dict]]:
         page = index + 1
         printed = page_number(items)
         pending_header: Band | None = None
+        header_rows = 0  # rows read under pending_header
         split_header: Band | None = None
         ctx.edges = None  # every page draws its own grid
         for it in items:
@@ -225,6 +229,7 @@ def parse(pdf: str, first: int, last: int) -> tuple[list[Section], list[dict]]:
                 ctx.layout = LAYOUTS[key]
                 ctx.edges = None
                 pending_header = it
+                header_rows = 0
                 continue
             if ctx.layout is None or len(it.cells) != len(ctx.layout):
                 raise BookletError(f'page {page}: row with {len(it.cells)} cells under layout {ctx.layout}: {it.cells}')
@@ -235,9 +240,10 @@ def parse(pdf: str, first: int, last: int) -> tuple[list[Section], list[dict]]:
                     try:
                         check_sub_columns(pending_header, ctx.layout, it.edges, page)
                     except BookletError:
-                        if all(any(abs(h - e) <= 1.5 for e in it.edges) for h in pending_header.edges):
+                        code = it.cells[ctx.layout.index('code')].translate(DIGITS)
+                        if header_rows == 0 or code not in OWN_GRID_TABLES:
                             raise
-                        OWN_GRID.append((page, it.cells[ctx.layout.index('code')]))  # a table under a new title, drawn on its own grid without a header (honar p. 48)
+                        OWN_GRID.append((page, code))
                 ctx.edges = it.edges
             elif len(it.edges) != len(ctx.edges) or max(abs(a - b) for a, b in zip(ctx.edges, it.edges)) > 1.5:
                 raise BookletError(f'page {page}: row edges {it.edges} differ from table edges {ctx.edges}')
@@ -253,6 +259,7 @@ def parse(pdf: str, first: int, last: int) -> tuple[list[Section], list[dict]]:
                 'cells': cells,
             })
             ctx.section.rows += 1
+            header_rows += 1
         if split_header is not None:
             raise BookletError(f'page {page}: unknown header {split_header.cells}')
     close_title(ctx, sections, last)
